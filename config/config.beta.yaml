@@ -3,6 +3,7 @@ server:
   port: 8000
   debug: false
   cors_origins:
+    - "https://app.dharmiq.in"
     - "http://localhost:5173"
 
 database:

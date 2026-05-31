@@ -1,6 +1,14 @@
 # Dharmiq
 
+[![Status: Alpha](https://img.shields.io/badge/status-alpha-orange)](https://dharmiq.in)
+[![Version](https://img.shields.io/badge/version-0.1-blue)](https://github.com/Ankk98/dharmiq)
+[![Landing](https://img.shields.io/badge/landing-dharmiq.in-2563eb)](https://dharmiq.in)
+[![App](https://img.shields.io/badge/app-app.dharmiq.in-2563eb)](https://app.dharmiq.in)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 Open-source Indian legal information assistant for citizens. Dharmiq explains rights and obligations in plain language, grounded in statutory documents (IndiaCode corpus), with citations and clear disclaimers that it does not provide legal advice.
+
+**Alpha (v0.1)** — actively under development. [Landing page](https://dharmiq.in) · [App](https://app.dharmiq.in)
 
 ![Dharmiq chat UI (v0.1, without indexed corpus)](screenshots/ui-v0.1-without-dataset.png)
 

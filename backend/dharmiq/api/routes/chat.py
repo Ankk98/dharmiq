@@ -7,15 +7,19 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from dharmiq.auth.manager import current_active_user
-from dharmiq.db.models.chats import ChatMessage, ChatSession, MessageRole
+from dharmiq.db.models.chats import ChatMessage, ChatRequest, ChatSession, MessageRole
 from dharmiq.db.models.users import User
 from dharmiq.db.session import get_db_session
 from dharmiq.schemas.chat import (
     ChatMessageCreate,
     ChatMessageRead,
+    ChatPipelineRequest,
+    ChatPipelineResponse,
+    ChatRequestRead,
     ChatSessionCreate,
     ChatSessionRead,
 )
+from dharmiq.llm.pipeline import run_chat_pipeline
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -124,3 +128,48 @@ async def list_messages(
         .order_by(ChatMessage.created_at.asc())
     )
     return list(result.scalars().all())
+
+
+@router.post("", response_model=ChatPipelineResponse)
+async def chat(
+    body: ChatPipelineRequest,
+    user: User = Depends(current_active_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> ChatPipelineResponse:
+    chat_session = await _get_user_session(body.session_id, user, db)
+    result = await run_chat_pipeline(
+        db,
+        chat_session=chat_session,
+        user=user,
+        user_message=body.message,
+    )
+    return ChatPipelineResponse(
+        chat_request_id=result.chat_request_id,
+        status=result.status,
+        needs_clarification=result.needs_clarification,
+        followup_questions=result.followup_questions,
+        answer=result.answer,
+        citations=result.citations,
+        final_warning=result.final_warning,
+        taking_longer_than_expected=result.taking_longer_than_expected,
+        messages=result.new_messages,
+        error_message=result.error_message,
+    )
+
+
+@router.get("/requests/{request_id}", response_model=ChatRequestRead)
+async def get_chat_request(
+    request_id: uuid.UUID,
+    user: User = Depends(current_active_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> ChatRequest:
+    result = await db.execute(
+        select(ChatRequest).where(
+            ChatRequest.id == request_id,
+            ChatRequest.user_id == user.id,
+        )
+    )
+    chat_request = result.scalar_one_or_none()
+    if chat_request is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat request not found")
+    return chat_request

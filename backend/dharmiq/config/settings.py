@@ -90,6 +90,14 @@ class EmbeddingsSettings(BaseModel):
 
 class RetrievalSettings(BaseModel):
     top_k: int = 5
+    multi_query_top_k: int = 5
+
+
+class ChatSettings(BaseModel):
+    history_limit: int = 20
+    max_validator_retries: int = 3
+    slow_threshold_seconds: float = 30.0
+    server_timeout_seconds: float = 60.0
 
 
 class IngestionSettings(BaseModel):
@@ -147,6 +155,7 @@ class Settings(BaseModel):
     openrouter: OpenRouterSettings = Field(default_factory=OpenRouterSettings)
     embeddings: EmbeddingsSettings = Field(default_factory=EmbeddingsSettings)
     retrieval: RetrievalSettings = Field(default_factory=RetrievalSettings)
+    chat: ChatSettings = Field(default_factory=ChatSettings)
     ingestion: IngestionSettings = Field(default_factory=IngestionSettings)
     uploads: UploadSettings = Field(default_factory=UploadSettings)
     eval: EvalSettings = Field(default_factory=EvalSettings)

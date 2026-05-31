@@ -109,6 +109,7 @@ class OpenRouterClient:
         model: str | None = None,
         temperature: float = 0.2,
         max_tokens: int | None = None,
+        response_format: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "model": model or self._settings.openrouter.default_model,
@@ -117,6 +118,8 @@ class OpenRouterClient:
         }
         if max_tokens is not None:
             payload["max_tokens"] = max_tokens
+        if response_format is not None:
+            payload["response_format"] = response_format
         return await self._request("POST", "/chat/completions", json=payload)
 
     async def create_embeddings(
@@ -152,3 +155,26 @@ async def close_openrouter_client() -> None:
     if _client is not None:
         await _client.close()
         _client = None
+
+
+def extract_assistant_content(response: dict[str, Any]) -> str:
+    choices = response.get("choices") or []
+    if not choices:
+        raise OpenRouterError("OpenRouter response missing choices", details={"response": response})
+    message = choices[0].get("message") or {}
+    content = message.get("content")
+    if not content:
+        raise OpenRouterError("OpenRouter response missing assistant content", details={"response": response})
+    return str(content)
+
+
+def extract_token_usage(response: dict[str, Any]) -> int:
+    usage = response.get("usage") or {}
+    total = usage.get("total_tokens")
+    if isinstance(total, int):
+        return total
+    prompt = usage.get("prompt_tokens") or 0
+    completion = usage.get("completion_tokens") or 0
+    if isinstance(prompt, int) and isinstance(completion, int):
+        return prompt + completion
+    return 0

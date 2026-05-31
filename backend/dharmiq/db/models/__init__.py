@@ -1,4 +1,4 @@
-from dharmiq.db.models.chats import ChatMessage, ChatSession, MessageRole
+from dharmiq.db.models.chats import ChatMessage, ChatRequest, ChatRequestStatus, ChatSession, MessageRole
 from dharmiq.db.models.documents import (
     DocType,
     DocumentChunk,
@@ -10,6 +10,8 @@ from dharmiq.db.models.users import User
 
 __all__ = [
     "ChatMessage",
+    "ChatRequest",
+    "ChatRequestStatus",
     "ChatSession",
     "DocType",
     "DocumentChunk",

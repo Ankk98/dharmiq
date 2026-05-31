@@ -29,6 +29,13 @@ embeddings:
 
 retrieval:
   top_k: 5
+  multi_query_top_k: 5
+
+chat:
+  history_limit: 20
+  max_validator_retries: 3
+  slow_threshold_seconds: 30
+  server_timeout_seconds: 60
 
 ingestion:
   corpus_dir: /opt/dharmiq/data/corpus/india_code/raw

@@ -77,6 +77,40 @@ Secrets can live in a repo-root `.env` file (auto-loaded) or be exported in your
 | POST | `/api/chat/sessions/{id}/messages` | Append a message |
 | GET | `/api/chat/sessions/{id}/messages` | List messages in a session |
 
+## Corpus ingestion (Milestone 4)
+
+Place IndiaCode PDFs under `data/corpus/india_code/raw/` (or configure `ingestion.corpus_dir` in `config/*.yaml`). An optional `manifest.json` can supply metadata:
+
+```json
+[
+  {
+    "file": "constitution.pdf",
+    "source_id": "IN-CONSTITUTION-1950",
+    "title": "Constitution of India",
+    "doc_type": "act",
+    "jurisdiction": "central"
+  }
+]
+```
+
+Celery tasks:
+
+| Task | Description |
+|------|-------------|
+| `dharmiq.ingestion.sync_india_code_pdfs` | Scan corpus dir, register new/changed PDFs, enqueue processing |
+| `dharmiq.ingestion.process_pdf` | Parse, chunk, embed, and index a single document |
+
+Start worker and beat scheduler:
+
+```bash
+uv run celery -A celery_app worker --loglevel=info
+uv run celery -A celery_app beat --loglevel=info
+```
+
+System dependency for OCR fallback: `tesseract-ocr` (optional if PDFs have extractable text).
+
+Pipeline modules: `dharmiq.ingestion.scanner`, `parser`, `ocr`, `chunker`, `pipeline`.
+
 ## LLM & retrieval (Milestone 3)
 
 Configured in `config/*.yaml`:
@@ -129,10 +163,10 @@ backend/
     auth/          # fastapi-users integration
     db/            # SQLAlchemy + models
     tasks/         # Celery tasks
-    ingestion/     # (M4) PDF pipeline
+    ingestion/     # PDF scan, parse, chunk, embed pipeline
     llm/           # OpenRouter client, embeddings, retrieval
     eval/          # (M8) Evaluation
-    observability/ # (M8) Metrics
+    observability/ # Ingestion metrics (Prometheus in M8)
   alembic/         # Database migrations
   celery_app.py    # Celery CLI entry point
 ```

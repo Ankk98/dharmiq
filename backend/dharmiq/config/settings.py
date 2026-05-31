@@ -95,6 +95,17 @@ class IngestionSettings(BaseModel):
     corpus_dir: str = "data/corpus/india_code/raw"
     batch_size: int = 10
     concurrency: int = 2
+    min_page_text_chars: int = 50
+    chunk_min_chars: int = 2000
+    chunk_max_chars: int = 4000
+    chunk_overlap_chars: int = 200
+    ocr_languages: str = "eng"
+
+    def resolve_corpus_dir(self, repo_root: Path) -> Path:
+        path = Path(self.corpus_dir)
+        if path.is_absolute():
+            return path
+        return (repo_root / path).resolve()
 
 
 class EvalSettings(BaseModel):
@@ -155,6 +166,7 @@ def load_settings(env: str | None = None) -> Settings:
     resolved_env = env or os.environ.get("DHARMIQ_ENV", "dev")
     raw = _load_yaml_config(resolved_env)
     raw = _apply_env_overrides(raw)
+    raw["repo_root"] = _find_repo_root()
     return Settings(env=resolved_env, **raw)
 
 

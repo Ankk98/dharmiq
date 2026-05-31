@@ -26,3 +26,7 @@ class OpenRouterError(DharmiqError):
 
 class EmbeddingError(DharmiqError):
     """Raised when embedding generation fails."""
+
+
+class IngestionError(DharmiqError):
+    """Raised when corpus ingestion or PDF processing fails."""

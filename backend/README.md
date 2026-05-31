@@ -77,6 +77,26 @@ Secrets can live in a repo-root `.env` file (auto-loaded) or be exported in your
 | POST | `/api/chat/sessions/{id}/messages` | Append a message |
 | GET | `/api/chat/sessions/{id}/messages` | List messages in a session |
 
+### Uploads (authenticated)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/uploads` | Upload a PDF or image (max 100 MB, 30 assets per user) |
+| GET | `/api/uploads` | List active uploads |
+| GET | `/api/uploads/{id}` | Get upload metadata |
+| DELETE | `/api/uploads/{id}` | Soft-delete an upload |
+
+## User uploads (Milestone 5)
+
+Files are stored under `data/uploads/{user_uuid}/raw/`. Supported types: PDF and images (JPEG, PNG, WebP, TIFF). Uploading enqueues `dharmiq.ingestion.process_user_upload`.
+
+```yaml
+uploads:
+  uploads_dir: data/uploads
+  max_assets_per_user: 30
+  max_size_bytes: 104857600
+```
+
 ## Corpus ingestion (Milestone 4)
 
 Place IndiaCode PDFs under `data/corpus/india_code/raw/` (or configure `ingestion.corpus_dir` in `config/*.yaml`). An optional `manifest.json` can supply metadata:
@@ -98,7 +118,8 @@ Celery tasks:
 | Task | Description |
 |------|-------------|
 | `dharmiq.ingestion.sync_india_code_pdfs` | Scan corpus dir, register new/changed PDFs, enqueue processing |
-| `dharmiq.ingestion.process_pdf` | Parse, chunk, embed, and index a single document |
+| `dharmiq.ingestion.process_pdf` | Parse, chunk, embed, and index a single corpus document |
+| `dharmiq.ingestion.process_user_upload` | Parse, chunk, embed, and index a user upload |
 
 Start worker and beat scheduler:
 

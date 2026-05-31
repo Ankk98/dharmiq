@@ -5,6 +5,7 @@ from dharmiq.db.models.documents import (
     DocumentSection,
     SourceDocument,
 )
+from dharmiq.db.models.uploads import UserUpload, UserUploadChunk
 from dharmiq.db.models.users import User
 
 __all__ = [
@@ -16,4 +17,6 @@ __all__ = [
     "MessageRole",
     "SourceDocument",
     "User",
+    "UserUpload",
+    "UserUploadChunk",
 ]

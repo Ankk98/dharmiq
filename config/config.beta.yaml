@@ -35,6 +35,11 @@ ingestion:
   batch_size: 10
   concurrency: 2
 
+uploads:
+  uploads_dir: /opt/dharmiq/data/uploads
+  max_assets_per_user: 30
+  max_size_bytes: 104857600
+
 eval:
   datasets_dir: /opt/dharmiq/data/eval/datasets
 

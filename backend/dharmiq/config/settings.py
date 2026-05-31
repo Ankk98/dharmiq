@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import uuid
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
@@ -108,6 +109,21 @@ class IngestionSettings(BaseModel):
         return (repo_root / path).resolve()
 
 
+class UploadSettings(BaseModel):
+    uploads_dir: str = "data/uploads"
+    max_assets_per_user: int = 30
+    max_size_bytes: int = 100 * 1024 * 1024
+
+    def resolve_uploads_dir(self, repo_root: Path) -> Path:
+        path = Path(self.uploads_dir)
+        if path.is_absolute():
+            return path
+        return (repo_root / path).resolve()
+
+    def user_raw_dir(self, repo_root: Path, user_id: uuid.UUID) -> Path:
+        return self.resolve_uploads_dir(repo_root) / str(user_id) / "raw"
+
+
 class EvalSettings(BaseModel):
     datasets_dir: str = "data/eval/datasets"
 
@@ -132,6 +148,7 @@ class Settings(BaseModel):
     embeddings: EmbeddingsSettings = Field(default_factory=EmbeddingsSettings)
     retrieval: RetrievalSettings = Field(default_factory=RetrievalSettings)
     ingestion: IngestionSettings = Field(default_factory=IngestionSettings)
+    uploads: UploadSettings = Field(default_factory=UploadSettings)
     eval: EvalSettings = Field(default_factory=EvalSettings)
     logging: LoggingSettings = Field(default_factory=LoggingSettings)
     auth: AuthSettings = Field(default_factory=AuthSettings)

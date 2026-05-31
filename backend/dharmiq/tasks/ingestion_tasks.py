@@ -9,6 +9,7 @@ from dharmiq.config.settings import get_settings
 from dharmiq.core.logging import get_logger, setup_logging
 from dharmiq.db.session import close_db, get_session_factory, init_db
 from dharmiq.ingestion.pipeline import process_document_safe, sync_corpus_documents
+from dharmiq.ingestion.upload_pipeline import process_user_upload_safe
 from dharmiq.observability.metrics import record_sync_run
 from dharmiq.tasks.celery_app import celery_app
 
@@ -80,3 +81,24 @@ def process_pdf(self, document_id: str) -> dict[str, int | str]:
         raise self.retry(exc=exc, countdown=30 * (self.request.retries + 1)) from exc
 
     return {"document_id": document_id, "chunks": chunk_count}
+
+
+@celery_app.task(name="dharmiq.ingestion.process_user_upload", bind=True, max_retries=3)
+def process_user_upload(self, upload_id: str) -> dict[str, int | str]:
+    """Parse, chunk, embed, and index a user-uploaded document."""
+    settings = get_settings()
+    setup_logging(settings)
+    upload_uuid = uuid.UUID(upload_id)
+    logger.info("process_user_upload_started", upload_id=upload_id)
+
+    async def _run(db):
+        chunk_count = await process_user_upload_safe(db, upload_uuid, settings=settings)
+        return chunk_count
+
+    try:
+        chunk_count = _run_async(_with_db_session(_run))
+    except Exception as exc:
+        logger.exception("process_user_upload_failed", upload_id=upload_id, error=str(exc))
+        raise self.retry(exc=exc, countdown=30 * (self.request.retries + 1)) from exc
+
+    return {"upload_id": upload_id, "chunks": chunk_count}

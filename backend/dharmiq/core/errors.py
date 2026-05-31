@@ -30,3 +30,7 @@ class EmbeddingError(DharmiqError):
 
 class IngestionError(DharmiqError):
     """Raised when corpus ingestion or PDF processing fails."""
+
+
+class UploadError(DharmiqError):
+    """Raised when user upload validation or storage fails."""

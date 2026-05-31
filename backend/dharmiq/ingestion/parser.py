@@ -100,3 +100,28 @@ class HybridPdfParser(PdfParserBackend):
 
 def get_pdf_parser(settings: Settings | None = None) -> PdfParserBackend:
     return HybridPdfParser(settings=settings)
+
+
+def extract_image_pages(
+    file_path: Path,
+    *,
+    settings: Settings | None = None,
+    ocr_backend: OcrBackend | None = None,
+) -> list[PageText]:
+    """OCR a single image file into one page of text."""
+    from PIL import Image
+
+    if not file_path.is_file():
+        raise IngestionError("Image file not found", details={"path": str(file_path)})
+
+    ocr = ocr_backend or get_ocr_backend(settings)
+    try:
+        with Image.open(file_path) as image:
+            text = ocr.extract_text_from_image(image).strip()
+    except Exception as exc:
+        raise IngestionError(
+            "Failed to read image",
+            details={"path": str(file_path), "error": str(exc)},
+        ) from exc
+
+    return [PageText(page_number=1, text=text, used_ocr=True)]

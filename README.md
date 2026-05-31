@@ -2,6 +2,8 @@
 
 Open-source Indian legal information assistant for citizens. Dharmiq explains rights and obligations in plain language, grounded in statutory documents (IndiaCode corpus), with citations and clear disclaimers that it does not provide legal advice.
 
+![Dharmiq chat UI (v0.1, without indexed corpus)](screenshots/ui-v0.1-without-dataset.png)
+
 ## Features
 
 - **RAG chat** – multi-agent pipeline (clarify, retrieve, answer, validate) over indexed legal PDFs

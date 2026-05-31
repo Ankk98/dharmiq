@@ -7,9 +7,7 @@ from sqlalchemy import engine_from_config, pool
 
 from dharmiq.config.settings import get_settings
 from dharmiq.db.base import Base
-
-# Import models here as they are added in later milestones so Alembic detects them.
-# from dharmiq.db.models import users  # noqa: ERA001
+from dharmiq.db.models import ChatMessage, ChatSession, User  # noqa: F401
 
 config = context.config
 

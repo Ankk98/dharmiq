@@ -34,3 +34,7 @@ eval:
 logging:
   level: DEBUG
   format: json
+
+auth:
+  jwt_lifetime_seconds: 3600
+  # jwt_secret via DHARMIQ_JWT_SECRET env var

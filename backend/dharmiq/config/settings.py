@@ -25,6 +25,18 @@ def _find_repo_root() -> Path:
 REPO_ROOT = _find_repo_root()
 
 
+def _load_dotenv() -> None:
+    """Load repo-root `.env` so CLI tools (alembic, celery) pick up secrets."""
+    from dotenv import load_dotenv
+
+    env_file = REPO_ROOT / ".env"
+    if env_file.exists():
+        load_dotenv(env_file, override=False)
+
+
+_load_dotenv()
+
+
 class ServerSettings(BaseModel):
     host: str = "0.0.0.0"
     port: int = 8000
@@ -82,6 +94,11 @@ class LoggingSettings(BaseModel):
     format: Literal["json", "console"] = "json"
 
 
+class AuthSettings(BaseModel):
+    jwt_secret: SecretStr = Field(default=SecretStr(""))
+    jwt_lifetime_seconds: int = 3600
+
+
 class Settings(BaseModel):
     env: str = "dev"
     repo_root: Path = REPO_ROOT
@@ -93,6 +110,7 @@ class Settings(BaseModel):
     ingestion: IngestionSettings = Field(default_factory=IngestionSettings)
     eval: EvalSettings = Field(default_factory=EvalSettings)
     logging: LoggingSettings = Field(default_factory=LoggingSettings)
+    auth: AuthSettings = Field(default_factory=AuthSettings)
 
 
 def _load_yaml_config(env: str) -> dict:
@@ -112,6 +130,10 @@ def _apply_env_overrides(settings_dict: dict) -> dict:
     openrouter = settings_dict.setdefault("openrouter", {})
     if api_key := os.environ.get("OPENROUTER_API_KEY"):
         openrouter["api_key"] = api_key
+
+    auth = settings_dict.setdefault("auth", {})
+    if jwt_secret := os.environ.get("DHARMIQ_JWT_SECRET"):
+        auth["jwt_secret"] = jwt_secret
 
     return settings_dict
 

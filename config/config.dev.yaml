@@ -1,0 +1,36 @@
+server:
+  host: "0.0.0.0"
+  port: 8000
+  debug: true
+
+database:
+  host: localhost
+  port: 5433
+  name: dharmiq
+  user: dharmiq
+  # password via DHARMIQ_DATABASE_PASSWORD env var
+
+redis:
+  url: redis://localhost:6379/0
+
+openrouter:
+  base_url: https://openrouter.ai/api/v1
+  default_model: deepseek/deepseek-v4-pro
+  # api_key via OPENROUTER_API_KEY env var
+
+embeddings:
+  backend: local
+  local_model_name: sentence-transformers/all-MiniLM-L6-v2
+  remote_model_id: openai/text-embedding-3-small
+
+ingestion:
+  corpus_dir: data/corpus/india_code/raw
+  batch_size: 10
+  concurrency: 2
+
+eval:
+  datasets_dir: data/eval/datasets
+
+logging:
+  level: DEBUG
+  format: json

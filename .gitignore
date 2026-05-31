@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+
+# uv
+backend/.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Logs & data
+logs/
+*.log
+data/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Frontend (future)
+frontend/node_modules/
+frontend/dist/

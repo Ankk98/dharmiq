@@ -135,6 +135,19 @@ class UploadSettings(BaseModel):
 
 class EvalSettings(BaseModel):
     datasets_dir: str = "data/eval/datasets"
+    runs_dir: str = "data/eval/runs"
+
+    def resolve_datasets_dir(self, repo_root: Path) -> Path:
+        path = Path(self.datasets_dir)
+        if path.is_absolute():
+            return path
+        return (repo_root / path).resolve()
+
+    def resolve_runs_dir(self, repo_root: Path) -> Path:
+        path = Path(self.runs_dir)
+        if path.is_absolute():
+            return path
+        return (repo_root / path).resolve()
 
 
 class LoggingSettings(BaseModel):

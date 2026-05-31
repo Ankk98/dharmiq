@@ -1,0 +1,232 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(dharmiq_http_requests_total[5m])) by (path)",
+          "legendFormat": "{{path}}",
+          "refId": "A"
+        }
+      ],
+      "title": "HTTP request rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(dharmiq_http_request_duration_seconds_bucket[5m])) by (le, path))",
+          "legendFormat": "p95 {{path}}",
+          "refId": "A"
+        }
+      ],
+      "title": "HTTP latency p95",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 8
+      },
+      "id": 3,
+      "targets": [
+        {
+          "expr": "sum(rate(dharmiq_http_errors_total[5m]))",
+          "legendFormat": "5xx errors/s",
+          "refId": "A"
+        }
+      ],
+      "title": "HTTP 5xx error rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 8
+      },
+      "id": 4,
+      "targets": [
+        {
+          "expr": "sum(rate(dharmiq_llm_tokens_total[5m])) by (model, agent)",
+          "legendFormat": "{{model}} / {{agent}}",
+          "refId": "A"
+        }
+      ],
+      "title": "LLM token usage rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 8
+      },
+      "id": 5,
+      "targets": [
+        {
+          "expr": "dharmiq_ingestion_documents_processed_total",
+          "legendFormat": "processed",
+          "refId": "A"
+        },
+        {
+          "expr": "dharmiq_ingestion_documents_failed_total",
+          "legendFormat": "failed",
+          "refId": "B"
+        },
+        {
+          "expr": "dharmiq_ingestion_chunks_indexed_total",
+          "legendFormat": "chunks",
+          "refId": "C"
+        }
+      ],
+      "title": "Ingestion totals",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "id": 6,
+      "targets": [
+        {
+          "expr": "dharmiq_ingestion_sync_scanned",
+          "legendFormat": "scanned",
+          "refId": "A"
+        },
+        {
+          "expr": "dharmiq_ingestion_sync_created",
+          "legendFormat": "created",
+          "refId": "B"
+        },
+        {
+          "expr": "dharmiq_ingestion_sync_updated",
+          "legendFormat": "updated",
+          "refId": "C"
+        },
+        {
+          "expr": "dharmiq_ingestion_sync_skipped",
+          "legendFormat": "skipped",
+          "refId": "D"
+        }
+      ],
+      "title": "Last corpus sync",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "max": 1,
+          "min": 0,
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "id": 7,
+      "targets": [
+        {
+          "expr": "dharmiq_eval_answer_correctness",
+          "legendFormat": "{{dataset}} / {{metric}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Eval scores (latest run)",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": ["dharmiq"],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "title": "Dharmiq Overview",
+  "uid": "dharmiq-overview",
+  "version": 1
+}

@@ -2,16 +2,22 @@
 
 from dharmiq.observability.metrics import (
     get_ingestion_metrics,
+    record_eval_run,
+    record_http_request,
     record_ingestion_failure,
     record_ingestion_success,
+    record_llm_tokens,
     record_sync_run,
     reset_ingestion_metrics,
 )
 
 __all__ = [
     "get_ingestion_metrics",
+    "record_eval_run",
+    "record_http_request",
     "record_ingestion_failure",
     "record_ingestion_success",
+    "record_llm_tokens",
     "record_sync_run",
     "reset_ingestion_metrics",
 ]

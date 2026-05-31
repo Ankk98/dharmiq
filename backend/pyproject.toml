@@ -9,7 +9,7 @@ dependencies = [
     "asyncpg>=0.30.0",
     "celery[redis]>=5.6.0",
     "langchain-core>=0.3.0",
-    "langchain-community>=0.3.0",
+    "langchain-community>=0.3.0,<0.4.0",
     "fastapi-users[sqlalchemy]>=14.0.0",
     "fastapi[standard]>=0.135.0",
     "httpx>=0.28.0",
@@ -17,10 +17,14 @@ dependencies = [
     "pgvector>=0.3.6",
     "pillow>=11.0.0",
     "pydantic>=2.10.0",
+    "pydantic-settings>=2.7.0",
     "pypdf>=6.0.0",
     "pytesseract>=0.3.13",
     "psycopg[binary]>=3.2.0",
-    "pydantic-settings>=2.7.0",
+    "datasets>=3.2.0",
+    "langchain-openai>=0.3.0",
+    "prometheus-client>=0.21.0",
+    "ragas>=0.2.0",
     "python-dotenv>=1.0.0",
     "pyyaml>=6.0.2",
     "redis>=5.2.0",
@@ -40,6 +44,7 @@ dev = [
 
 [project.scripts]
 dharmiq-api = "dharmiq.main:run"
+dharmiq-eval = "dharmiq.eval.cli:main"
 
 [build-system]
 requires = ["hatchling"]

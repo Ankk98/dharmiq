@@ -15,6 +15,7 @@ celery_app = Celery(
     include=[
         "dharmiq.tasks.sample_tasks",
         "dharmiq.tasks.ingestion_tasks",
+        "dharmiq.tasks.eval_tasks",
         "dharmiq.tasks.beat_schedule",
     ],
 )

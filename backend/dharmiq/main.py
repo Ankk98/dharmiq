@@ -6,11 +6,12 @@ from collections.abc import AsyncIterator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from dharmiq.api.routes import auth, chat, docs, health, uploads
+from dharmiq.api.routes import auth, chat, docs, health, metrics, uploads
 from dharmiq.config.settings import get_settings
 from dharmiq.core.logging import get_logger, setup_logging
 from dharmiq.db.session import close_db, init_db
 from dharmiq.llm.openrouter_client import close_openrouter_client
+from dharmiq.observability.middleware import PrometheusMiddleware
 
 logger = get_logger(__name__)
 
@@ -43,6 +44,8 @@ def create_app() -> FastAPI:
     app.include_router(chat.router, prefix="/api")
     app.include_router(uploads.router, prefix="/api")
     app.include_router(docs.router, prefix="/api")
+    app.include_router(metrics.router)
+    app.add_middleware(PrometheusMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.server.cors_origins,

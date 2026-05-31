@@ -26,6 +26,7 @@ from dharmiq.llm.agents.query_rewriter import run_query_rewriter
 from dharmiq.llm.agents.validator import run_validator
 from dharmiq.llm.openrouter_client import OpenRouterClient, get_openrouter_client
 from dharmiq.llm.retrieval import CitationRead, chunks_to_citations, retrieve_multi_query
+from dharmiq.observability.metrics import record_llm_tokens
 from dharmiq.schemas.chat import ChatMessageRead
 
 logger = get_logger(__name__)
@@ -119,6 +120,7 @@ async def run_chat_pipeline(
             history_limit=cfg.chat.history_limit,
         )
         total_tokens += clarifier.tokens_used
+        record_llm_tokens(model=model_name, agent="clarifier", tokens=clarifier.tokens_used)
 
         if clarifier.needs_more_info and clarifier.followup_questions:
             clarifier_content = "\n".join(f"- {question}" for question in clarifier.followup_questions)
@@ -165,6 +167,7 @@ async def run_chat_pipeline(
             facts=facts,
         )
         total_tokens += rewriter.tokens_used
+        record_llm_tokens(model=model_name, agent="query_rewriter", tokens=rewriter.tokens_used)
 
         retrieved = await retrieve_multi_query(
             db,
@@ -180,6 +183,7 @@ async def run_chat_pipeline(
             retrieved_chunks=retrieved,
         )
         total_tokens += draft_answer.tokens_used
+        record_llm_tokens(model=model_name, agent="answerer", tokens=draft_answer.tokens_used)
         answer_text = draft_answer.answer
         final_warning: str | None = None
 
@@ -191,6 +195,7 @@ async def run_chat_pipeline(
                 draft_answer=answer_text,
             )
             total_tokens += validator.tokens_used
+            record_llm_tokens(model=model_name, agent="validator", tokens=validator.tokens_used)
 
             if not validator.must_regenerate:
                 final_warning = validator.final_warning or None
@@ -211,6 +216,7 @@ async def run_chat_pipeline(
                 regeneration_instructions=validator.regeneration_instructions,
             )
             total_tokens += regenerated.tokens_used
+            record_llm_tokens(model=model_name, agent="answerer", tokens=regenerated.tokens_used)
             answer_text = regenerated.answer
 
         if final_warning and final_warning not in answer_text:

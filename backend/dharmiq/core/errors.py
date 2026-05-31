@@ -34,3 +34,7 @@ class IngestionError(DharmiqError):
 
 class UploadError(DharmiqError):
     """Raised when user upload validation or storage fails."""
+
+
+class EvalError(DharmiqError):
+    """Raised when evaluation cannot run (missing corpus, config, etc.)."""

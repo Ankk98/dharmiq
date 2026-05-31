@@ -5,9 +5,10 @@ import uuid
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from dharmiq.config.settings import get_settings
-from dharmiq.db.session import close_db, init_db
+from dharmiq.db.session import close_db, get_session_factory, init_db
 from dharmiq.llm.embeddings import reset_embedding_backend_cache
 from dharmiq.main import create_app
 
@@ -34,6 +35,13 @@ async def _db_engine_lifecycle() -> None:
     await close_db()
     reset_embedding_backend_cache()
     get_settings.cache_clear()
+
+
+@pytest.fixture
+async def db() -> AsyncSession:
+    factory = get_session_factory()
+    async with factory() as session:
+        yield session
 
 
 @pytest.fixture

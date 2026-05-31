@@ -52,6 +52,7 @@ uploads:
 
 eval:
   datasets_dir: data/eval/datasets
+  runs_dir: data/eval/runs
 
 logging:
   level: DEBUG

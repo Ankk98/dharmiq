@@ -57,6 +57,7 @@ Secrets can live in a repo-root `.env` file (auto-loaded) or be exported in your
 |--------|------|-------------|
 | GET | `/api/health` | Full health check (DB + Redis) |
 | GET | `/api/health/live` | Liveness probe |
+| GET | `/metrics` | Prometheus metrics export |
 
 ### Auth (JWT)
 
@@ -160,6 +161,50 @@ retrieval:
 
 Corpus tables (`source_documents`, `document_sections`, `document_chunks`) are created by migration `003`. Ingestion populates them in Milestone 4.
 
+## Evaluation (Milestone 8)
+
+Curated eval datasets live in `data/eval/datasets/` as JSONL files. See
+`dharmiq/eval/dataset_format.md` for the schema.
+
+Run an eval manually (requires `OPENROUTER_API_KEY` and indexed corpus for meaningful scores):
+
+```bash
+uv run dharmiq-eval --dataset v1_fundamental_rights
+```
+
+Or enqueue via Celery:
+
+```bash
+uv run celery -A celery_app call dharmiq.eval.run_dataset --args='["v1_fundamental_rights"]'
+```
+
+Results are stored in `eval_runs` / `eval_results` and written to `data/eval/runs/`.
+
+Metrics computed per question:
+
+- **Ragas**: faithfulness, answer_correctness
+- **LLM judge** (OpenRouter): semantic answer correctness, citation correctness
+
+## Observability (Milestone 8)
+
+The API exposes Prometheus metrics at `GET /metrics`:
+
+- HTTP request counts, latency histograms, 5xx errors
+- LLM token usage by model and agent
+- Ingestion counters (documents processed/failed, chunks, sync stats)
+- Eval run scores
+
+Start Prometheus + Grafana with Docker Compose:
+
+```bash
+docker compose up -d prometheus grafana
+```
+
+- Prometheus: http://localhost:9090
+- Grafana: http://localhost:3000 (admin / admin) – **Dharmiq Overview** dashboard
+
+Ensure the API is running on port 8000 so Prometheus can scrape `host.docker.internal:8000/metrics`.
+
 Run migration after pulling:
 
 ```bash
@@ -186,8 +231,8 @@ backend/
     tasks/         # Celery tasks
     ingestion/     # PDF scan, parse, chunk, embed pipeline
     llm/           # OpenRouter client, embeddings, retrieval
-    eval/          # (M8) Evaluation
-    observability/ # Ingestion metrics (Prometheus in M8)
+    eval/          # Dataset loader, RAG eval runner, LLM judge
+    observability/ # Prometheus metrics and HTTP middleware
   alembic/         # Database migrations
   celery_app.py    # Celery CLI entry point
 ```

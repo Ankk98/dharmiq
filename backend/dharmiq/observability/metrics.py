@@ -4,8 +4,26 @@ from dataclasses import dataclass
 from threading import Lock
 
 from dharmiq.core.logging import get_logger
+from dharmiq.observability.prometheus_metrics import (
+    EVAL_ANSWER_CORRECTNESS,
+    EVAL_RUNS_TOTAL,
+    HTTP_ERRORS_TOTAL,
+    HTTP_REQUEST_DURATION_SECONDS,
+    HTTP_REQUESTS_TOTAL,
+    INGESTION_CHUNKS_INDEXED_TOTAL,
+    INGESTION_DOCUMENTS_FAILED_TOTAL,
+    INGESTION_DOCUMENTS_PROCESSED_TOTAL,
+    INGESTION_LAST_FAILURE_REASON,
+    INGESTION_PAGES_PROCESSED_TOTAL,
+    INGESTION_SYNC_CREATED,
+    INGESTION_SYNC_SCANNED,
+    INGESTION_SYNC_SKIPPED,
+    INGESTION_SYNC_UPDATED,
+    LLM_TOKENS_TOTAL,
+)
 
 logger = get_logger(__name__)
+_lock = Lock()
 
 
 @dataclass
@@ -18,7 +36,20 @@ class IngestionMetrics:
 
 
 _metrics = IngestionMetrics()
-_lock = Lock()
+
+
+def record_http_request(*, method: str, path: str, status_code: int, duration_seconds: float) -> None:
+    status = str(status_code)
+    HTTP_REQUESTS_TOTAL.labels(method=method, path=path, status=status).inc()
+    HTTP_REQUEST_DURATION_SECONDS.labels(method=method, path=path).observe(duration_seconds)
+    if status_code >= 500:
+        HTTP_ERRORS_TOTAL.labels(method=method, path=path).inc()
+
+
+def record_llm_tokens(*, model: str, agent: str, tokens: int) -> None:
+    if tokens <= 0:
+        return
+    LLM_TOKENS_TOTAL.labels(model=model, agent=agent).inc(tokens)
 
 
 def record_ingestion_success(*, chunk_count: int, page_count: int) -> None:
@@ -26,6 +57,9 @@ def record_ingestion_success(*, chunk_count: int, page_count: int) -> None:
         _metrics.documents_processed += 1
         _metrics.chunks_indexed += chunk_count
         _metrics.pages_processed += page_count
+    INGESTION_DOCUMENTS_PROCESSED_TOTAL.inc()
+    INGESTION_CHUNKS_INDEXED_TOTAL.inc(chunk_count)
+    INGESTION_PAGES_PROCESSED_TOTAL.inc(page_count)
     logger.info(
         "ingestion_metrics",
         metric_event="success",
@@ -39,6 +73,8 @@ def record_ingestion_failure(*, reason: str) -> None:
     with _lock:
         _metrics.documents_failed += 1
         _metrics.last_failure_reason = reason
+    INGESTION_DOCUMENTS_FAILED_TOTAL.inc()
+    INGESTION_LAST_FAILURE_REASON.labels(reason=reason[:120]).set(1)
     logger.warning(
         "ingestion_metrics",
         metric_event="failure",
@@ -48,6 +84,10 @@ def record_ingestion_failure(*, reason: str) -> None:
 
 
 def record_sync_run(*, scanned: int, skipped: int, created: int, updated: int) -> None:
+    INGESTION_SYNC_SCANNED.set(scanned)
+    INGESTION_SYNC_SKIPPED.set(skipped)
+    INGESTION_SYNC_CREATED.set(created)
+    INGESTION_SYNC_UPDATED.set(updated)
     logger.info(
         "ingestion_metrics",
         metric_event="sync",
@@ -55,6 +95,24 @@ def record_sync_run(*, scanned: int, skipped: int, created: int, updated: int) -
         skipped=skipped,
         created=created,
         updated=updated,
+    )
+
+
+def record_eval_run(*, dataset: str, question_count: int, metrics: dict[str, float]) -> None:
+    EVAL_RUNS_TOTAL.labels(dataset=dataset).inc()
+    for key in (
+        "faithfulness",
+        "answer_correctness",
+        "llm_answer_correctness",
+        "llm_citation_correctness",
+    ):
+        if key in metrics:
+            EVAL_ANSWER_CORRECTNESS.labels(dataset=dataset, metric=key).set(float(metrics[key]))
+    logger.info(
+        "eval_metrics",
+        dataset=dataset,
+        question_count=question_count,
+        metrics=metrics,
     )
 
 

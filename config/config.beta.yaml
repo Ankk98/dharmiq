@@ -51,6 +51,7 @@ uploads:
 
 eval:
   datasets_dir: /opt/dharmiq/data/eval/datasets
+  runs_dir: /opt/dharmiq/data/eval/runs
 
 logging:
   level: INFO

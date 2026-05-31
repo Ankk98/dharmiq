@@ -2,6 +2,8 @@
 
 React + assistant-ui chat client for the Dharmiq API.
 
+See the [repo README](../README.md) for full-stack setup.
+
 ## Prerequisites
 
 - [nvm](https://github.com/nvm-sh/nvm) for Node.js (version pinned in the repo-root `.nvmrc`)

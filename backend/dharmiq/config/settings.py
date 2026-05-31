@@ -71,12 +71,24 @@ class OpenRouterSettings(BaseModel):
     base_url: str = "https://openrouter.ai/api/v1"
     default_model: str = "deepseek/deepseek-v4-pro"
     api_key: SecretStr = Field(default=SecretStr(""))
+    timeout_seconds: float = 60.0
+    max_retries: int = 3
 
 
 class EmbeddingsSettings(BaseModel):
     backend: Literal["local", "remote"] = "local"
     local_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
+    local_dimensions: int = 384
     remote_model_id: str = "openai/text-embedding-3-small"
+    remote_dimensions: int = 1536
+
+    @property
+    def dimensions(self) -> int:
+        return self.remote_dimensions if self.backend == "remote" else self.local_dimensions
+
+
+class RetrievalSettings(BaseModel):
+    top_k: int = 5
 
 
 class IngestionSettings(BaseModel):
@@ -107,6 +119,7 @@ class Settings(BaseModel):
     redis: RedisSettings = Field(default_factory=RedisSettings)
     openrouter: OpenRouterSettings = Field(default_factory=OpenRouterSettings)
     embeddings: EmbeddingsSettings = Field(default_factory=EmbeddingsSettings)
+    retrieval: RetrievalSettings = Field(default_factory=RetrievalSettings)
     ingestion: IngestionSettings = Field(default_factory=IngestionSettings)
     eval: EvalSettings = Field(default_factory=EvalSettings)
     logging: LoggingSettings = Field(default_factory=LoggingSettings)

@@ -77,6 +77,47 @@ Secrets can live in a repo-root `.env` file (auto-loaded) or be exported in your
 | POST | `/api/chat/sessions/{id}/messages` | Append a message |
 | GET | `/api/chat/sessions/{id}/messages` | List messages in a session |
 
+## LLM & retrieval (Milestone 3)
+
+Configured in `config/*.yaml`:
+
+```yaml
+openrouter:
+  base_url: https://openrouter.ai/api/v1
+  default_model: deepseek/deepseek-v4-pro
+  timeout_seconds: 60
+  max_retries: 3
+
+embeddings:
+  backend: local          # local | remote
+  local_model_name: sentence-transformers/all-MiniLM-L6-v2
+  local_dimensions: 384
+  remote_model_id: openai/text-embedding-3-small
+  remote_dimensions: 1536
+
+retrieval:
+  top_k: 5
+```
+
+- **`dharmiq.llm.openrouter_client`** – async OpenRouter wrapper (chat + embeddings) with retries
+- **`dharmiq.llm.embeddings`** – local CPU (`sentence-transformers`) or remote OpenRouter embeddings
+- **`dharmiq.llm.retrieval`** – pgvector cosine search over `document_chunks`
+
+Corpus tables (`source_documents`, `document_sections`, `document_chunks`) are created by migration `003`. Ingestion populates them in Milestone 4.
+
+Run migration after pulling:
+
+```bash
+uv run alembic upgrade head
+```
+
+Run tests (skips slow local model download by default):
+
+```bash
+uv run pytest -m "not slow"
+uv run pytest -m slow   # includes sentence-transformers round-trip
+```
+
 ## Project layout
 
 ```
@@ -89,7 +130,7 @@ backend/
     db/            # SQLAlchemy + models
     tasks/         # Celery tasks
     ingestion/     # (M4) PDF pipeline
-    llm/           # (M3+) LLM agents
+    llm/           # OpenRouter client, embeddings, retrieval
     eval/          # (M8) Evaluation
     observability/ # (M8) Metrics
   alembic/         # Database migrations

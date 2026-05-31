@@ -7,7 +7,8 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from dharmiq.config.settings import get_settings
-from dharmiq.db.session import close_db
+from dharmiq.db.session import close_db, init_db
+from dharmiq.llm.embeddings import reset_embedding_backend_cache
 from dharmiq.main import create_app
 
 
@@ -26,9 +27,12 @@ def _env(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture(autouse=True)
 async def _db_engine_lifecycle() -> None:
     await close_db()
+    reset_embedding_backend_cache()
     get_settings.cache_clear()
+    await init_db()
     yield
     await close_db()
+    reset_embedding_backend_cache()
     get_settings.cache_clear()
 
 

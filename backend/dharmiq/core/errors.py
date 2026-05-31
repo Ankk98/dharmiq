@@ -18,3 +18,11 @@ class ConfigurationError(DharmiqError):
 
 class DatabaseError(DharmiqError):
     """Raised for database connectivity or query failures."""
+
+
+class OpenRouterError(DharmiqError):
+    """Raised when OpenRouter API calls fail after retries."""
+
+
+class EmbeddingError(DharmiqError):
+    """Raised when embedding generation fails."""

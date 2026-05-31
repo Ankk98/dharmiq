@@ -7,7 +7,7 @@ from sqlalchemy import engine_from_config, pool
 
 from dharmiq.config.settings import get_settings
 from dharmiq.db.base import Base
-from dharmiq.db.models import ChatMessage, ChatSession, User  # noqa: F401
+from dharmiq.db.models import ChatMessage, ChatSession, DocumentChunk, SourceDocument, User  # noqa: F401
 
 config = context.config
 

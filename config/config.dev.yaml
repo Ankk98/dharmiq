@@ -16,12 +16,19 @@ redis:
 openrouter:
   base_url: https://openrouter.ai/api/v1
   default_model: deepseek/deepseek-v4-pro
+  timeout_seconds: 60
+  max_retries: 3
   # api_key via OPENROUTER_API_KEY env var
 
 embeddings:
   backend: local
   local_model_name: sentence-transformers/all-MiniLM-L6-v2
+  local_dimensions: 384
   remote_model_id: openai/text-embedding-3-small
+  remote_dimensions: 1536
+
+retrieval:
+  top_k: 5
 
 ingestion:
   corpus_dir: data/corpus/india_code/raw

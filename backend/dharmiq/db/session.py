@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from collections.abc import AsyncGenerator
 
+from pgvector.asyncpg import register_vector
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -15,6 +17,10 @@ _engine: AsyncEngine | None = None
 _session_factory: async_sessionmaker[AsyncSession] | None = None
 
 
+def _register_pgvector(dbapi_connection, _connection_record) -> None:
+    dbapi_connection.run_async(register_vector)
+
+
 def create_engine(settings: Settings | None = None) -> AsyncEngine:
     global _engine, _session_factory
     cfg = settings or get_settings()
@@ -23,6 +29,7 @@ def create_engine(settings: Settings | None = None) -> AsyncEngine:
         echo=cfg.server.debug,
         pool_pre_ping=True,
     )
+    event.listen(_engine.sync_engine, "connect", _register_pgvector)
     _session_factory = async_sessionmaker(_engine, expire_on_commit=False)
     return _engine
 
@@ -48,12 +55,18 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
 
 async def init_db(settings: Settings | None = None) -> None:
     """Create engine; tables are managed via Alembic migrations."""
-    create_engine(settings)
+    from pgvector.asyncpg import register_vector
+
+    engine = create_engine(settings)
+    async with engine.connect() as conn:
+        raw = await conn.get_raw_connection()
+        await register_vector(raw.driver_connection)
 
 
 async def close_db() -> None:
     global _engine, _session_factory
     if _engine is not None:
+        event.remove(_engine.sync_engine, "connect", _register_pgvector)
         await _engine.dispose()
         _engine = None
         _session_factory = None

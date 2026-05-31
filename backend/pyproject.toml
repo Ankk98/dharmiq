@@ -10,12 +10,15 @@ dependencies = [
     "celery[redis]>=5.6.0",
     "fastapi-users[sqlalchemy]>=14.0.0",
     "fastapi[standard]>=0.135.0",
+    "httpx>=0.28.0",
+    "pgvector>=0.3.6",
     "pydantic>=2.10.0",
     "psycopg[binary]>=3.2.0",
     "pydantic-settings>=2.7.0",
     "python-dotenv>=1.0.0",
     "pyyaml>=6.0.2",
     "redis>=5.2.0",
+    "sentence-transformers>=3.4.0",
     "sqlalchemy[asyncio]>=2.0.36",
     "structlog>=24.4.0",
     "uvicorn[standard]>=0.34.0",
@@ -23,9 +26,9 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "httpx>=0.28.0",
     "pytest>=8.3.0",
     "pytest-asyncio>=0.25.0",
+    "respx>=0.22.0",
     "ruff>=0.9.0",
 ]
 
@@ -47,3 +50,6 @@ target-version = "py312"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
+markers = [
+    "slow: downloads or runs heavyweight models",
+]

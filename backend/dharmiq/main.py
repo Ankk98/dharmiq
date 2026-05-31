@@ -9,6 +9,7 @@ from dharmiq.api.routes import auth, chat, health
 from dharmiq.config.settings import get_settings
 from dharmiq.core.logging import get_logger, setup_logging
 from dharmiq.db.session import close_db, init_db
+from dharmiq.llm.openrouter_client import close_openrouter_client
 
 logger = get_logger(__name__)
 
@@ -20,6 +21,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info("starting_app", env=settings.env)
     await init_db(settings)
     yield
+    await close_openrouter_client()
     await close_db()
     logger.info("stopped_app")
 

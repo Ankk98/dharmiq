@@ -167,4 +167,4 @@ Dharmiq provides general legal **information**, not legal advice. Users should c
 
 ## License
 
-See repository license file when published.
+[MIT](LICENSE)

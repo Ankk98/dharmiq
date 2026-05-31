@@ -42,6 +42,7 @@ class ServerSettings(BaseModel):
     host: str = "0.0.0.0"
     port: int = 8000
     debug: bool = False
+    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173"])
 
 
 class DatabaseSettings(BaseModel):

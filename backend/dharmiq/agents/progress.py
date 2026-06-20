@@ -184,7 +184,6 @@ def filter_event_payload_for_view(
             for key, value in cleaned.items()
             if key
             not in {
-                "step_id",
                 "agent",
                 "chunk_count",
                 "preview",

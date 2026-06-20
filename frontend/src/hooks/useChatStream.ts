@@ -8,16 +8,9 @@ import {
   type StreamCitationPayload,
   type StreamProgressPayload,
 } from "@/lib/api";
-import type { ProgressView } from "@/lib/chatPreferences";
+import { isDebugProgressPayload } from "@/lib/progress";
 
-export type ProgressStep = {
-  stepId: string;
-  label: string;
-  status: "running" | "completed" | "failed";
-  agent?: string;
-  chunkCount?: number;
-  preview?: string[];
-};
+export type { ProgressStep, TurnProgress } from "@/lib/progress";
 
 export type DebugEvent = StreamProgressPayload & {
   seq: number;
@@ -26,7 +19,7 @@ export type DebugEvent = StreamProgressPayload & {
 export type StreamStatus = "idle" | "connecting" | "streaming" | "done" | "error";
 
 export type UseChatStreamCallbacks = {
-  onProgress?: (step: ProgressStep) => void;
+  onProgress?: (payload: StreamProgressPayload) => void;
   onToken?: (token: string, accumulated: string) => void;
   onCitation?: (citation: StreamCitationPayload) => void;
   onDone?: (payload: ParsedSSEEvent & { type: "done" }) => void;
@@ -40,41 +33,12 @@ export type StreamResult = {
   errorMessage: string | null;
 };
 
-function upsertStep(
-  steps: Map<string, ProgressStep>,
-  payload: StreamProgressPayload,
-): Map<string, ProgressStep> {
-  const stepId = payload.step_id ?? payload.label;
-  const next = new Map(steps);
-  next.set(stepId, {
-    stepId,
-    label: payload.label,
-    status: payload.status,
-    agent: payload.agent,
-    chunkCount: payload.chunk_count,
-    preview: payload.preview,
-  });
-  return next;
-}
-
-function isDebugPayload(payload: StreamProgressPayload): boolean {
-  return (
-    payload.rerank_scores != null ||
-    payload.queries != null ||
-    payload.validator_issues != null ||
-    payload.chunk_snippets != null ||
-    payload.token_breakdown != null
-  );
-}
-
-export function useChatStream(view: ProgressView, callbacks?: UseChatStreamCallbacks) {
+export function useChatStream(callbacks?: UseChatStreamCallbacks) {
   const [status, setStatus] = useState<StreamStatus>("idle");
-  const [steps, setSteps] = useState<Map<string, ProgressStep>>(new Map());
   const [streamingText, setStreamingText] = useState("");
   const [streamCitations, setStreamCitations] = useState<StreamCitationPayload[]>([]);
   const [debugEvents, setDebugEvents] = useState<DebugEvent[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [lastSeq, setLastSeq] = useState(0);
 
   const abortRef = useRef<AbortController | null>(null);
   const callbacksRef = useRef(callbacks);
@@ -85,12 +49,10 @@ export function useChatStream(view: ProgressView, callbacks?: UseChatStreamCallb
 
   const reset = useCallback(() => {
     setStatus("idle");
-    setSteps(new Map());
     setStreamingText("");
     setStreamCitations([]);
     setDebugEvents([]);
     setErrorMessage(null);
-    setLastSeq(0);
   }, []);
 
   const disconnect = useCallback(() => {
@@ -99,26 +61,13 @@ export function useChatStream(view: ProgressView, callbacks?: UseChatStreamCallb
   }, []);
 
   const handleEvent = useCallback((event: ParsedSSEEvent, accumulatedRef: { text: string }) => {
-    const seq = "seq" in event.data ? (event.data.seq as number) : 0;
-    if (seq > 0) {
-      setLastSeq((prev) => Math.max(prev, seq));
-    }
-
     switch (event.type) {
       case "progress": {
         const payload = event.data;
-        if (isDebugPayload(payload)) {
+        if (isDebugProgressPayload(payload)) {
           setDebugEvents((prev) => [...prev, payload]);
         } else {
-          setSteps((prev) => {
-            const updated = upsertStep(prev, payload);
-            const stepId = payload.step_id ?? payload.label;
-            const step = updated.get(stepId);
-            if (step) {
-              callbacksRef.current?.onProgress?.(step);
-            }
-            return updated;
-          });
+          callbacksRef.current?.onProgress?.(payload);
         }
         break;
       }
@@ -166,7 +115,7 @@ export function useChatStream(view: ProgressView, callbacks?: UseChatStreamCallb
       const token = getToken();
       const url = chatRequestStreamUrl(requestId, {
         afterSeq: options?.afterSeq,
-        view,
+        view: "detailed",
       });
 
       try {
@@ -244,21 +193,17 @@ export function useChatStream(view: ProgressView, callbacks?: UseChatStreamCallb
         errorMessage: finalError,
       };
     },
-    [disconnect, handleEvent, reset, view],
+    [disconnect, handleEvent, reset],
   );
 
   useEffect(() => () => disconnect(), [disconnect]);
 
-  const progressSteps = Array.from(steps.values());
-
   return {
     status,
-    progressSteps,
     streamingText,
     streamCitations,
     debugEvents,
     errorMessage,
-    lastSeq,
     connect,
     disconnect,
     reset,

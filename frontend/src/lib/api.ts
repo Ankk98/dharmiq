@@ -290,6 +290,20 @@ export function chatRequestStreamUrl(
   return `/api/chat/requests/${requestId}/stream${query ? `?${query}` : ""}`;
 }
 
+export async function listChatRequestProgressEvents(
+  requestId: string,
+  view: "concise" | "detailed" = "concise",
+): Promise<StreamProgressPayload[]> {
+  const params = new URLSearchParams();
+  if (view === "detailed") {
+    params.set("view", "detailed");
+  }
+  const query = params.toString();
+  return apiFetch<StreamProgressPayload[]>(
+    `/api/chat/requests/${requestId}/events${query ? `?${query}` : ""}`,
+  );
+}
+
 export async function listUploads(): Promise<UserUpload[]> {
   return apiFetch<UserUpload[]>("/api/uploads");
 }

@@ -75,4 +75,5 @@ markers = [
 [dependency-groups]
 dev = [
     "flower>=2.0.1",
+    "pytest-timeout>=2.4.0",
 ]

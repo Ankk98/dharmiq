@@ -1,7 +1,6 @@
 import { Thread } from "@/components/assistant-ui/thread";
 import { ThreadList } from "@/components/assistant-ui/thread-list";
 import { DebugPanel } from "@/components/chat/DebugPanel";
-import { ProgressStepper } from "@/components/chat/ProgressStepper";
 import { SessionAttachments } from "@/components/uploads/SessionAttachments";
 import { UploadLibrary } from "@/components/uploads/UploadLibrary";
 import { Button } from "@/components/ui/button";
@@ -10,19 +9,7 @@ import { ChatRuntimeProvider, useChatRuntimeState } from "@/providers/ChatRuntim
 
 function ChatLayout() {
   const { user, logout } = useAuth();
-  const {
-    slowNotice,
-    isRunning,
-    sessionId,
-    progressView,
-    setProgressView,
-    progressSteps,
-    streamStatus,
-    debugEvents,
-    streamError,
-  } = useChatRuntimeState();
-
-  const showProgress = isRunning || progressSteps.length > 0;
+  const { slowNotice, isRunning, sessionId, debugEvents, streamError } = useChatRuntimeState();
 
   return (
     <div className="flex h-full flex-col">
@@ -56,14 +43,6 @@ function ChatLayout() {
         </aside>
 
         <main className="flex min-w-0 flex-1 flex-col">
-          {showProgress ? (
-            <ProgressStepper
-              steps={progressSteps}
-              isActive={isRunning && streamStatus !== "done"}
-              view={progressView}
-              onViewChange={setProgressView}
-            />
-          ) : null}
           {slowNotice && isRunning ? (
             <div className="bg-muted/50 border-border border-b px-4 py-2 text-sm">
               This answer is taking longer than usual. Please wait; we&apos;re still working on it.

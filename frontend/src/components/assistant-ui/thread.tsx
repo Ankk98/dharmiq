@@ -4,6 +4,7 @@ import {
   UserMessageAttachments,
 } from "@/components/assistant-ui/attachment";
 import { MarkdownText } from "@/components/assistant-ui/markdown-text";
+import { MessageProgress } from "@/components/chat/MessageProgress";
 import {
   Reasoning,
   ReasoningContent,
@@ -193,6 +194,10 @@ const MessageError: FC = () => {
 };
 
 const AssistantMessage: FC = () => {
+  const messageId = useAuiState((state) => state.message.id);
+  const { getMessageProgress, progressView, setProgressView } = useChatRuntimeState();
+  const progress = getMessageProgress(messageId);
+
   // reserves space for action bar and compensates with `-mb` for consistent msg spacing
   // keeps hovered action bar from shifting layout (autohide doesn't support absolute positioning well)
   // for pt-[n] use -mb-[n + 6] & min-h-[n + 6] to preserve compensation
@@ -210,6 +215,14 @@ const AssistantMessage: FC = () => {
         // [contain-intrinsic-size:auto_24px] fixes issue #4104, don't change without checking for regressions
         className="text-foreground px-2 leading-relaxed wrap-break-word [contain-intrinsic-size:auto_24px] [content-visibility:auto]"
       >
+        {progress && progress.steps.length > 0 ? (
+          <MessageProgress
+            progress={progress}
+            view={progressView}
+            onViewChange={setProgressView}
+            defaultOpen={progress.status === "running"}
+          />
+        ) : null}
         <MessagePrimitive.GroupedParts
           groupBy={groupPartByType({
             reasoning: ["group-chainOfThought", "group-reasoning"],

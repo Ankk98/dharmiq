@@ -17,6 +17,7 @@ import {
 
 import {
   createSession,
+  listChatRequestProgressEvents,
   listMessages,
   listSessions,
   postSessionMessage,
@@ -24,6 +25,8 @@ import {
   type ChatMessage,
   type ChatSession,
   type Citation,
+  type StreamCitationPayload,
+  type StreamProgressPayload,
 } from "@/lib/api";
 import {
   citationsFromMetadata,
@@ -35,12 +38,20 @@ import {
   type ProgressView,
 } from "@/lib/chatPreferences";
 import { getStoredSessionId, setStoredSessionId } from "@/lib/chatSession";
-import { useChatStream, type ProgressStep } from "@/hooks/useChatStream";
+import {
+  applyProgressPayload,
+  buildTurnProgress,
+  chatRequestIdFromMetadata,
+  type TurnProgress,
+} from "@/lib/progress";
+import { useChatStream } from "@/hooks/useChatStream";
 
 type StoredMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
+  chatRequestId?: string;
+  progress?: TurnProgress;
 };
 
 type ChatRuntimeContextValue = {
@@ -51,7 +62,7 @@ type ChatRuntimeContextValue = {
   sessionId: string | null;
   progressView: ProgressView;
   setProgressView: (view: ProgressView) => void;
-  progressSteps: ProgressStep[];
+  getMessageProgress: (messageId: string) => TurnProgress | undefined;
   streamStatus: ReturnType<typeof useChatStream>["status"];
   debugEvents: ReturnType<typeof useChatStream>["debugEvents"];
   awaitingClarification: boolean;
@@ -64,8 +75,37 @@ const ChatRuntimeContext = createContext<ChatRuntimeContextValue | null>(null);
 const SLOW_THRESHOLD_MS = 30_000;
 const STREAMING_MESSAGE_ID = "__streaming_assistant__";
 
-function mapBackendMessage(message: ChatMessage, citations: Citation[] = []): StoredMessage {
+function citationsFromStream(items: StreamCitationPayload[]): Citation[] {
+  return items.map((item) => ({
+    marker: item.marker,
+    chunk_id: item.chunk_id,
+    source_type: item.source_type ?? "corpus",
+    document_id: item.document_id ?? item.chunk_id,
+    document_title: item.document_title,
+    quote_text: item.quote_text,
+  }));
+}
+
+async function loadProgressForRequestIds(
+  requestIds: string[],
+  view: ProgressView,
+): Promise<Map<string, TurnProgress>> {
+  const entries = await Promise.all(
+    requestIds.map(async (requestId) => {
+      const payloads = await listChatRequestProgressEvents(requestId, view);
+      return [requestId, buildTurnProgress(payloads)] as const;
+    }),
+  );
+  return new Map(entries);
+}
+
+function mapBackendMessage(
+  message: ChatMessage,
+  citations: Citation[] = [],
+  progressByRequestId: Map<string, TurnProgress> = new Map(),
+): StoredMessage {
   const role = message.role === "user" ? "user" : "assistant";
+  const chatRequestId = chatRequestIdFromMetadata(message.metadata);
   let content = message.content;
   if (role === "assistant") {
     const messageCitations = citationsFromMetadata(message.metadata).length
@@ -76,7 +116,16 @@ function mapBackendMessage(message: ChatMessage, citations: Citation[] = []): St
       content = `**Clarification needed**\n\n${content}`;
     }
   }
-  return { id: message.id, role, content };
+  return {
+    id: message.id,
+    role,
+    content,
+    chatRequestId,
+    progress:
+      role === "assistant" && chatRequestId
+        ? progressByRequestId.get(chatRequestId)
+        : undefined,
+  };
 }
 
 function convertMessage(message: StoredMessage): ThreadMessageLike {
@@ -99,31 +148,94 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
   const slowTimerRef = useRef<number | null>(null);
   const sessionIdRef = useRef<string | null>(sessionId);
   const initStartedRef = useRef(false);
+  const skipProgressViewRefreshRef = useRef(true);
+  const activeAssistantIdRef = useRef<string | null>(null);
+  const streamCitationsRef = useRef<StreamCitationPayload[]>([]);
+  const streamingTextRef = useRef("");
 
   useEffect(() => {
     sessionIdRef.current = sessionId;
   }, [sessionId]);
 
-  const selectSession = useCallback(
-    (id: string | null) => {
-      sessionIdRef.current = id;
-      setSessionId(id);
-      setStoredSessionId(id);
-    },
-    [],
+  const selectSession = useCallback((id: string | null) => {
+    sessionIdRef.current = id;
+    setSessionId(id);
+    setStoredSessionId(id);
+  }, []);
+
+  const updateActiveAssistantContent = useCallback((text: string, citations: Citation[]) => {
+    const assistantId = activeAssistantIdRef.current;
+    if (!assistantId) {
+      return;
+    }
+    setMessages((prev) =>
+      prev.map((message) =>
+        message.id === assistantId
+          ? { ...message, content: formatAssistantContent(text, citations) }
+          : message,
+      ),
+    );
+  }, []);
+
+  const streamCallbacks = useMemo(
+    () => ({
+      onProgress: (payload: StreamProgressPayload) => {
+        const assistantId = activeAssistantIdRef.current;
+        if (!assistantId) {
+          return;
+        }
+        setMessages((prev) =>
+          prev.map((message) =>
+            message.id === assistantId
+              ? {
+                  ...message,
+                  progress: applyProgressPayload(message.progress, payload),
+                }
+              : message,
+          ),
+        );
+      },
+      onToken: (_token: string, accumulated: string) => {
+        streamingTextRef.current = accumulated;
+        updateActiveAssistantContent(
+          accumulated,
+          citationsFromStream(streamCitationsRef.current),
+        );
+      },
+      onCitation: (citation: StreamCitationPayload) => {
+        streamCitationsRef.current.push(citation);
+        if (streamingTextRef.current) {
+          updateActiveAssistantContent(
+            streamingTextRef.current,
+            citationsFromStream(streamCitationsRef.current),
+          );
+        }
+      },
+      onDone: () => {
+        const assistantId = activeAssistantIdRef.current;
+        if (!assistantId) {
+          return;
+        }
+        setMessages((prev) =>
+          prev.map((message) =>
+            message.id === assistantId && message.progress
+              ? { ...message, progress: { ...message.progress, status: "completed" } }
+              : message,
+          ),
+        );
+      },
+    }),
+    [updateActiveAssistantContent],
   );
 
   const {
     status: streamStatus,
-    progressSteps,
-    streamingText,
-    streamCitations,
     debugEvents,
     errorMessage: streamError,
     connect,
     disconnect,
     reset: resetStream,
-  } = useChatStream(progressView);
+  } = useChatStream(streamCallbacks);
 
   const clearSlowTimer = useCallback(() => {
     if (slowTimerRef.current != null) {
@@ -150,13 +262,34 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
   }, []);
 
   const loadMessages = useCallback(
-    async (id: string) => {
+    async (id: string, view: ProgressView = progressView) => {
       const rows = await listMessages(id);
-      setMessages(rows.map((row) => mapBackendMessage(row)));
+      const requestIds = [
+        ...new Set(
+          rows
+            .map((row) => chatRequestIdFromMetadata(row.metadata))
+            .filter((value): value is string => Boolean(value)),
+        ),
+      ];
+      const progressByRequestId =
+        requestIds.length > 0 ? await loadProgressForRequestIds(requestIds, view) : new Map();
+      setMessages(rows.map((row) => mapBackendMessage(row, [], progressByRequestId)));
       detectClarification(rows);
     },
-    [detectClarification],
+    [detectClarification, progressView],
   );
+
+  useEffect(() => {
+    if (skipProgressViewRefreshRef.current) {
+      skipProgressViewRefreshRef.current = false;
+      return;
+    }
+    const id = sessionIdRef.current;
+    if (!id || isRunning) {
+      return;
+    }
+    void loadMessages(id, progressView);
+  }, [isRunning, loadMessages, progressView]);
 
   useEffect(() => {
     if (initStartedRef.current) {
@@ -183,31 +316,6 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
       }
     })();
   }, [loadMessages, refreshSessions, selectSession]);
-
-  const displayMessages = useMemo(() => {
-    if (!isRunning || streamStatus !== "streaming" || !streamingText) {
-      return messages;
-    }
-    const withoutStreaming = messages.filter((message) => message.id !== STREAMING_MESSAGE_ID);
-    return [
-      ...withoutStreaming,
-      {
-        id: STREAMING_MESSAGE_ID,
-        role: "assistant" as const,
-        content: formatAssistantContent(
-          streamingText,
-          streamCitations.map((item) => ({
-            marker: item.marker,
-            chunk_id: item.chunk_id,
-            source_type: item.source_type ?? "corpus",
-            document_id: item.document_id ?? item.chunk_id,
-            document_title: item.document_title,
-            quote_text: item.quote_text,
-          })),
-        ),
-      },
-    ];
-  }, [isRunning, messages, streamCitations, streamStatus, streamingText]);
 
   const finalizeFromStream = useCallback(
     async (id: string, citations: Citation[]) => {
@@ -239,9 +347,20 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
         return;
       }
 
+      const assistantMessageId = STREAMING_MESSAGE_ID;
+      activeAssistantIdRef.current = assistantMessageId;
+      streamCitationsRef.current = [];
+      streamingTextRef.current = "";
+
       setMessages((prev) => [
         ...prev.filter((message) => message.id !== STREAMING_MESSAGE_ID),
         { id: crypto.randomUUID(), role: "user", content: userText },
+        {
+          id: assistantMessageId,
+          role: "assistant",
+          content: "",
+          progress: { steps: [], status: "running" },
+        },
       ]);
       setIsRunning(true);
       setAwaitingClarification(false);
@@ -259,15 +378,16 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
         }
 
         if (result.mode === "async") {
+          setMessages((prev) =>
+            prev.map((message) =>
+              message.id === assistantMessageId
+                ? { ...message, chatRequestId: result.chat_request_id }
+                : message,
+            ),
+          );
+
           const streamResult = await connect(result.chat_request_id);
-          const citations: Citation[] = streamResult.streamCitations.map((item) => ({
-            marker: item.marker,
-            chunk_id: item.chunk_id,
-            source_type: item.source_type ?? "corpus",
-            document_id: item.document_id ?? item.chunk_id,
-            document_title: item.document_title,
-            quote_text: item.quote_text,
-          }));
+          const citations = citationsFromStream(streamResult.streamCitations);
           await finalizeFromStream(id, citations);
         } else {
           await runLegacyPipeline(id, userText);
@@ -276,7 +396,9 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
         disconnect();
         clearSlowTimer();
         setIsRunning(false);
-        setMessages((prev) => prev.filter((message) => message.id !== STREAMING_MESSAGE_ID));
+        activeAssistantIdRef.current = null;
+        streamCitationsRef.current = [];
+        streamingTextRef.current = "";
       }
     },
     [
@@ -310,6 +432,7 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
   const onSwitchToNewThread = useCallback(async () => {
     disconnect();
     resetStream();
+    activeAssistantIdRef.current = null;
     const created = await createSession();
     setSessions((prev) => [created, ...prev]);
     selectSession(created.id);
@@ -323,6 +446,7 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
     async (threadId: string) => {
       disconnect();
       resetStream();
+      activeAssistantIdRef.current = null;
       selectSession(threadId);
       setLastCitations([]);
       setAwaitingClarification(false);
@@ -330,6 +454,11 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
       await loadMessages(threadId);
     },
     [clearSlowTimer, disconnect, loadMessages, resetStream, selectSession],
+  );
+
+  const getMessageProgress = useCallback(
+    (messageId: string) => messages.find((message) => message.id === messageId)?.progress,
+    [messages],
   );
 
   const threadListAdapter = useMemo(
@@ -349,7 +478,7 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
 
   const runtime = useExternalStoreRuntime({
     isRunning,
-    messages: displayMessages,
+    messages,
     convertMessage,
     onNew,
     setMessages: (next) => setMessages([...next]),
@@ -365,7 +494,7 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
       sessionId,
       progressView,
       setProgressView: handleProgressViewChange,
-      progressSteps,
+      getMessageProgress,
       streamStatus,
       debugEvents,
       awaitingClarification,
@@ -380,7 +509,7 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
       sessionId,
       progressView,
       handleProgressViewChange,
-      progressSteps,
+      getMessageProgress,
       streamStatus,
       debugEvents,
       awaitingClarification,
@@ -407,3 +536,5 @@ export function useChatRuntimeState(): ChatRuntimeContextValue {
   }
   return context;
 }
+
+export type { StoredMessage, TurnProgress };

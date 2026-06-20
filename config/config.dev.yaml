@@ -51,6 +51,13 @@ embeddings:
 retrieval:
   top_k: 5
   multi_query_top_k: 5
+  vector_top_k: 30
+  bm25_top_k: 30
+  rrf_k: 60
+  rrf_top_k: 20
+  rerank_top_k: 8
+  min_rerank_score: 0.35
+  min_relevant_chunks: 2
 
 chat:
   history_limit: 20

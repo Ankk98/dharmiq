@@ -24,6 +24,7 @@ class GraphRuntime:
     chat_request: ChatRequest
     history: list[ChatMessage]
     user_msg: ChatMessage
+    attached_upload_ids: list[str] = field(default_factory=list)
     new_messages: list[ChatMessage] = field(default_factory=list)
     started: float = field(default_factory=time.monotonic)
     emitter: ProgressEmitter | None = None

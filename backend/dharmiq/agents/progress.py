@@ -20,6 +20,7 @@ NODE_PROGRESS_LABELS: dict[str, str] = {
     "clarifier": "Understanding your question…",
     "query_rewriter": "Preparing search…",
     "retrieve": "Searching laws…",
+    "refusal": "Checking sources…",
     "answerer": "Drafting answer…",
     "validator": "Checking answer…",
     "finalizer": "Finalizing answer…",
@@ -30,6 +31,7 @@ AGENT_DISPLAY_NAMES: dict[str, str] = {
     "clarifier": "Clarifier",
     "query_rewriter": "QueryRewriter",
     "retrieve": "Retrieve",
+    "refusal": "Refusal",
     "answerer": "Answerer",
     "validator": "Validator",
     "finalizer": "Finalizer",
@@ -102,6 +104,8 @@ def retrieve_step_details(
     debug = {
         "rerank_scores": [float(chunk.get("score", 0.0)) for chunk in chunks],
         "queries": state.get("search_queries") or result.get("search_queries") or [],
+        "top_rerank_score": result.get("top_rerank_score", state.get("top_rerank_score")),
+        "weak_retrieval": result.get("weak_retrieval", state.get("weak_retrieval")),
     }
     return detailed, debug
 

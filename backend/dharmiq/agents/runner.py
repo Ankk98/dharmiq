@@ -20,6 +20,7 @@ from dharmiq.db.models.chats import (
     ChatRequest,
     ChatRequestStatus,
     ChatSession,
+    ChatSessionUpload,
     MessageRole,
 )
 from dharmiq.db.models.users import User
@@ -34,6 +35,13 @@ from dharmiq.llm.retrieval import CitationRead
 from dharmiq.schemas.chat import ChatMessageRead
 
 logger = get_logger(__name__)
+
+
+async def _load_attached_upload_ids(db: AsyncSession, session_id: uuid.UUID) -> list[str]:
+    result = await db.execute(
+        select(ChatSessionUpload.upload_id).where(ChatSessionUpload.session_id == session_id)
+    )
+    return [str(upload_id) for upload_id in result.scalars().all()]
 
 
 async def _seed_clarifier_round(db: AsyncSession, session_id: uuid.UUID) -> int:
@@ -120,6 +128,7 @@ async def create_agent_graph_request(
         chat_session.title = user_message.strip().replace("\n", " ")[:80]
 
     history = await _load_history(db, chat_session.id, limit=cfg.chat.history_limit)
+    attached_upload_ids = await _load_attached_upload_ids(db, chat_session.id)
     await db.commit()
     await db.refresh(chat_request)
     await db.refresh(user_msg)
@@ -133,6 +142,7 @@ async def create_agent_graph_request(
         chat_request=chat_request,
         history=history,
         user_msg=user_msg,
+        attached_upload_ids=attached_upload_ids,
         new_messages=[user_msg],
     )
 
@@ -143,13 +153,15 @@ def _initial_state(runtime: GraphRuntime) -> AgentGraphState:
         "session_id": str(runtime.chat_session.id),
         "user_id": str(runtime.user.id),
         "user_message": runtime.user_msg.content,
-        "attached_upload_ids": [],
+        "attached_upload_ids": runtime.attached_upload_ids,
         "clarifier_round": runtime.chat_request.clarifier_round,
         "force_answer": runtime.chat_request.force_answer,
         "stated_assumptions": runtime.chat_request.stated_assumptions or [],
         "regeneration_count": 0,
         "total_tokens": 0,
         "max_validator_retries": runtime.settings.chat.max_validator_retries,
+        "weak_retrieval": False,
+        "top_rerank_score": 0.0,
     }
 
 
@@ -192,6 +204,7 @@ async def _load_runtime_for_request(
         raise ValueError(f"User message not found for chat request {chat_request.id}")
 
     history = await _load_history(db, chat_session.id, limit=cfg.chat.history_limit)
+    attached_upload_ids = await _load_attached_upload_ids(db, chat_session.id)
 
     return GraphRuntime(
         db=db,
@@ -202,6 +215,7 @@ async def _load_runtime_for_request(
         chat_request=chat_request,
         history=history,
         user_msg=user_msg,
+        attached_upload_ids=attached_upload_ids,
         new_messages=[user_msg],
         emitter=emitter,
     )

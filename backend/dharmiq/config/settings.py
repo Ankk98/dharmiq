@@ -129,6 +129,13 @@ class EmbeddingsSettings(BaseModel):
 class RetrievalSettings(BaseModel):
     top_k: int = 5
     multi_query_top_k: int = 5
+    vector_top_k: int = 30
+    bm25_top_k: int = 30
+    rrf_k: int = 60
+    rrf_top_k: int = 20
+    rerank_top_k: int = 8
+    min_rerank_score: float = 0.35
+    min_relevant_chunks: int = 2
 
 
 class ChatSettings(BaseModel):

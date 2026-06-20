@@ -8,6 +8,7 @@ from pgvector import Vector as PgVector
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from dharmiq.db.models.chats import ChatSession, ChatSessionUpload
 from dharmiq.db.models.documents import DocType, DocumentChunk, SourceDocument
 from dharmiq.db.models.uploads import UserUpload, UserUploadChunk
 from dharmiq.db.models.users import User
@@ -23,6 +24,7 @@ from dharmiq.llm.retrieval import (
     retrieve_multi_query,
 )
 from tests.litellm_helpers import chat_response_dict, mock_litellm_acompletion
+from tests.rerank_helpers import mock_rerank
 from tests.vector_helpers import blend_vectors, unit_vector
 
 
@@ -50,6 +52,8 @@ class _MappedEmbeddingBackend(EmbeddingBackend):
 async def _clean_retrieval_tables() -> None:
     factory = get_session_factory()
     async with factory() as db:
+        await db.execute(text("DELETE FROM chat_session_uploads"))
+        await db.execute(text("DELETE FROM chat_sessions"))
         await db.execute(text("DELETE FROM user_upload_chunks"))
         await db.execute(text("DELETE FROM user_uploads"))
         await db.execute(text("DELETE FROM document_chunks"))
@@ -96,7 +100,7 @@ async def _create_user(db: AsyncSession) -> uuid.UUID:
     return user.id
 
 
-async def _seed_upload(db: AsyncSession, user_id: uuid.UUID) -> UserUploadChunk:
+async def _seed_upload(db: AsyncSession, user_id: uuid.UUID) -> tuple[UserUpload, UserUploadChunk]:
     upload = UserUpload(
         user_id=user_id,
         original_filename="contract.pdf",
@@ -118,12 +122,16 @@ async def _seed_upload(db: AsyncSession, user_id: uuid.UUID) -> UserUploadChunk:
     )
     db.add(chunk)
     await db.commit()
+    await db.refresh(upload)
     await db.refresh(chunk)
-    return chunk
+    return upload, chunk
 
 
 @pytest.mark.asyncio
-async def test_retrieve_merged_chunks_includes_corpus_and_uploads() -> None:
+async def test_retrieve_merged_chunks_includes_corpus_and_uploads(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    mock_rerank(monkeypatch)
     factory: async_sessionmaker[AsyncSession] = get_session_factory()
     query = "Can I get a refund for a defective product?"
     backend = _MappedEmbeddingBackend({query: blend_vectors(unit_vector(0), unit_vector(1))})
@@ -132,8 +140,20 @@ async def test_retrieve_merged_chunks_includes_corpus_and_uploads() -> None:
     async with factory() as db:
         user_id = await _create_user(db)
         corpus_chunk = await _seed_corpus(db)
-        upload_chunk = await _seed_upload(db, user_id)
-        results = await retrieve_merged_chunks(db, query, user_id, top_k=2, backend=backend)
+        upload, upload_chunk = await _seed_upload(db, user_id)
+        session = ChatSession(user_id=user_id)
+        db.add(session)
+        await db.flush()
+        db.add(ChatSessionUpload(session_id=session.id, upload_id=upload.id))
+        await db.commit()
+        results = await retrieve_merged_chunks(
+            db,
+            query,
+            user_id,
+            attached_upload_ids=[upload.id],
+            top_k=2,
+            backend=backend,
+        )
 
     assert len(results) == 2
     source_types = {item.source_type for item in results}
@@ -144,7 +164,10 @@ async def test_retrieve_merged_chunks_includes_corpus_and_uploads() -> None:
 
 
 @pytest.mark.asyncio
-async def test_retrieve_multi_query_deduplicates_chunks() -> None:
+async def test_retrieve_multi_query_deduplicates_chunks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    mock_rerank(monkeypatch)
     factory: async_sessionmaker[AsyncSession] = get_session_factory()
     query_a = "refund rights"
     query_b = "defective product refund"
@@ -159,19 +182,24 @@ async def test_retrieve_multi_query_deduplicates_chunks() -> None:
     async with factory() as db:
         user_id = await _create_user(db)
         await _seed_corpus(db)
-        results = await retrieve_multi_query(
-            db,
-            [query_a, query_b],
-            user_id,
-            top_k=3,
-            backend=backend,
-        )
+        results = (
+            await retrieve_multi_query(
+                db,
+                [query_a, query_b],
+                user_id,
+                top_k=3,
+                backend=backend,
+            )
+        ).chunks
 
     assert len(results) == 1
 
 
 @pytest.mark.asyncio
-async def test_langchain_retriever_wraps_pgvector_search() -> None:
+async def test_langchain_retriever_wraps_pgvector_search(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    mock_rerank(monkeypatch)
     factory: async_sessionmaker[AsyncSession] = get_session_factory()
     query = "employment termination notice"
     backend = _MappedEmbeddingBackend({query: unit_vector(1)})
@@ -179,8 +207,14 @@ async def test_langchain_retriever_wraps_pgvector_search() -> None:
 
     async with factory() as db:
         user_id = await _create_user(db)
-        await _seed_upload(db, user_id)
-        retriever = DharmiqPgVectorRetriever(db=db, user_id=user_id, top_k=1, backend=backend)
+        upload, _upload_chunk = await _seed_upload(db, user_id)
+        retriever = DharmiqPgVectorRetriever(
+            db=db,
+            user_id=user_id,
+            attached_upload_ids=[upload.id],
+            top_k=1,
+            backend=backend,
+        )
         documents = await retriever.ainvoke(query)
 
     assert len(documents) == 1

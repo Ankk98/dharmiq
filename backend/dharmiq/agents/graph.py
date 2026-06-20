@@ -12,6 +12,7 @@ from dharmiq.agents.nodes.clarifier import clarifier_node
 from dharmiq.agents.nodes.finalizer import finalizer_node
 from dharmiq.agents.nodes.input_guard import input_guard_node
 from dharmiq.agents.nodes.query_rewriter import query_rewriter_node
+from dharmiq.agents.nodes.refusal import refusal_node
 from dharmiq.agents.nodes.retrieve import retrieve_node
 from dharmiq.agents.nodes.validator import validator_node
 from dharmiq.agents.runtime import GraphRuntime
@@ -97,6 +98,12 @@ def _route_after_clarifier(state: AgentGraphState) -> Literal["query_rewriter", 
     return "query_rewriter"
 
 
+def _route_after_retrieve(state: AgentGraphState) -> Literal["refusal", "answerer"]:
+    if state.get("weak_retrieval"):
+        return "refusal"
+    return "answerer"
+
+
 def _route_after_validator(state: AgentGraphState) -> Literal["answerer", "finalizer"]:
     verdict = state.get("validator_verdict") or {}
     max_retries = state.get("max_validator_retries", 3)
@@ -114,6 +121,7 @@ def build_agent_graph(
     builder.add_node("clarifier", with_progress("clarifier", clarifier_node))
     builder.add_node("query_rewriter", with_progress("query_rewriter", query_rewriter_node))
     builder.add_node("retrieve", with_progress("retrieve", retrieve_node))
+    builder.add_node("refusal", with_progress("refusal", refusal_node))
     builder.add_node("answerer", with_progress("answerer", answerer_node))
     builder.add_node("validator", with_progress("validator", validator_node))
     builder.add_node("finalizer", with_progress("finalizer", finalizer_node))
@@ -122,7 +130,8 @@ def build_agent_graph(
     builder.add_conditional_edges("input_guard", _route_after_input_guard)
     builder.add_conditional_edges("clarifier", _route_after_clarifier)
     builder.add_edge("query_rewriter", "retrieve")
-    builder.add_edge("retrieve", "answerer")
+    builder.add_conditional_edges("retrieve", _route_after_retrieve)
+    builder.add_edge("refusal", "finalizer")
     builder.add_edge("answerer", "validator")
     builder.add_conditional_edges("validator", _route_after_validator)
     builder.add_edge("finalizer", END)

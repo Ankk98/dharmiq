@@ -28,6 +28,7 @@ from dharmiq.db.session import get_session_factory
 from dharmiq.llm.embeddings import EmbeddingBackend
 from dharmiq.llm.openrouter_client import get_openrouter_client
 from tests.litellm_helpers import mock_litellm_acompletion
+from tests.rerank_helpers import mock_rerank
 from tests.vector_helpers import unit_vector
 
 
@@ -75,6 +76,16 @@ async def _seed_corpus(db: AsyncSession) -> None:
             document_id=document.id,
             chunk_index=0,
             text="Article 22 protects against arbitrary arrest and detention.",
+            page_start=1,
+            page_end=1,
+            embedding=PgVector(unit_vector(0)),
+        )
+    )
+    db.add(
+        DocumentChunk(
+            document_id=document.id,
+            chunk_index=1,
+            text="Article 22 also requires the grounds of arrest to be communicated.",
             page_start=1,
             page_end=1,
             embedding=PgVector(unit_vector(0)),
@@ -197,6 +208,7 @@ async def test_graph_full_pipeline_mocked(
     db: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    mock_rerank(monkeypatch)
     _mock_full_pipeline_llm(monkeypatch)
     await _seed_corpus(db)
 
@@ -238,6 +250,7 @@ async def test_graph_checkpoint_resume(
     db: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    mock_rerank(monkeypatch)
     _mock_full_pipeline_llm(monkeypatch)
     await _seed_corpus(db)
 
@@ -295,6 +308,7 @@ async def test_v01_fallback_when_flag_off(
 ) -> None:
     monkeypatch.delenv("DHARMIQ_AGENT_GRAPH_V2", raising=False)
     get_settings.cache_clear()
+    mock_rerank(monkeypatch)
 
     _mock_full_pipeline_llm(monkeypatch)
 
@@ -329,6 +343,7 @@ async def test_agent_graph_api_parity(
 ) -> None:
     monkeypatch.setenv("DHARMIQ_AGENT_GRAPH_V2", "true")
     get_settings.cache_clear()
+    mock_rerank(monkeypatch)
 
     _mock_full_pipeline_llm(monkeypatch)
 

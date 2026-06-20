@@ -34,6 +34,8 @@ class AgentGraphState(TypedDict, total=False):
 
     search_queries: list[str]
     merged_chunks: list[dict[str, Any]]
+    weak_retrieval: bool
+    top_rerank_score: float
     facts: str
 
     draft_answer: str

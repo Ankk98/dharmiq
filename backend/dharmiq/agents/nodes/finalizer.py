@@ -19,10 +19,11 @@ async def finalizer_node(state: AgentGraphState, config: RunnableConfig) -> dict
     retrieved = chunks_from_state(state.get("merged_chunks", []))
     citations = chunks_to_citations(retrieved)
 
-    answer_text = state.get("draft_answer", "")
+    answer_text = state.get("final_answer") or state.get("draft_answer", "")
     final_warning = state.get("final_warning")
     verdict = state.get("validator_verdict") or {}
     max_retries = runtime.settings.chat.max_validator_retries
+    agent_name = "refusal" if state.get("weak_retrieval") else "answerer"
 
     if verdict.get("must_regenerate") and state.get("regeneration_count", 0) >= max_retries:
         final_warning = (
@@ -39,7 +40,7 @@ async def finalizer_node(state: AgentGraphState, config: RunnableConfig) -> dict
         role=MessageRole.ASSISTANT,
         content=answer_text,
         message_metadata={
-            "agent": "answerer",
+            "agent": agent_name,
             "topic": state.get("topic"),
             "citations": [citation.model_dump(mode="json") for citation in citations],
             "chat_request_id": str(runtime.chat_request_id),

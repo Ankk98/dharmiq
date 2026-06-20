@@ -169,12 +169,15 @@ async def run_chat_pipeline(
         total_tokens += rewriter.tokens_used
         record_llm_tokens(model=model_name, agent="query_rewriter", tokens=rewriter.tokens_used)
 
-        retrieved = await retrieve_multi_query(
-            db,
-            rewriter.queries,
-            user.id,
-            top_k=cfg.retrieval.multi_query_top_k,
-        )
+        retrieved = (
+            await retrieve_multi_query(
+                db,
+                rewriter.queries,
+                user.id,
+                rerank_query=user_message,
+                top_k=cfg.retrieval.multi_query_top_k,
+            )
+        ).chunks
 
         draft_answer = await run_answerer(
             llm,

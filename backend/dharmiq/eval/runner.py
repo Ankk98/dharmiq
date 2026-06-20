@@ -66,13 +66,15 @@ async def run_eval_rag(
     )
     tokens += rewriter.tokens_used
 
-    retrieved = await retrieve_multi_query(
-        db,
-        rewriter.queries,
-        _EVAL_USER_ID,
-        top_k=cfg.retrieval.multi_query_top_k,
-        settings=cfg,
-    )
+    retrieved = (
+        await retrieve_multi_query(
+            db,
+            rewriter.queries,
+            _EVAL_USER_ID,
+            top_k=cfg.retrieval.multi_query_top_k,
+            settings=cfg,
+        )
+    ).chunks
 
     answer = await run_answerer(
         llm,

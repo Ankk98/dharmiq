@@ -656,6 +656,76 @@ async def test_final_message_matches_stream_concat(
     assert assistant_msg.content == streamed
 
 
+@pytest.mark.asyncio
+async def test_retry_message_reprocesses_turn(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+    agent_graph_v2: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    req_id, _, _ = await _collect_stream_events_for_request(client, auth_headers, monkeypatch)
+    _mock_full_pipeline_llm(monkeypatch)
+    mock_rerank(monkeypatch)
+    tasks = _patch_inline_enqueue(monkeypatch)
+
+    factory = get_session_factory()
+    async with factory() as db:
+        user_result = await db.execute(
+            select(ChatMessage).where(
+                ChatMessage.message_metadata["chat_request_id"].astext == str(req_id),
+                ChatMessage.role == MessageRole.USER,
+            )
+        )
+        user_message = user_result.scalar_one()
+        session_id = user_message.session_id
+        old_assistant_result = await db.execute(
+            select(ChatMessage).where(
+                ChatMessage.message_metadata["chat_request_id"].astext == str(req_id),
+                ChatMessage.role == MessageRole.ASSISTANT,
+            )
+        )
+        old_assistant = old_assistant_result.scalar_one()
+
+    retry = await client.post(
+        f"/api/chat/sessions/{session_id}/messages/{user_message.id}/retry",
+        headers=auth_headers,
+    )
+    assert retry.status_code == 202
+    retry_req_id = uuid.UUID(retry.json()["chat_request_id"])
+    assert retry_req_id != req_id
+
+    sse_task = asyncio.create_task(
+        _read_sse_events(
+            client,
+            f"/api/chat/requests/{retry_req_id}/stream",
+            auth_headers,
+        )
+    )
+    await asyncio.gather(*tasks)
+    events = await sse_task
+    done_events = [data for event_type, data in events if event_type == "done"]
+    assert len(done_events) == 1
+    assert done_events[0]["status"] == ChatRequestStatus.COMPLETED.value
+
+    async with factory() as db:
+        messages_result = await db.execute(
+            select(ChatMessage)
+            .where(ChatMessage.session_id == session_id)
+            .order_by(ChatMessage.created_at.asc(), ChatMessage.id.asc())
+        )
+        messages = list(messages_result.scalars().all())
+        assert len(messages) == 2
+        assert messages[0].id == user_message.id
+        assert messages[0].message_metadata["chat_request_id"] == str(retry_req_id)
+        assert messages[1].role == MessageRole.ASSISTANT
+        assert messages[1].message_metadata["chat_request_id"] == str(retry_req_id)
+
+        old_assistant_result = await db.execute(
+            select(ChatMessage).where(ChatMessage.id == old_assistant.id)
+        )
+        assert old_assistant_result.scalar_one_or_none() is None
+
+
 async def _collect_one_pubsub_message(pubsub) -> dict:
     async for message in pubsub.listen():
         if message.get("type") == "message":

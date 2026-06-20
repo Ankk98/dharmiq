@@ -8,7 +8,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from dharmiq.auth.manager import current_active_user
-from dharmiq.agents.runner import create_agent_graph_request, run_agent_graph_sync
+from dharmiq.agents.runner import (
+    create_agent_graph_request,
+    retry_agent_graph_request,
+    run_agent_graph_sync,
+)
 from dharmiq.config.settings import get_settings
 from dharmiq.db.models.chats import ChatMessage, ChatRequest, ChatRequestStatus, ChatSession, MessageRole
 from dharmiq.db.models.users import User
@@ -36,6 +40,20 @@ def _title_from_content(content: str) -> str:
     if len(stripped) <= _TITLE_MAX_LEN:
         return stripped
     return f"{stripped[: _TITLE_MAX_LEN - 3].rstrip()}..."
+
+
+async def _assert_no_active_request(db: AsyncSession, session_id: uuid.UUID) -> None:
+    active = await db.execute(
+        select(ChatRequest).where(
+            ChatRequest.session_id == session_id,
+            ChatRequest.status.in_([ChatRequestStatus.PENDING, ChatRequestStatus.RUNNING]),
+        )
+    )
+    if active.scalar_one_or_none() is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A chat request is already in progress for this session",
+        )
 
 
 async def _get_user_session(
@@ -101,17 +119,7 @@ async def post_session_message(
     settings = get_settings()
 
     if settings.agent_graph.enabled:
-        active = await db.execute(
-            select(ChatRequest).where(
-                ChatRequest.session_id == chat_session.id,
-                ChatRequest.status.in_([ChatRequestStatus.PENDING, ChatRequestStatus.RUNNING]),
-            )
-        )
-        if active.scalar_one_or_none() is not None:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="A chat request is already in progress for this session",
-            )
+        await _assert_no_active_request(db, chat_session.id)
 
         runtime = await create_agent_graph_request(
             db,
@@ -148,6 +156,58 @@ async def post_session_message(
     return JSONResponse(
         status_code=status.HTTP_201_CREATED,
         content=ChatMessageRead.model_validate(message).model_dump(mode="json"),
+    )
+
+
+@router.post("/sessions/{session_id}/messages/{message_id}/retry")
+async def retry_session_message(
+    session_id: uuid.UUID,
+    message_id: uuid.UUID,
+    user: User = Depends(current_active_user),
+    db: AsyncSession = Depends(get_db_session),
+):
+    chat_session = await _get_user_session(session_id, user, db)
+    settings = get_settings()
+
+    if not settings.agent_graph.enabled:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Message retry requires the agent graph pipeline",
+        )
+
+    result = await db.execute(
+        select(ChatMessage).where(
+            ChatMessage.id == message_id,
+            ChatMessage.session_id == chat_session.id,
+            ChatMessage.user_id == user.id,
+        )
+    )
+    user_message = result.scalar_one_or_none()
+    if user_message is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Message not found")
+    if user_message.role != MessageRole.USER:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only user messages can be retried",
+        )
+
+    await _assert_no_active_request(db, chat_session.id)
+
+    runtime = await retry_agent_graph_request(
+        db,
+        chat_session=chat_session,
+        user=user,
+        user_message=user_message,
+        settings=settings,
+    )
+    enqueue_agent_graph(runtime.chat_request.id)
+    payload = ChatRequestPendingResponse(
+        chat_request_id=runtime.chat_request.id,
+        status="pending",
+    )
+    return JSONResponse(
+        status_code=status.HTTP_202_ACCEPTED,
+        content=payload.model_dump(mode="json"),
     )
 
 

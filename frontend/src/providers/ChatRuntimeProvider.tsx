@@ -21,6 +21,7 @@ import {
   listMessages,
   listSessions,
   postSessionMessage,
+  retrySessionMessage,
   sendChatMessage,
   type ChatMessage,
   type ChatSession,
@@ -351,28 +352,29 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
     [loadMessages, refreshSessions],
   );
 
-  const submitMessage = useCallback(
-    async (userText: string, options?: { forceAnswer?: boolean }) => {
-      const id = sessionIdRef.current;
-      if (!id) {
-        return;
-      }
-
+  const runAssistantPipeline = useCallback(
+    async (
+      id: string,
+      startRequest: () => Promise<{ mode: "async"; chat_request_id: string } | { mode: "sync" }>,
+      options?: { legacyUserText?: string; prepareMessages?: (prev: StoredMessage[]) => StoredMessage[] },
+    ) => {
       const assistantMessageId = STREAMING_MESSAGE_ID;
       activeAssistantIdRef.current = assistantMessageId;
       streamCitationsRef.current = [];
       streamingTextRef.current = "";
 
-      setMessages((prev) => [
-        ...prev.filter((message) => message.id !== STREAMING_MESSAGE_ID),
-        { id: crypto.randomUUID(), role: "user", content: userText },
-        {
-          id: assistantMessageId,
-          role: "assistant",
-          content: "",
-          progress: { steps: [], status: "running" },
-        },
-      ]);
+      setMessages((prev) => {
+        const next = options?.prepareMessages ? options.prepareMessages(prev) : prev;
+        return [
+          ...next.filter((message) => message.id !== STREAMING_MESSAGE_ID),
+          {
+            id: assistantMessageId,
+            role: "assistant",
+            content: "",
+            progress: { steps: [], status: "running" },
+          },
+        ];
+      });
       setIsRunning(true);
       setAwaitingClarification(false);
       clearSlowTimer();
@@ -380,29 +382,27 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
       slowTimerRef.current = window.setTimeout(() => setSlowNotice(true), SLOW_THRESHOLD_MS);
 
       try {
-        const result = await postSessionMessage(id, userText, {
-          forceAnswer: options?.forceAnswer,
-        });
+        const result = await startRequest();
 
         if (result.mode === "sync") {
           await loadMessages(id);
+          if (options?.legacyUserText) {
+            await runLegacyPipeline(id, options.legacyUserText);
+          }
+          return;
         }
 
-        if (result.mode === "async") {
-          setMessages((prev) =>
-            prev.map((message) =>
-              message.id === assistantMessageId
-                ? { ...message, chatRequestId: result.chat_request_id }
-                : message,
-            ),
-          );
+        setMessages((prev) =>
+          prev.map((message) =>
+            message.id === assistantMessageId
+              ? { ...message, chatRequestId: result.chat_request_id }
+              : message,
+          ),
+        );
 
-          const streamResult = await connect(result.chat_request_id);
-          const citations = citationsFromStream(streamResult.streamCitations);
-          await finalizeFromStream(id, citations);
-        } else {
-          await runLegacyPipeline(id, userText);
-        }
+        const streamResult = await connect(result.chat_request_id);
+        const citations = citationsFromStream(streamResult.streamCitations);
+        await finalizeFromStream(id, citations);
       } finally {
         disconnect();
         clearSlowTimer();
@@ -421,6 +421,57 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
       resetStream,
       runLegacyPipeline,
     ],
+  );
+
+  const submitMessage = useCallback(
+    async (userText: string, options?: { forceAnswer?: boolean }) => {
+      const id = sessionIdRef.current;
+      if (!id) {
+        return;
+      }
+
+      await runAssistantPipeline(
+        id,
+        () =>
+          postSessionMessage(id, userText, {
+            forceAnswer: options?.forceAnswer,
+          }),
+        {
+          legacyUserText: userText,
+          prepareMessages: (prev) => [
+            ...prev,
+            { id: crypto.randomUUID(), role: "user", content: userText },
+          ],
+        },
+      );
+    },
+    [runAssistantPipeline],
+  );
+
+  const onReload = useCallback(
+    async (parentId: string | null) => {
+      const id = sessionIdRef.current;
+      if (!id || !parentId) {
+        return;
+      }
+
+      await runAssistantPipeline(
+        id,
+        () => retrySessionMessage(id, parentId),
+        {
+          prepareMessages: (prev) => {
+            const userIndex = prev.findIndex(
+              (message) => message.id === parentId && message.role === "user",
+            );
+            if (userIndex === -1) {
+              throw new Error("User message not found for retry");
+            }
+            return prev.slice(0, userIndex + 1);
+          },
+        },
+      );
+    },
+    [runAssistantPipeline],
   );
 
   const onNew = useCallback(
@@ -492,6 +543,7 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
     messages,
     convertMessage,
     onNew,
+    onReload,
     setMessages: (next) => setMessages([...next]),
     adapters: { threadList: threadListAdapter },
   });

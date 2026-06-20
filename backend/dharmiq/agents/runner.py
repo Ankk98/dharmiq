@@ -45,6 +45,27 @@ async def _load_attached_upload_ids(db: AsyncSession, session_id: uuid.UUID) -> 
     return [str(upload_id) for upload_id in result.scalars().all()]
 
 
+async def _truncate_messages_after(
+    db: AsyncSession,
+    session_id: uuid.UUID,
+    user_message: ChatMessage,
+) -> None:
+    result = await db.execute(
+        select(ChatMessage)
+        .where(ChatMessage.session_id == session_id)
+        .order_by(ChatMessage.created_at.asc(), ChatMessage.id.asc())
+    )
+    messages = list(result.scalars().all())
+    cut_index = next(
+        (index for index, message in enumerate(messages) if message.id == user_message.id),
+        None,
+    )
+    if cut_index is None:
+        raise ValueError(f"User message {user_message.id} not found in session {session_id}")
+    for message in messages[cut_index + 1 :]:
+        await db.delete(message)
+
+
 async def _seed_clarifier_round(db: AsyncSession, session_id: uuid.UUID) -> int:
     result = await db.execute(
         select(ChatRequest.clarifier_round)
@@ -145,6 +166,69 @@ async def create_agent_graph_request(
         user_msg=user_msg,
         attached_upload_ids=attached_upload_ids,
         new_messages=[user_msg],
+    )
+
+
+async def retry_agent_graph_request(
+    db: AsyncSession,
+    *,
+    chat_session: ChatSession,
+    user: User,
+    user_message: ChatMessage,
+    settings: Settings | None = None,
+) -> GraphRuntime:
+    if user_message.role != MessageRole.USER:
+        raise ValueError("Only user messages can be retried")
+    if user_message.session_id != chat_session.id:
+        raise ValueError("Message does not belong to session")
+
+    cfg = settings or get_settings()
+    force_answer = False
+    old_request_id = (user_message.message_metadata or {}).get("chat_request_id")
+    if old_request_id:
+        old_result = await db.execute(
+            select(ChatRequest).where(ChatRequest.id == uuid.UUID(str(old_request_id)))
+        )
+        old_request = old_result.scalar_one_or_none()
+        if old_request is not None:
+            force_answer = old_request.force_answer
+
+    await _truncate_messages_after(db, chat_session.id, user_message)
+
+    clarifier_round = await _seed_clarifier_round(db, chat_session.id)
+    chat_request = ChatRequest(
+        session_id=chat_session.id,
+        user_id=user.id,
+        status=ChatRequestStatus.PENDING,
+        llm_model=cfg.openrouter.default_model,
+        clarifier_round=clarifier_round,
+        force_answer=force_answer,
+    )
+    db.add(chat_request)
+    await db.flush()
+
+    user_message.message_metadata = {
+        **(user_message.message_metadata or {}),
+        "chat_request_id": str(chat_request.id),
+    }
+
+    history = await _load_history(db, chat_session.id, limit=cfg.chat.history_limit)
+    attached_upload_ids = await _load_attached_upload_ids(db, chat_session.id)
+    await db.commit()
+    await db.refresh(chat_request)
+    await db.refresh(user_message)
+
+    return GraphRuntime(
+        db=db,
+        settings=cfg,
+        client=get_openrouter_client(),
+        user=user,
+        chat_session=chat_session,
+        chat_request=chat_request,
+        history=history,
+        user_msg=user_message,
+        attached_upload_ids=attached_upload_ids,
+        new_messages=[user_message],
     )
 
 

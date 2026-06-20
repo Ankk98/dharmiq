@@ -6,6 +6,7 @@ import uuid
 from dharmiq.agents.runner import run_agent_graph_for_request
 from dharmiq.config.settings import get_settings
 from dharmiq.core.logging import get_logger, setup_logging
+from dharmiq.agents.checkpoint import close_checkpointer
 from dharmiq.db.session import close_db, get_session_factory, init_db
 from dharmiq.tasks.celery_app import celery_app
 
@@ -23,6 +24,7 @@ async def _with_db_session(coro_factory):
         async with factory() as db:
             return await coro_factory(db)
     finally:
+        await close_checkpointer()
         await close_db()
 
 

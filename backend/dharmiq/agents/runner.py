@@ -329,12 +329,19 @@ async def run_agent_graph_for_request(
             None,
         )
         if runtime.emitter is not None:
-            await runtime.emitter.emit_done(
-                message_id=assistant_msg.id if assistant_msg is not None else None,
-                status=ChatRequestStatus.COMPLETED,
-                citations=final_state.get("citations"),
-                total_tokens=final_state.get("total_tokens"),
-            )
+            try:
+                await runtime.emitter.emit_done(
+                    message_id=assistant_msg.id if assistant_msg is not None else None,
+                    status=ChatRequestStatus.COMPLETED,
+                    citations=final_state.get("citations"),
+                    total_tokens=final_state.get("total_tokens"),
+                )
+            except Exception:
+                logger.warning(
+                    "agent_graph_emit_done_failed",
+                    chat_request_id=str(chat_request_id),
+                    exc_info=True,
+                )
 
         return ChatPipelineResult(
             chat_request_id=runtime.chat_request.id,
@@ -367,6 +374,38 @@ async def run_agent_graph_for_request(
         )
     except Exception:
         logger.exception("agent_graph_error", chat_request_id=str(chat_request_id))
+        assistant_msg = next(
+            (message for message in runtime.new_messages if message.role == MessageRole.ASSISTANT),
+            None,
+        )
+        if assistant_msg is not None and runtime.chat_request.status == ChatRequestStatus.COMPLETED:
+            if runtime.emitter is not None:
+                try:
+                    await runtime.emitter.emit_done(
+                        message_id=assistant_msg.id,
+                        status=ChatRequestStatus.COMPLETED,
+                        citations=final_state.get("citations") if "final_state" in locals() else None,
+                        total_tokens=(
+                            final_state.get("total_tokens") if "final_state" in locals() else None
+                        ),
+                    )
+                except Exception:
+                    logger.warning(
+                        "agent_graph_emit_done_failed_after_error",
+                        chat_request_id=str(chat_request_id),
+                        exc_info=True,
+                    )
+            return ChatPipelineResult(
+                chat_request_id=runtime.chat_request.id,
+                status=ChatRequestStatus.COMPLETED,
+                needs_clarification=False,
+                answer=assistant_msg.content,
+                citations=_citations_from_state(final_state) if "final_state" in locals() else [],
+                taking_longer_than_expected=_elapsed_over_threshold(started, cfg),
+                new_messages=[
+                    ChatMessageRead.model_validate(message) for message in runtime.new_messages
+                ],
+            )
         await _mark_request_failed(db, runtime.chat_request, error_message="Internal error")
         if runtime.emitter is not None:
             await runtime.emitter.emit_error(code="INTERNAL_ERROR", message="Internal error")

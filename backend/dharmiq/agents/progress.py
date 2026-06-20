@@ -10,8 +10,11 @@ import redis.asyncio as aioredis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from dharmiq.config.settings import Settings, get_settings
+from dharmiq.core.logging import get_logger
 from dharmiq.db.models.chats import ChatRequestEvent, ChatRequestEventType, EventVisibility
 from dharmiq.db.models.users import User
+
+logger = get_logger(__name__)
 
 ProgressView = Literal["concise", "detailed"]
 
@@ -253,7 +256,16 @@ class ProgressEmitter:
             sse_event=sse_event_name(event_type),
             payload=payload_with_seq,
         )
-        await self._publish_event(stream_event)
+        try:
+            await self._publish_event(stream_event)
+        except Exception:
+            logger.warning(
+                "progress_event_publish_failed",
+                chat_request_id=str(self.chat_request_id),
+                seq=seq,
+                event_type=event_type.value,
+                exc_info=True,
+            )
         return payload_with_seq
 
     async def _publish_event(self, stream_event: StreamEvent) -> None:

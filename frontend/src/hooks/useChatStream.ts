@@ -140,6 +140,10 @@ export function useChatStream(view: ProgressView, callbacks?: UseChatStreamCallb
         break;
       }
       case "done": {
+        const doneStatus = String(event.data.status ?? "");
+        if (doneStatus === "completed" || doneStatus === "COMPLETED") {
+          setErrorMessage(null);
+        }
         setStatus("done");
         callbacksRef.current?.onDone?.(event);
         break;

@@ -17,10 +17,12 @@ from dharmiq.agents.streaming import ProgressEmitter, event_to_stream, filter_ev
 from dharmiq.config.settings import get_settings
 from dharmiq.core.errors import OpenRouterError
 from dharmiq.db.models.chats import (
+    ChatMessage,
     ChatRequest,
     ChatRequestEvent,
     ChatRequestStatus,
     ChatSession,
+    MessageRole,
 )
 from dharmiq.db.models.documents import DocType, DocumentChunk, SourceDocument
 from dharmiq.db.models.users import User
@@ -28,6 +30,7 @@ from dharmiq.db.session import get_session_factory
 from dharmiq.llm.embeddings import EmbeddingBackend
 from dharmiq.redis_client import close_redis, reset_redis_cache
 from tests.litellm_helpers import mock_litellm_acompletion
+from tests.rerank_helpers import mock_rerank
 from tests.vector_helpers import unit_vector
 
 
@@ -69,7 +72,7 @@ def agent_graph_v2(monkeypatch: pytest.MonkeyPatch) -> None:
     get_settings.cache_clear()
 
 
-def _mock_full_pipeline_llm(monkeypatch: pytest.MonkeyPatch) -> None:
+def _mock_full_pipeline_llm(monkeypatch: pytest.MonkeyPatch) -> list[dict]:
     clarifier = {
         "topic": "police_arrest",
         "needs_more_info": False,
@@ -77,14 +80,18 @@ def _mock_full_pipeline_llm(monkeypatch: pytest.MonkeyPatch) -> None:
         "reason": "Enough detail",
     }
     rewriter = {"queries": ["Article 22 arrest rights", "police station questioning rights"]}
-    answer = "You have protections under Article 22 [doc:abc|chunk:def]. This is not legal advice."
+    answer = (
+        "You have protections under Article 22 [1].\n\n"
+        "> Article 22 protects against arbitrary arrest and detention.\n\n"
+        "This is not legal advice."
+    )
     validator = {
         "must_regenerate": False,
         "issues": [],
         "regeneration_instructions": "",
         "final_warning": "Consult a qualified lawyer for your situation.",
     }
-    mock_litellm_acompletion(
+    return mock_litellm_acompletion(
         monkeypatch,
         [
             json.dumps(clarifier),
@@ -114,6 +121,16 @@ async def _seed_corpus(db: AsyncSession) -> None:
             page_start=1,
             page_end=1,
             embedding=PgVector(unit_vector(0)),
+        )
+    )
+    db.add(
+        DocumentChunk(
+            document_id=document.id,
+            chunk_index=1,
+            text="Article 22 also requires the grounds of arrest to be communicated.",
+            page_start=1,
+            page_end=1,
+            embedding=PgVector(unit_vector(1)),
         )
     )
     await db.commit()
@@ -196,6 +213,7 @@ async def test_sse_receives_progress_events(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _mock_full_pipeline_llm(monkeypatch)
+    mock_rerank(monkeypatch)
     tasks = _patch_inline_enqueue(monkeypatch)
 
     factory = get_session_factory()
@@ -237,6 +255,7 @@ async def test_events_persisted_in_db(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _mock_full_pipeline_llm(monkeypatch)
+    mock_rerank(monkeypatch)
 
     factory = get_session_factory()
     async with factory() as db:
@@ -364,6 +383,7 @@ async def test_reconnect_replays_then_dedupes(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _mock_full_pipeline_llm(monkeypatch)
+    mock_rerank(monkeypatch)
 
     factory = get_session_factory()
     async with factory() as db:
@@ -451,6 +471,189 @@ async def test_failed_graph_emits_error_event(
         result = await db.execute(select(ChatRequest).where(ChatRequest.id == uuid.UUID(req_id)))
         chat_request = result.scalar_one()
         assert chat_request.status == ChatRequestStatus.FAILED
+
+
+async def _collect_stream_events_for_request(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    user_message: str = "What are my rights if police want me at the station?",
+) -> tuple[uuid.UUID, list[tuple[str, dict]], list[dict]]:
+    llm_calls = _mock_full_pipeline_llm(monkeypatch)
+    mock_rerank(monkeypatch)
+    tasks = _patch_inline_enqueue(monkeypatch)
+
+    factory = get_session_factory()
+    async with factory() as db:
+        await _seed_corpus(db)
+
+    create = await client.post("/api/chat/sessions", json={}, headers=auth_headers)
+    session_id = create.json()["id"]
+    post = await client.post(
+        f"/api/chat/sessions/{session_id}/messages",
+        json={"content": user_message},
+        headers=auth_headers,
+    )
+    req_id = uuid.UUID(post.json()["chat_request_id"])
+
+    sse_task = asyncio.create_task(
+        _read_sse_events(client, f"/api/chat/requests/{req_id}/stream", auth_headers)
+    )
+    await asyncio.gather(*tasks)
+    events = await sse_task
+    return req_id, events, llm_calls
+
+
+def _event_seq(event_type: str, data: dict) -> int:
+    return int(data["seq"])
+
+
+def _last_validator_end_seq(events: list[tuple[str, dict]]) -> int | None:
+    seqs = [
+        _event_seq(event_type, data)
+        for event_type, data in events
+        if event_type == "progress"
+        and data.get("label") == "Checking answer…"
+        and data.get("status") == "completed"
+    ]
+    return max(seqs) if seqs else None
+
+
+def _first_answer_token_seq(events: list[tuple[str, dict]]) -> int | None:
+    token_seqs = [_event_seq(event_type, data) for event_type, data in events if event_type == "answer_token"]
+    return min(token_seqs) if token_seqs else None
+
+
+@pytest.mark.asyncio
+async def test_no_tokens_before_validator_pass(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+    agent_graph_v2: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _, events, _ = await _collect_stream_events_for_request(client, auth_headers, monkeypatch)
+
+    validator_end = _last_validator_end_seq(events)
+    first_token = _first_answer_token_seq(events)
+    assert validator_end is not None
+    assert first_token is not None
+    assert validator_end < first_token
+
+
+@pytest.mark.asyncio
+async def test_validator_fail_no_answer_tokens(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+    agent_graph_v2: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    clarifier = {
+        "topic": "police_arrest",
+        "needs_more_info": False,
+        "followup_questions": [],
+        "reason": "Enough detail",
+    }
+    rewriter = {"queries": ["Article 22 arrest rights"]}
+    answer = "You have protections under Article 22 [1]."
+    validator_fail = {
+        "must_regenerate": True,
+        "issues": ["Unsupported statutory claim"],
+        "regeneration_instructions": "Add citations",
+        "final_warning": None,
+        "unsupported_claims": ["Article 22"],
+    }
+    mock_litellm_acompletion(
+        monkeypatch,
+        [
+            json.dumps(clarifier),
+            json.dumps(rewriter),
+            answer,
+            json.dumps(validator_fail),
+            answer,
+            json.dumps(validator_fail),
+            answer,
+            json.dumps(validator_fail),
+        ],
+    )
+    mock_rerank(monkeypatch)
+    tasks = _patch_inline_enqueue(monkeypatch)
+
+    factory = get_session_factory()
+    async with factory() as db:
+        await _seed_corpus(db)
+
+    create = await client.post("/api/chat/sessions", json={}, headers=auth_headers)
+    session_id = create.json()["id"]
+    post = await client.post(
+        f"/api/chat/sessions/{session_id}/messages",
+        json={"content": "What is Article 22?"},
+        headers=auth_headers,
+    )
+    req_id = post.json()["chat_request_id"]
+
+    sse_task = asyncio.create_task(
+        _read_sse_events(client, f"/api/chat/requests/{req_id}/stream", auth_headers)
+    )
+    await asyncio.gather(*tasks)
+    events = await sse_task
+
+    answer_tokens = [data for event_type, data in events if event_type == "answer_token"]
+    error_events = [data for event_type, data in events if event_type == "error"]
+    assert answer_tokens == []
+    assert len(error_events) == 1
+    assert error_events[0]["code"] == "VALIDATION_FAILED"
+
+
+@pytest.mark.asyncio
+async def test_citation_events_in_stream(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+    agent_graph_v2: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _, events, _ = await _collect_stream_events_for_request(client, auth_headers, monkeypatch)
+
+    citation_events = [data for event_type, data in events if event_type == "citation"]
+    assert len(citation_events) >= 1
+    assert citation_events[0].get("quote_text")
+
+
+@pytest.mark.asyncio
+async def test_stream_is_replay_not_second_call(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+    agent_graph_v2: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _, events, llm_calls = await _collect_stream_events_for_request(client, auth_headers, monkeypatch)
+
+    assert len(llm_calls) == 4
+    assert _first_answer_token_seq(events) is not None
+
+
+@pytest.mark.asyncio
+async def test_final_message_matches_stream_concat(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+    agent_graph_v2: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    req_id, events, _ = await _collect_stream_events_for_request(client, auth_headers, monkeypatch)
+
+    streamed = "".join(data["token"] for event_type, data in events if event_type == "answer_token")
+
+    factory = get_session_factory()
+    async with factory() as db:
+        result = await db.execute(
+            select(ChatMessage)
+            .where(ChatMessage.message_metadata["chat_request_id"].astext == str(req_id))
+            .where(ChatMessage.role == MessageRole.ASSISTANT)
+        )
+        assistant_msg = result.scalar_one()
+
+    assert streamed
+    assert assistant_msg.content == streamed
 
 
 async def _collect_one_pubsub_message(pubsub) -> dict:

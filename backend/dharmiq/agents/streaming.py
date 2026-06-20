@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+import re
 import uuid
 from collections.abc import AsyncIterator
 from typing import Any
@@ -11,6 +12,7 @@ import redis.asyncio as aioredis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from dharmiq.agents.citation_validation import MARKER_PATTERN
 from dharmiq.agents.progress import (
     NODE_PROGRESS_LABELS,
     ProgressEmitter,
@@ -39,9 +41,31 @@ __all__ = [
     "load_events_after_seq",
     "pubsub_channel",
     "seq_key",
+    "split_answer_token_chunks",
     "sse_event_name",
     "stream_chat_request_events",
 ]
+
+
+def split_answer_token_chunks(text: str, *, words_per_chunk: int = 3) -> list[str]:
+    """Split a validated answer into word-group chunks for SSE replay (R4-4)."""
+    if not text:
+        return []
+    words = re.findall(r"\S+\s*", text)
+    chunks: list[str] = []
+    batch: list[str] = []
+    for word in words:
+        batch.append(word)
+        if len(batch) >= words_per_chunk:
+            chunks.append("".join(batch))
+            batch = []
+    if batch:
+        chunks.append("".join(batch))
+    return chunks
+
+
+def citation_markers_in_chunk(chunk: str) -> list[int]:
+    return [int(match) for match in MARKER_PATTERN.findall(chunk)]
 
 
 def event_to_stream(event: ChatRequestEvent) -> StreamEvent:

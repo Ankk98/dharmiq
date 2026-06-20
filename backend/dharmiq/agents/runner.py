@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from dharmiq.agents.checkpoint import get_checkpointer
 from dharmiq.agents.graph import build_agent_graph
+from dharmiq.agents.nodes.finalizer import VALIDATION_FAILED_MESSAGE
 from dharmiq.agents.runtime import GraphRuntime
 from dharmiq.agents.state import AgentGraphState
 from dharmiq.agents.streaming import ProgressEmitter
@@ -297,13 +298,19 @@ async def run_agent_graph_for_request(
             )
 
         if final_state.get("validation_blocked"):
-            error_message = (
-                final_state.get("final_answer")
-                or "Answer could not be verified against retrieved sources."
-            )
+            error_message = VALIDATION_FAILED_MESSAGE
             await db.commit()
+            assistant_msg = next(
+                (message for message in runtime.new_messages if message.role == MessageRole.ASSISTANT),
+                None,
+            )
             if runtime.emitter is not None:
-                await runtime.emitter.emit_done(message_id=None, status=ChatRequestStatus.FAILED)
+                await runtime.emitter.emit_done(
+                    message_id=assistant_msg.id if assistant_msg is not None else None,
+                    status=ChatRequestStatus.FAILED,
+                    citations=final_state.get("citations"),
+                    total_tokens=final_state.get("total_tokens"),
+                )
             return ChatPipelineResult(
                 chat_request_id=runtime.chat_request.id,
                 status=ChatRequestStatus.FAILED,
@@ -325,6 +332,8 @@ async def run_agent_graph_for_request(
             await runtime.emitter.emit_done(
                 message_id=assistant_msg.id if assistant_msg is not None else None,
                 status=ChatRequestStatus.COMPLETED,
+                citations=final_state.get("citations"),
+                total_tokens=final_state.get("total_tokens"),
             )
 
         return ChatPipelineResult(

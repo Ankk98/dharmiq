@@ -7,7 +7,9 @@ from langchain_core.runnables import RunnableConfig
 from dharmiq.agents.citation_validation import citations_from_state
 from dharmiq.agents.runtime import GraphRuntime
 from dharmiq.agents.state import AgentGraphState
+from dharmiq.agents.streaming import citation_markers_in_chunk, split_answer_token_chunks
 from dharmiq.db.models.chats import ChatMessage, ChatRequestStatus, MessageRole
+from dharmiq.schemas.citations import CitationRecord
 
 
 def _runtime(config: RunnableConfig) -> GraphRuntime:
@@ -20,6 +22,33 @@ VALIDATION_FAILED_MESSAGE = (
 )
 
 
+async def _replay_validated_answer(
+    runtime: GraphRuntime,
+    answer_text: str,
+    citations: list[CitationRecord],
+) -> None:
+    """Replay the validated answer as SSE token chunks — no LLM call (R4-4)."""
+    emitter = runtime.emitter
+    if emitter is None:
+        return
+
+    for citation in citations:
+        await emitter.emit_citation(
+            marker=citation.marker,
+            chunk_id=citation.chunk_id,
+            document_title=citation.document_title,
+            quote_text=citation.quote_text,
+            source_type=citation.source_type,
+            document_id=citation.document_id,
+        )
+
+    for chunk in split_answer_token_chunks(answer_text):
+        await emitter.emit_answer_token(
+            chunk,
+            citation_markers=citation_markers_in_chunk(chunk),
+        )
+
+
 async def finalizer_node(state: AgentGraphState, config: RunnableConfig) -> dict[str, Any]:
     runtime = _runtime(config)
     citations = citations_from_state(state.get("citations") or state.get("citation_map"))
@@ -27,29 +56,30 @@ async def finalizer_node(state: AgentGraphState, config: RunnableConfig) -> dict
     validation_blocked = bool(state.get("validation_blocked"))
 
     if validation_blocked:
-        answer_text = VALIDATION_FAILED_MESSAGE
         if runtime.emitter is not None:
             await runtime.emitter.emit_error(
                 code="VALIDATION_FAILED",
                 message=VALIDATION_FAILED_MESSAGE,
             )
+        answer_text = VALIDATION_FAILED_MESSAGE
+        agent_name = "validator"
     elif state.get("weak_retrieval"):
         answer_text = state.get("final_answer") or state.get("draft_answer", "")
+        agent_name = "refusal"
+        await _replay_validated_answer(runtime, answer_text, citations)
     else:
         answer_text = state.get("final_answer") or state.get("draft_answer", "")
+        agent_name = "answerer"
+        final_warning = state.get("final_warning")
+        if (
+            verdict.get("must_regenerate")
+            and final_warning
+            and final_warning not in answer_text
+        ):
+            answer_text = f"{answer_text.rstrip()}\n\n> {final_warning}"
+        await _replay_validated_answer(runtime, answer_text, citations)
 
     final_warning = state.get("final_warning")
-    agent_name = "refusal" if state.get("weak_retrieval") else "answerer"
-    if validation_blocked:
-        agent_name = "validator"
-
-    if (
-        not validation_blocked
-        and verdict.get("must_regenerate")
-        and final_warning
-        and final_warning not in answer_text
-    ):
-        answer_text = f"{answer_text.rstrip()}\n\n> {final_warning}"
 
     assistant_msg = ChatMessage(
         session_id=runtime.chat_session.id,

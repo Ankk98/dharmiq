@@ -31,6 +31,7 @@ class ChatRequestEventType(str, enum.Enum):
     STEP_END = "step_end"
     STEP_DETAIL = "step_detail"
     TOKEN = "token"
+    CITATION = "citation"
     ERROR = "error"
     DONE = "done"
 

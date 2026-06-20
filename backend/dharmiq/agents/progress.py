@@ -61,6 +61,10 @@ def pubsub_channel(chat_request_id: uuid.UUID) -> str:
 def sse_event_name(db_event_type: ChatRequestEventType) -> str:
     if db_event_type in {ChatRequestEventType.STEP_START, ChatRequestEventType.STEP_END}:
         return "progress"
+    if db_event_type == ChatRequestEventType.TOKEN:
+        return "answer_token"
+    if db_event_type == ChatRequestEventType.CITATION:
+        return "citation"
     if db_event_type == ChatRequestEventType.ERROR:
         return "error"
     if db_event_type == ChatRequestEventType.DONE:
@@ -329,8 +333,59 @@ class ProgressEmitter:
             payload={"code": code, "message": message},
         )
 
-    async def emit_done(self, *, message_id: uuid.UUID | None, status) -> dict[str, Any]:
+    async def emit_answer_token(
+        self,
+        token: str,
+        *,
+        citation_markers: list[int] | None = None,
+    ) -> dict[str, Any]:
+        return await self.emit(
+            event_type=ChatRequestEventType.TOKEN,
+            payload={
+                "token": token,
+                "citation_markers": citation_markers or [],
+            },
+        )
+
+    async def emit_citation(
+        self,
+        *,
+        marker: int,
+        chunk_id: uuid.UUID,
+        document_title: str,
+        quote_text: str | None = None,
+        source_type: str | None = None,
+        document_id: uuid.UUID | None = None,
+    ) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "marker": marker,
+            "chunk_id": str(chunk_id),
+            "document_title": document_title,
+        }
+        if quote_text is not None:
+            payload["quote_text"] = quote_text
+        if source_type is not None:
+            payload["source_type"] = source_type
+        if document_id is not None:
+            payload["document_id"] = str(document_id)
+        return await self.emit(
+            event_type=ChatRequestEventType.CITATION,
+            payload=payload,
+        )
+
+    async def emit_done(
+        self,
+        *,
+        message_id: uuid.UUID | None,
+        status,
+        citations: list[dict[str, Any]] | None = None,
+        total_tokens: int | None = None,
+    ) -> dict[str, Any]:
         payload: dict[str, Any] = {"status": status.value if hasattr(status, "value") else status}
         if message_id is not None:
             payload["message_id"] = str(message_id)
+        if citations is not None:
+            payload["citations"] = citations
+        if total_tokens is not None:
+            payload["total_tokens"] = total_tokens
         return await self.emit(event_type=ChatRequestEventType.DONE, payload=payload)

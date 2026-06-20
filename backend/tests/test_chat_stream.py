@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from dharmiq.agents.checkpoint import close_checkpointer, reset_checkpointer_cache
 from dharmiq.agents.runner import run_agent_graph_for_request
-from dharmiq.agents.streaming import ProgressEmitter, pubsub_channel, seq_key
+from dharmiq.agents.streaming import ProgressEmitter, event_to_stream, filter_event_for_user, pubsub_channel, seq_key
 from dharmiq.config.settings import get_settings
 from dharmiq.core.errors import OpenRouterError
 from dharmiq.db.models.chats import (
@@ -254,6 +254,7 @@ async def test_events_persisted_in_db(
     with patch("dharmiq.llm.retrieval.get_embedding_backend", return_value=_StaticEmbeddingBackend()):
         await _run_graph_inline(req_id)
 
+    after_seq = 0
     factory = get_session_factory()
     async with factory() as db:
         result = await db.execute(
@@ -262,8 +263,9 @@ async def test_events_persisted_in_db(
             .order_by(ChatRequestEvent.seq.asc())
         )
         db_events = list(result.scalars().all())
+        result = await db.execute(select(User).where(User.email == (await client.get("/api/users/me", headers=auth_headers)).json()["email"]))
+        user = result.scalar_one()
 
-    after_seq = 0
     sse_events = await _read_sse_events(
         client,
         f"/api/chat/requests/{req_id}/stream?after_seq={after_seq}",
@@ -271,8 +273,13 @@ async def test_events_persisted_in_db(
     )
 
     sse_seqs = sorted({data["seq"] for _, data in sse_events})
-    db_seqs = [event.seq for event in db_events]
-    assert sse_seqs == db_seqs
+    settings = get_settings()
+    expected_seqs = [
+        event.seq
+        for event in db_events
+        if filter_event_for_user(event_to_stream(event), user, settings, view="concise") is not None
+    ]
+    assert sse_seqs == expected_seqs
 
 
 @pytest.mark.asyncio
@@ -382,6 +389,12 @@ async def test_reconnect_replays_then_dedupes(
             .order_by(ChatRequestEvent.seq.asc())
         )
         db_events = list(result.scalars().all())
+        result = await db.execute(
+            select(User).where(
+                User.email == (await client.get("/api/users/me", headers=auth_headers)).json()["email"]
+            )
+        )
+        user = result.scalar_one()
 
     assert len(db_events) >= 3
     after_seq = db_events[len(db_events) // 2].seq
@@ -392,7 +405,13 @@ async def test_reconnect_replays_then_dedupes(
         auth_headers,
     )
     reconnect_seqs = [data["seq"] for _, data in reconnect_events]
-    expected_seqs = [event.seq for event in db_events if event.seq > after_seq]
+    settings = get_settings()
+    expected_seqs = [
+        event.seq
+        for event in db_events
+        if event.seq > after_seq
+        and filter_event_for_user(event_to_stream(event), user, settings, view="concise") is not None
+    ]
 
     assert reconnect_seqs == expected_seqs
     assert len(reconnect_seqs) == len(set(reconnect_seqs))

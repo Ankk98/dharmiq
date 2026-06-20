@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any, TypedDict
+from typing import Any, Literal, TypedDict
 
 from dharmiq.llm.retrieval import RetrievedChunk
+
+ProgressView = Literal["concise", "detailed"]
+EventVisibilityTier = Literal["concise", "detailed", "debug"]
 
 
 class ValidatorVerdictState(TypedDict, total=False):

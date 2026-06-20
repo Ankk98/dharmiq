@@ -16,18 +16,48 @@ from dharmiq.agents.nodes.retrieve import retrieve_node
 from dharmiq.agents.nodes.validator import validator_node
 from dharmiq.agents.runtime import GraphRuntime
 from dharmiq.agents.state import AgentGraphState
-from dharmiq.agents.streaming import NODE_PROGRESS_LABELS
-from dharmiq.db.models.chats import ChatRequestEventType
+from dharmiq.agents.progress import (
+    NODE_PROGRESS_LABELS,
+    default_step_details,
+    query_rewriter_step_details,
+    retrieve_step_details,
+    validator_step_details,
+)
 
 if TYPE_CHECKING:
     from langgraph.checkpoint.base import BaseCheckpointSaver
     from langgraph.graph.state import CompiledStateGraph
 
 
+StepDetailFn = Callable[[AgentGraphState, dict[str, Any]], tuple[dict[str, Any], dict[str, Any]]]
+
+STEP_DETAIL_FNS: dict[str, StepDetailFn] = {
+    "query_rewriter": query_rewriter_step_details,
+    "retrieve": retrieve_step_details,
+    "validator": validator_step_details,
+}
+
+
+def _resolve_detail_fn(step_id: str, detail_fn: StepDetailFn | None) -> StepDetailFn:
+    if detail_fn is not None:
+        return detail_fn
+    if step_id in STEP_DETAIL_FNS:
+        return STEP_DETAIL_FNS[step_id]
+
+    def _default(state: AgentGraphState, result: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+        return default_step_details(step_id, state, result)
+
+    return _default
+
+
 def with_progress(
     step_id: str,
     node_fn: Callable[..., Awaitable[dict[str, Any]]],
+    *,
+    detail_fn: StepDetailFn | None = None,
 ) -> Callable[..., Awaitable[dict[str, Any]]]:
+    resolved_detail_fn = _resolve_detail_fn(step_id, detail_fn)
+
     @wraps(node_fn)
     async def wrapped(state: AgentGraphState, config: RunnableConfig) -> dict[str, Any]:
         runtime: GraphRuntime = config["configurable"]["runtime"]
@@ -37,17 +67,14 @@ def with_progress(
         try:
             result = await node_fn(state, config)
             if emitter is not None:
-                await emitter.emit_step_end(step_id)
+                detailed, debug = resolved_detail_fn(state, result)
+                await emitter.emit_step_end_tiers(step_id, detailed=detailed, debug=debug)
             return result
         except Exception:
             if emitter is not None:
-                await emitter.emit(
-                    event_type=ChatRequestEventType.STEP_END,
-                    payload={
-                        "step_id": step_id,
-                        "label": NODE_PROGRESS_LABELS.get(step_id, step_id),
-                        "status": "failed",
-                    },
+                await emitter.emit_step_failed(
+                    step_id,
+                    label=NODE_PROGRESS_LABELS.get(step_id, step_id),
                 )
             raise
 

@@ -5,171 +5,43 @@ import contextlib
 import json
 import uuid
 from collections.abc import AsyncIterator
-from dataclasses import dataclass
 from typing import Any
 
 import redis.asyncio as aioredis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from dharmiq.agents.progress import (
+    NODE_PROGRESS_LABELS,
+    ProgressEmitter,
+    ProgressView,
+    StreamEvent,
+    filter_event_payload_for_view,
+    pubsub_channel,
+    seq_key,
+    sse_event_name,
+)
 from dharmiq.config.settings import Settings, get_settings
 from dharmiq.db.models.chats import (
     ChatRequest,
     ChatRequestEvent,
-    ChatRequestEventType,
     ChatRequestStatus,
-    EventVisibility,
 )
 from dharmiq.db.models.users import User
 
-NODE_PROGRESS_LABELS: dict[str, str] = {
-    "input_guard": "Checking your question…",
-    "clarifier": "Understanding your question…",
-    "query_rewriter": "Preparing search…",
-    "retrieve": "Searching laws…",
-    "answerer": "Drafting answer…",
-    "validator": "Checking answer…",
-    "finalizer": "Finalizing answer…",
-}
-
-
-def seq_key(chat_request_id: uuid.UUID) -> str:
-    return f"chat:req:{chat_request_id}:seq"
-
-
-def pubsub_channel(chat_request_id: uuid.UUID) -> str:
-    return f"chat:request:{chat_request_id}"
-
-
-def sse_event_name(db_event_type: ChatRequestEventType) -> str:
-    if db_event_type in {ChatRequestEventType.STEP_START, ChatRequestEventType.STEP_END}:
-        return "progress"
-    if db_event_type == ChatRequestEventType.ERROR:
-        return "error"
-    if db_event_type == ChatRequestEventType.DONE:
-        return "done"
-    return db_event_type.value
-
-
-@dataclass(frozen=True)
-class StreamEvent:
-    seq: int
-    sse_event: str
-    payload: dict[str, Any]
-
-    def to_sse(self) -> str:
-        return f"event: {self.sse_event}\ndata: {json.dumps(self.payload)}\n\n"
-
-
-class ProgressEmitter:
-    def __init__(
-        self,
-        db: AsyncSession,
-        chat_request_id: uuid.UUID,
-        *,
-        redis_client: aioredis.Redis | None = None,
-        settings: Settings | None = None,
-    ) -> None:
-        self.db = db
-        self.chat_request_id = chat_request_id
-        self._redis = redis_client
-        self._owns_redis = redis_client is None
-        self._settings = settings or get_settings()
-
-    async def _redis_client(self) -> aioredis.Redis:
-        if self._redis is None:
-            self._redis = aioredis.from_url(
-                self._settings.redis.url,
-                decode_responses=True,
-                single_connection_client=True,
-            )
-        return self._redis
-
-    async def close(self) -> None:
-        if self._owns_redis and self._redis is not None:
-            await self._redis.aclose()
-            self._redis = None
-
-    async def next_seq(self) -> int:
-        redis_client = await self._redis_client()
-        return int(await redis_client.incr(seq_key(self.chat_request_id)))
-
-    async def emit(
-        self,
-        *,
-        event_type: ChatRequestEventType,
-        payload: dict[str, Any],
-        visibility: EventVisibility = EventVisibility.CONCISE,
-    ) -> StreamEvent:
-        seq = await self.next_seq()
-        payload_with_seq = {"seq": seq, "visibility": visibility.value, **payload}
-
-        event = ChatRequestEvent(
-            chat_request_id=self.chat_request_id,
-            seq=seq,
-            visibility=visibility.value,
-            event_type=event_type,
-            payload=payload_with_seq,
-        )
-        self.db.add(event)
-        await self.db.flush()
-        await self.db.commit()
-
-        stream_event = StreamEvent(
-            seq=seq,
-            sse_event=sse_event_name(event_type),
-            payload=payload_with_seq,
-        )
-        await self._publish(stream_event)
-        return stream_event
-
-    async def emit_step_start(self, step_id: str, *, label: str | None = None) -> StreamEvent:
-        return await self.emit(
-            event_type=ChatRequestEventType.STEP_START,
-            payload={
-                "step_id": step_id,
-                "label": label or NODE_PROGRESS_LABELS.get(step_id, step_id),
-                "status": "running",
-            },
-        )
-
-    async def emit_step_end(self, step_id: str, *, label: str | None = None) -> StreamEvent:
-        return await self.emit(
-            event_type=ChatRequestEventType.STEP_END,
-            payload={
-                "step_id": step_id,
-                "label": label or NODE_PROGRESS_LABELS.get(step_id, step_id),
-                "status": "completed",
-            },
-        )
-
-    async def emit_error(self, *, code: str, message: str) -> StreamEvent:
-        return await self.emit(
-            event_type=ChatRequestEventType.ERROR,
-            payload={"code": code, "message": message},
-        )
-
-    async def emit_done(
-        self,
-        *,
-        message_id: uuid.UUID | None,
-        status: ChatRequestStatus,
-    ) -> StreamEvent:
-        payload: dict[str, Any] = {"status": status.value}
-        if message_id is not None:
-            payload["message_id"] = str(message_id)
-        return await self.emit(event_type=ChatRequestEventType.DONE, payload=payload)
-
-    async def _publish(self, stream_event: StreamEvent) -> None:
-        redis_client = await self._redis_client()
-        message = json.dumps(
-            {
-                "seq": stream_event.seq,
-                "sse_event": stream_event.sse_event,
-                "payload": stream_event.payload,
-            }
-        )
-        await redis_client.publish(pubsub_channel(self.chat_request_id), message)
+__all__ = [
+    "NODE_PROGRESS_LABELS",
+    "ProgressEmitter",
+    "ProgressView",
+    "StreamEvent",
+    "event_to_stream",
+    "filter_event_for_user",
+    "load_events_after_seq",
+    "pubsub_channel",
+    "seq_key",
+    "sse_event_name",
+    "stream_chat_request_events",
+]
 
 
 def event_to_stream(event: ChatRequestEvent) -> StreamEvent:
@@ -184,15 +56,22 @@ def filter_event_for_user(
     stream_event: StreamEvent,
     user: User,
     settings: Settings | None = None,
+    *,
+    view: ProgressView = "concise",
 ) -> StreamEvent | None:
-    visibility = stream_event.payload.get("visibility")
-    if visibility != EventVisibility.DEBUG.value:
-        return stream_event
-
-    cfg = settings or get_settings()
-    if user.is_superuser and cfg.agent_graph.debug_progress:
-        return stream_event
-    return None
+    filtered_payload = filter_event_payload_for_view(
+        stream_event.payload,
+        view=view,
+        user=user,
+        settings=settings,
+    )
+    if filtered_payload is None:
+        return None
+    return StreamEvent(
+        seq=stream_event.seq,
+        sse_event=stream_event.sse_event,
+        payload=filtered_payload,
+    )
 
 
 async def load_events_after_seq(
@@ -217,8 +96,16 @@ async def stream_chat_request_events(
     user: User,
     *,
     after_seq: int = 0,
+    view: ProgressView = "concise",
     settings: Settings | None = None,
 ) -> AsyncIterator[str]:
+    """Stream chat request SSE events with tiered visibility filtering.
+
+    View tiers (R4-9):
+    - concise (default): user-friendly step labels and status only
+    - detailed (?view=detailed): agent names, chunk previews, validator summary
+    - debug: rerank scores, queries, validator JSON — superuser + DHARMIQ_DEBUG_PROGRESS only
+    """
     cfg = settings or get_settings()
     redis_client = aioredis.from_url(
         cfg.redis.url,
@@ -253,7 +140,7 @@ async def stream_chat_request_events(
     terminal_received = False
 
     def _yield_if_visible(stream_event: StreamEvent) -> str | None:
-        filtered = filter_event_for_user(stream_event, user, cfg)
+        filtered = filter_event_for_user(stream_event, user, cfg, view=view)
         if filtered is None:
             return None
         seen_seqs.add(filtered.seq)

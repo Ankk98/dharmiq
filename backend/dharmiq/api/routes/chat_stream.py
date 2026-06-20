@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
@@ -16,11 +17,17 @@ from dharmiq.db.session import get_db_session
 
 router = APIRouter(prefix="/chat", tags=["chat-stream"])
 
+ProgressViewParam = Literal["concise", "detailed"]
+
 
 @router.get("/requests/{request_id}/stream")
 async def stream_chat_request(
     request_id: uuid.UUID,
     after_seq: int = Query(default=0, ge=0),
+    view: ProgressViewParam = Query(
+        default="concise",
+        description="Progress detail tier: concise (default) or detailed. Debug is never client-selectable.",
+    ),
     user: User = Depends(current_active_user),
     db: AsyncSession = Depends(get_db_session),
 ) -> StreamingResponse:
@@ -42,6 +49,7 @@ async def stream_chat_request(
             chat_request,
             user,
             after_seq=after_seq,
+            view=view,
             settings=settings,
         ):
             yield chunk

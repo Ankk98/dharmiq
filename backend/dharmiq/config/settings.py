@@ -71,6 +71,7 @@ class RedisSettings(BaseModel):
 
 class AgentGraphSettings(BaseModel):
     enabled: bool = False
+    debug_progress: bool = False
 
 
 class LLMRoleSettings(BaseModel):
@@ -244,6 +245,12 @@ def _apply_env_overrides(settings_dict: dict) -> dict:
         "yes",
     }:
         agent_graph["enabled"] = True
+    if (debug_flag := os.environ.get("DHARMIQ_DEBUG_PROGRESS")) and debug_flag.lower() in {
+        "1",
+        "true",
+        "yes",
+    }:
+        agent_graph["debug_progress"] = True
 
     return settings_dict
 

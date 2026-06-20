@@ -11,6 +11,7 @@ from dharmiq.agents.checkpoint import get_checkpointer
 from dharmiq.agents.graph import build_agent_graph
 from dharmiq.agents.runtime import GraphRuntime
 from dharmiq.agents.state import AgentGraphState
+from dharmiq.agents.streaming import ProgressEmitter
 from dharmiq.config.settings import Settings, get_settings
 from dharmiq.core.errors import OpenRouterError
 from dharmiq.core.logging import get_logger
@@ -49,7 +50,7 @@ async def _seed_clarifier_round(db: AsyncSession, session_id: uuid.UUID) -> int:
 async def _persist_clarifier_return(
     runtime: GraphRuntime,
     state: AgentGraphState,
-) -> None:
+) -> ChatMessage:
     followups = state.get("followup_questions") or []
     clarifier_content = "\n".join(f"- {question}" for question in followups)
     clarifier_msg = ChatMessage(
@@ -75,6 +76,7 @@ async def _persist_clarifier_return(
 
     for message in runtime.new_messages:
         await runtime.db.refresh(message)
+    return clarifier_msg
 
 
 def _citations_from_state(state: AgentGraphState) -> list[CitationRead]:
@@ -82,30 +84,25 @@ def _citations_from_state(state: AgentGraphState) -> list[CitationRead]:
     return [CitationRead.model_validate(item) for item in raw]
 
 
-async def run_agent_graph_sync(
+async def create_agent_graph_request(
     db: AsyncSession,
     *,
     chat_session: ChatSession,
     user: User,
     user_message: str,
+    force_answer: bool = False,
     settings: Settings | None = None,
-    client: OpenRouterClient | None = None,
-    checkpointer=None,
-    interrupt_after: list[str] | None = None,
-) -> ChatPipelineResult:
+) -> GraphRuntime:
     cfg = settings or get_settings()
-    llm = client or get_openrouter_client()
-    started = time.monotonic()
-    model_name = cfg.openrouter.default_model
-
     clarifier_round = await _seed_clarifier_round(db, chat_session.id)
 
     chat_request = ChatRequest(
         session_id=chat_session.id,
         user_id=user.id,
         status=ChatRequestStatus.PENDING,
-        llm_model=model_name,
+        llm_model=cfg.openrouter.default_model,
         clarifier_round=clarifier_round,
+        force_answer=force_answer,
     )
     db.add(chat_request)
     await db.flush()
@@ -123,47 +120,124 @@ async def run_agent_graph_sync(
         chat_session.title = user_message.strip().replace("\n", " ")[:80]
 
     history = await _load_history(db, chat_session.id, limit=cfg.chat.history_limit)
+    await db.commit()
+    await db.refresh(chat_request)
+    await db.refresh(user_msg)
 
-    runtime = GraphRuntime(
+    return GraphRuntime(
         db=db,
         settings=cfg,
-        client=llm,
+        client=get_openrouter_client(),
         user=user,
         chat_session=chat_session,
         chat_request=chat_request,
         history=history,
         user_msg=user_msg,
         new_messages=[user_msg],
-        started=started,
     )
 
-    initial_state: AgentGraphState = {
-        "chat_request_id": str(chat_request.id),
-        "session_id": str(chat_session.id),
-        "user_id": str(user.id),
-        "user_message": user_message,
+
+def _initial_state(runtime: GraphRuntime) -> AgentGraphState:
+    return {
+        "chat_request_id": str(runtime.chat_request.id),
+        "session_id": str(runtime.chat_session.id),
+        "user_id": str(runtime.user.id),
+        "user_message": runtime.user_msg.content,
         "attached_upload_ids": [],
-        "clarifier_round": clarifier_round,
-        "force_answer": chat_request.force_answer,
-        "stated_assumptions": chat_request.stated_assumptions or [],
+        "clarifier_round": runtime.chat_request.clarifier_round,
+        "force_answer": runtime.chat_request.force_answer,
+        "stated_assumptions": runtime.chat_request.stated_assumptions or [],
         "regeneration_count": 0,
         "total_tokens": 0,
-        "max_validator_retries": cfg.chat.max_validator_retries,
+        "max_validator_retries": runtime.settings.chat.max_validator_retries,
     }
+
+
+async def _load_runtime_for_request(
+    db: AsyncSession,
+    chat_request_id: uuid.UUID,
+    *,
+    settings: Settings | None = None,
+    emitter: ProgressEmitter | None = None,
+) -> GraphRuntime:
+    cfg = settings or get_settings()
+    result = await db.execute(select(ChatRequest).where(ChatRequest.id == chat_request_id))
+    chat_request = result.scalar_one()
+
+    session_result = await db.execute(
+        select(ChatSession).where(ChatSession.id == chat_request.session_id)
+    )
+    chat_session = session_result.scalar_one()
+
+    user_result = await db.execute(select(User).where(User.id == chat_request.user_id))
+    user = user_result.scalar_one()
+
+    messages_result = await db.execute(
+        select(ChatMessage)
+        .where(
+            ChatMessage.session_id == chat_session.id,
+            ChatMessage.role == MessageRole.USER,
+        )
+        .order_by(ChatMessage.created_at.desc())
+    )
+    user_msg = next(
+        (
+            message
+            for message in messages_result.scalars().all()
+            if (message.message_metadata or {}).get("chat_request_id") == str(chat_request.id)
+        ),
+        None,
+    )
+    if user_msg is None:
+        raise ValueError(f"User message not found for chat request {chat_request.id}")
+
+    history = await _load_history(db, chat_session.id, limit=cfg.chat.history_limit)
+
+    return GraphRuntime(
+        db=db,
+        settings=cfg,
+        client=get_openrouter_client(),
+        user=user,
+        chat_session=chat_session,
+        chat_request=chat_request,
+        history=history,
+        user_msg=user_msg,
+        new_messages=[user_msg],
+        emitter=emitter,
+    )
+
+
+async def run_agent_graph_for_request(
+    db: AsyncSession,
+    chat_request_id: uuid.UUID,
+    *,
+    settings: Settings | None = None,
+    client: OpenRouterClient | None = None,
+    checkpointer=None,
+    interrupt_after: list[str] | None = None,
+) -> ChatPipelineResult:
+    cfg = settings or get_settings()
+    emitter = ProgressEmitter(db, chat_request_id, settings=cfg)
+    runtime = await _load_runtime_for_request(db, chat_request_id, settings=cfg, emitter=emitter)
+    if client is not None:
+        runtime.client = client
+
+    started = time.monotonic()
+    initial_state = _initial_state(runtime)
 
     saver = checkpointer if checkpointer is not None else await get_checkpointer(cfg)
     graph = build_agent_graph(checkpointer=saver)
 
     run_config: RunnableConfig = {
         "configurable": {
-            "thread_id": str(chat_request.id),
+            "thread_id": str(chat_request_id),
             "runtime": runtime,
         },
     }
 
     try:
-        chat_request.status = ChatRequestStatus.RUNNING
-        await db.flush()
+        runtime.chat_request.status = ChatRequestStatus.RUNNING
+        await db.commit()
 
         if interrupt_after:
             final_state = await graph.ainvoke(
@@ -175,9 +249,14 @@ async def run_agent_graph_sync(
             final_state = await graph.ainvoke(initial_state, run_config)
 
         if final_state.get("needs_clarification") and final_state.get("followup_questions"):
-            await _persist_clarifier_return(runtime, final_state)
+            clarifier_msg = await _persist_clarifier_return(runtime, final_state)
+            if runtime.emitter is not None:
+                await runtime.emitter.emit_done(
+                    message_id=clarifier_msg.id,
+                    status=ChatRequestStatus.COMPLETED,
+                )
             return ChatPipelineResult(
-                chat_request_id=chat_request.id,
+                chat_request_id=runtime.chat_request.id,
                 status=ChatRequestStatus.COMPLETED,
                 needs_clarification=True,
                 followup_questions=final_state.get("followup_questions") or [],
@@ -187,22 +266,36 @@ async def run_agent_graph_sync(
 
         if final_state.get("blocked"):
             error_message = final_state.get("block_reason") or "Request blocked"
-            await _mark_request_failed(db, chat_request, error_message=error_message)
+            await _mark_request_failed(db, runtime.chat_request, error_message=error_message)
+            if runtime.emitter is not None:
+                await runtime.emitter.emit_error(code="INPUT_BLOCKED", message=error_message)
+                await runtime.emitter.emit_done(
+                    message_id=None,
+                    status=ChatRequestStatus.FAILED,
+                )
             return ChatPipelineResult(
-                chat_request_id=chat_request.id,
+                chat_request_id=runtime.chat_request.id,
                 status=ChatRequestStatus.FAILED,
                 needs_clarification=False,
                 error_message=error_message,
                 taking_longer_than_expected=_elapsed_over_threshold(started, cfg),
-                new_messages=[ChatMessageRead.model_validate(user_msg)],
+                new_messages=[ChatMessageRead.model_validate(runtime.user_msg)],
             )
 
         await db.commit()
-        for message in runtime.new_messages:
-            await db.refresh(message)
+
+        assistant_msg = next(
+            (message for message in runtime.new_messages if message.role == MessageRole.ASSISTANT),
+            None,
+        )
+        if runtime.emitter is not None:
+            await runtime.emitter.emit_done(
+                message_id=assistant_msg.id if assistant_msg is not None else None,
+                status=ChatRequestStatus.COMPLETED,
+            )
 
         return ChatPipelineResult(
-            chat_request_id=chat_request.id,
+            chat_request_id=runtime.chat_request.id,
             status=ChatRequestStatus.COMPLETED,
             needs_clarification=False,
             answer=final_state.get("final_answer"),
@@ -215,22 +308,57 @@ async def run_agent_graph_sync(
     except OpenRouterError as exc:
         logger.error(
             "agent_graph_openrouter_error",
-            chat_request_id=str(chat_request.id),
+            chat_request_id=str(chat_request_id),
             error=exc.message,
         )
-        await _mark_request_failed(db, chat_request, error_message=exc.message)
+        await _mark_request_failed(db, runtime.chat_request, error_message=exc.message)
+        if runtime.emitter is not None:
+            await runtime.emitter.emit_error(code="LLM_ERROR", message=exc.message)
+            await runtime.emitter.emit_done(message_id=None, status=ChatRequestStatus.FAILED)
         return ChatPipelineResult(
-            chat_request_id=chat_request.id,
+            chat_request_id=runtime.chat_request.id,
             status=ChatRequestStatus.FAILED,
             needs_clarification=False,
             error_message=exc.message,
             taking_longer_than_expected=_elapsed_over_threshold(started, cfg),
-            new_messages=[ChatMessageRead.model_validate(user_msg)],
+            new_messages=[ChatMessageRead.model_validate(runtime.user_msg)],
         )
     except Exception:
-        logger.exception(
-            "agent_graph_error",
-            chat_request_id=str(chat_request.id),
-        )
-        await _mark_request_failed(db, chat_request, error_message="Internal error")
+        logger.exception("agent_graph_error", chat_request_id=str(chat_request_id))
+        await _mark_request_failed(db, runtime.chat_request, error_message="Internal error")
+        if runtime.emitter is not None:
+            await runtime.emitter.emit_error(code="INTERNAL_ERROR", message="Internal error")
+            await runtime.emitter.emit_done(message_id=None, status=ChatRequestStatus.FAILED)
         raise
+    finally:
+        await emitter.close()
+
+
+async def run_agent_graph_sync(
+    db: AsyncSession,
+    *,
+    chat_session: ChatSession,
+    user: User,
+    user_message: str,
+    settings: Settings | None = None,
+    client: OpenRouterClient | None = None,
+    checkpointer=None,
+    interrupt_after: list[str] | None = None,
+) -> ChatPipelineResult:
+    runtime = await create_agent_graph_request(
+        db,
+        chat_session=chat_session,
+        user=user,
+        user_message=user_message,
+        settings=settings,
+    )
+    if client is not None:
+        runtime.client = client
+    return await run_agent_graph_for_request(
+        db,
+        runtime.chat_request.id,
+        settings=settings,
+        client=client,
+        checkpointer=checkpointer,
+        interrupt_after=interrupt_after,
+    )

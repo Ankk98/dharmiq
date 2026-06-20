@@ -3,25 +3,28 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from dharmiq.auth.manager import current_active_user
-from dharmiq.db.models.chats import ChatMessage, ChatRequest, ChatSession, MessageRole
+from dharmiq.agents.runner import create_agent_graph_request, run_agent_graph_sync
+from dharmiq.config.settings import get_settings
+from dharmiq.db.models.chats import ChatMessage, ChatRequest, ChatRequestStatus, ChatSession, MessageRole
 from dharmiq.db.models.users import User
 from dharmiq.db.session import get_db_session
 from dharmiq.schemas.chat import (
-    ChatMessageCreate,
     ChatMessageRead,
     ChatPipelineRequest,
     ChatPipelineResponse,
+    ChatRequestPendingResponse,
     ChatRequestRead,
     ChatSessionCreate,
     ChatSessionRead,
+    SessionMessageCreate,
 )
-from dharmiq.config.settings import get_settings
 from dharmiq.llm.pipeline import run_chat_pipeline
-from dharmiq.agents.runner import run_agent_graph_sync
+from dharmiq.tasks.chat_tasks import enqueue_agent_graph
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -87,18 +90,46 @@ async def get_session(
     return await _get_user_session(session_id, user, db)
 
 
-@router.post(
-    "/sessions/{session_id}/messages",
-    response_model=ChatMessageRead,
-    status_code=status.HTTP_201_CREATED,
-)
-async def append_message(
+@router.post("/sessions/{session_id}/messages")
+async def post_session_message(
     session_id: uuid.UUID,
-    body: ChatMessageCreate,
+    body: SessionMessageCreate,
     user: User = Depends(current_active_user),
     db: AsyncSession = Depends(get_db_session),
-) -> ChatMessage:
+):
     chat_session = await _get_user_session(session_id, user, db)
+    settings = get_settings()
+
+    if settings.agent_graph.enabled:
+        active = await db.execute(
+            select(ChatRequest).where(
+                ChatRequest.session_id == chat_session.id,
+                ChatRequest.status.in_([ChatRequestStatus.PENDING, ChatRequestStatus.RUNNING]),
+            )
+        )
+        if active.scalar_one_or_none() is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="A chat request is already in progress for this session",
+            )
+
+        runtime = await create_agent_graph_request(
+            db,
+            chat_session=chat_session,
+            user=user,
+            user_message=body.content,
+            force_answer=body.force_answer,
+            settings=settings,
+        )
+        enqueue_agent_graph(runtime.chat_request.id)
+        payload = ChatRequestPendingResponse(
+            chat_request_id=runtime.chat_request.id,
+            status="pending",
+        )
+        return JSONResponse(
+            status_code=status.HTTP_202_ACCEPTED,
+            content=payload.model_dump(mode="json"),
+        )
 
     message = ChatMessage(
         session_id=chat_session.id,
@@ -114,7 +145,10 @@ async def append_message(
 
     await db.commit()
     await db.refresh(message)
-    return message
+    return JSONResponse(
+        status_code=status.HTTP_201_CREATED,
+        content=ChatMessageRead.model_validate(message).model_dump(mode="json"),
+    )
 
 
 @router.get("/sessions/{session_id}/messages", response_model=list[ChatMessageRead])

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -28,6 +28,18 @@ class ChatMessageCreate(BaseModel):
     role: MessageRole = MessageRole.USER
     content: str = Field(min_length=1)
     metadata: dict[str, Any] | None = None
+
+
+class SessionMessageCreate(BaseModel):
+    content: str = Field(min_length=1)
+    force_answer: bool = False
+    role: MessageRole = MessageRole.USER
+    metadata: dict[str, Any] | None = None
+
+
+class ChatRequestPendingResponse(BaseModel):
+    chat_request_id: uuid.UUID
+    status: Literal["pending"] = "pending"
 
 
 class ChatMessageRead(BaseModel):

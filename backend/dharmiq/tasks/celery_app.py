@@ -17,6 +17,7 @@ celery_app = Celery(
         "dharmiq.tasks.ingestion_tasks",
         "dharmiq.tasks.eval_tasks",
         "dharmiq.tasks.beat_schedule",
+        "dharmiq.tasks.chat_tasks",
     ],
 )
 

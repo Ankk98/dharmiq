@@ -1,7 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from collections.abc import Awaitable, Callable
+from functools import wraps
+from typing import TYPE_CHECKING, Any, Literal
 
+from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, StateGraph
 
 from dharmiq.agents.nodes.answerer import answerer_node
@@ -11,11 +14,44 @@ from dharmiq.agents.nodes.input_guard import input_guard_node
 from dharmiq.agents.nodes.query_rewriter import query_rewriter_node
 from dharmiq.agents.nodes.retrieve import retrieve_node
 from dharmiq.agents.nodes.validator import validator_node
+from dharmiq.agents.runtime import GraphRuntime
 from dharmiq.agents.state import AgentGraphState
+from dharmiq.agents.streaming import NODE_PROGRESS_LABELS
+from dharmiq.db.models.chats import ChatRequestEventType
 
 if TYPE_CHECKING:
     from langgraph.checkpoint.base import BaseCheckpointSaver
     from langgraph.graph.state import CompiledStateGraph
+
+
+def with_progress(
+    step_id: str,
+    node_fn: Callable[..., Awaitable[dict[str, Any]]],
+) -> Callable[..., Awaitable[dict[str, Any]]]:
+    @wraps(node_fn)
+    async def wrapped(state: AgentGraphState, config: RunnableConfig) -> dict[str, Any]:
+        runtime: GraphRuntime = config["configurable"]["runtime"]
+        emitter = runtime.emitter
+        if emitter is not None:
+            await emitter.emit_step_start(step_id)
+        try:
+            result = await node_fn(state, config)
+            if emitter is not None:
+                await emitter.emit_step_end(step_id)
+            return result
+        except Exception:
+            if emitter is not None:
+                await emitter.emit(
+                    event_type=ChatRequestEventType.STEP_END,
+                    payload={
+                        "step_id": step_id,
+                        "label": NODE_PROGRESS_LABELS.get(step_id, step_id),
+                        "status": "failed",
+                    },
+                )
+            raise
+
+    return wrapped
 
 
 def _route_after_input_guard(state: AgentGraphState) -> Literal["clarifier", "__end__"]:
@@ -47,13 +83,13 @@ def build_agent_graph(
 ) -> CompiledStateGraph:
     builder = StateGraph(AgentGraphState)
 
-    builder.add_node("input_guard", input_guard_node)
-    builder.add_node("clarifier", clarifier_node)
-    builder.add_node("query_rewriter", query_rewriter_node)
-    builder.add_node("retrieve", retrieve_node)
-    builder.add_node("answerer", answerer_node)
-    builder.add_node("validator", validator_node)
-    builder.add_node("finalizer", finalizer_node)
+    builder.add_node("input_guard", with_progress("input_guard", input_guard_node))
+    builder.add_node("clarifier", with_progress("clarifier", clarifier_node))
+    builder.add_node("query_rewriter", with_progress("query_rewriter", query_rewriter_node))
+    builder.add_node("retrieve", with_progress("retrieve", retrieve_node))
+    builder.add_node("answerer", with_progress("answerer", answerer_node))
+    builder.add_node("validator", with_progress("validator", validator_node))
+    builder.add_node("finalizer", with_progress("finalizer", finalizer_node))
 
     builder.set_entry_point("input_guard")
     builder.add_conditional_edges("input_guard", _route_after_input_guard)

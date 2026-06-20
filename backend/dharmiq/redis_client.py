@@ -18,7 +18,11 @@ async def get_redis(settings: Settings | None = None) -> aioredis.Redis:
 async def close_redis() -> None:
     global _redis_client
     if _redis_client is not None:
-        await _redis_client.aclose()
+        try:
+            await _redis_client.aclose()
+        except RuntimeError:
+            # Test runners may close the loop before fixture teardown runs.
+            pass
         _redis_client = None
 
 

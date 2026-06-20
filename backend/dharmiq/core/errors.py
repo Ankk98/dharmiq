@@ -38,3 +38,31 @@ class UploadError(DharmiqError):
 
 class EvalError(DharmiqError):
     """Raised when evaluation cannot run (missing corpus, config, etc.)."""
+
+
+class InputValidationError(DharmiqError):
+    """Raised when chat input fails guardrail validation."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        code: str = "INPUT_INVALID",
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__(message, details=details)
+        self.code = code
+
+
+class RateLimitExceededError(DharmiqError):
+    """Raised when a user exceeds configured chat rate limits."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        retry_after_seconds: int | None = None,
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__(message, details=details)
+        self.retry_after_seconds = retry_after_seconds

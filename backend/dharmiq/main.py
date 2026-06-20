@@ -3,11 +3,18 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
+from dharmiq.api.middleware.guardrails import (
+    ChatGuardrailsMiddleware,
+    input_validation_response,
+    rate_limit_response,
+)
 from dharmiq.api.routes import auth, chat, chat_attachments, chat_stream, docs, health, metrics, uploads
 from dharmiq.config.settings import get_settings
+from dharmiq.core.errors import InputValidationError, RateLimitExceededError
 from dharmiq.core.logging import get_logger, setup_logging
 from dharmiq.db.session import close_db, init_db
 from dharmiq.llm.openrouter_client import close_openrouter_client
@@ -47,7 +54,17 @@ def create_app() -> FastAPI:
     app.include_router(uploads.router, prefix="/api")
     app.include_router(docs.router, prefix="/api")
     app.include_router(metrics.router)
+
+    @app.exception_handler(InputValidationError)
+    def _handle_input_validation(_request: Request, exc: InputValidationError) -> JSONResponse:
+        return input_validation_response(exc)
+
+    @app.exception_handler(RateLimitExceededError)
+    def _handle_rate_limit(_request: Request, exc: RateLimitExceededError) -> JSONResponse:
+        return rate_limit_response(exc)
+
     app.add_middleware(PrometheusMiddleware)
+    app.add_middleware(ChatGuardrailsMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.server.cors_origins,

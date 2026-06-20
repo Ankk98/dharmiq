@@ -145,6 +145,12 @@ class ChatSettings(BaseModel):
     server_timeout_seconds: float = 60.0
 
 
+class GuardrailsSettings(BaseModel):
+    max_message_length: int = 8192
+    requests_per_minute: int = 10
+    requests_per_day: int = 200
+
+
 class IngestionSettings(BaseModel):
     corpus_dir: str = "data/corpus/india_code/raw"
     batch_size: int = 10
@@ -221,6 +227,7 @@ class Settings(BaseModel):
     embeddings: EmbeddingsSettings = Field(default_factory=EmbeddingsSettings)
     retrieval: RetrievalSettings = Field(default_factory=RetrievalSettings)
     chat: ChatSettings = Field(default_factory=ChatSettings)
+    guardrails: GuardrailsSettings = Field(default_factory=GuardrailsSettings)
     ingestion: IngestionSettings = Field(default_factory=IngestionSettings)
     uploads: UploadSettings = Field(default_factory=UploadSettings)
     eval: EvalSettings = Field(default_factory=EvalSettings)

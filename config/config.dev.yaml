@@ -65,6 +65,11 @@ chat:
   slow_threshold_seconds: 30
   server_timeout_seconds: 60
 
+guardrails:
+  max_message_length: 8192
+  requests_per_minute: 10
+  requests_per_day: 200
+
 ingestion:
   corpus_dir: data/corpus/india_code/raw
   batch_size: 10

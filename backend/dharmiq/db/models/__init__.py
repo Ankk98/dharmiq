@@ -1,4 +1,15 @@
-from dharmiq.db.models.chats import ChatMessage, ChatRequest, ChatRequestStatus, ChatSession, MessageRole
+from dharmiq.db.models.chats import (
+    ChatMessage,
+    ChatRequest,
+    ChatRequestEvent,
+    ChatRequestEventType,
+    ChatRequestStatus,
+    ChatSession,
+    ChatSessionUpload,
+    ContextSummary,
+    EventVisibility,
+    MessageRole,
+)
 from dharmiq.db.models.documents import (
     DocType,
     DocumentChunk,
@@ -16,11 +27,16 @@ __all__ = [
     "EvalRun",
     "ChatMessage",
     "ChatRequest",
+    "ChatRequestEvent",
+    "ChatRequestEventType",
     "ChatRequestStatus",
     "ChatSession",
+    "ChatSessionUpload",
+    "ContextSummary",
     "DocType",
     "DocumentChunk",
     "DocumentSection",
+    "EventVisibility",
     "MessageRole",
     "SourceDocument",
     "User",

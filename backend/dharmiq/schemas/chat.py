@@ -6,7 +6,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from dharmiq.db.models.chats import ChatRequestStatus, MessageRole
+from dharmiq.db.models.chats import ChatRequestEventType, ChatRequestStatus, MessageRole
 from dharmiq.llm.retrieval import CitationRead
 
 
@@ -38,6 +38,8 @@ class ChatMessageRead(BaseModel):
     user_id: uuid.UUID
     role: MessageRole
     content: str
+    content_compressed: str | None = None
+    compression_version: int | None = None
     metadata: dict[str, Any] | None = Field(default=None, validation_alias="message_metadata")
     created_at: datetime
 
@@ -59,6 +61,10 @@ class ChatRequestRead(BaseModel):
     error_message: str | None
     llm_model: str | None
     total_tokens: int | None
+    clarifier_round: int = 0
+    force_answer: bool = False
+    stated_assumptions: list[str] | None = None
+    progress_view: str | None = None
 
 
 class ChatPipelineResponse(BaseModel):
@@ -72,3 +78,34 @@ class ChatPipelineResponse(BaseModel):
     taking_longer_than_expected: bool = False
     messages: list[ChatMessageRead] = Field(default_factory=list)
     error_message: str | None = None
+
+
+class ChatSessionUploadRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    session_id: uuid.UUID
+    upload_id: uuid.UUID
+    attached_at: datetime
+
+
+class ChatRequestEventRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    chat_request_id: uuid.UUID
+    seq: int
+    visibility: str
+    event_type: ChatRequestEventType
+    payload: dict[str, Any]
+    created_at: datetime
+
+
+class ContextSummaryRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    session_id: uuid.UUID
+    covers_message_ids: list[uuid.UUID]
+    summary_text: str
+    facts_json: dict[str, Any] | None = None
+    created_at: datetime

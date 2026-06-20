@@ -48,11 +48,19 @@ Local Postgres listens on **port 5433** (see `config/config.dev.yaml`).
 | Service | Port | Purpose |
 |---------|------|---------|
 | `postgres` | 5433 | PostgreSQL 16 + pgvector |
-| `redis` | 6379 | Celery broker |
+| `redis` | 6379 | Celery broker + SSE pub/sub |
+| `redis-commander` | 8081 | Redis browser UI |
+| `flower` | 5555 | Celery worker / task monitor |
 | `prometheus` | 9090 | Metrics scraper |
 | `grafana` | 3000 | Dashboards (admin / admin) |
 
-Start observability only:
+All infra including Redis Commander and Flower:
+
+```bash
+docker compose up -d
+```
+
+Observability only:
 
 ```bash
 docker compose up -d prometheus grafana

@@ -61,6 +61,15 @@ cp .env.example .env
 docker compose up -d
 ```
 
+Starts Postgres, Redis, **Redis Commander**, **Flower**, Prometheus, and Grafana.
+
+| Service | URL | Purpose |
+|---------|-----|---------|
+| Redis Commander | http://localhost:8081 | Browse Redis keys (Celery queue, SSE seq counters) |
+| Flower | http://localhost:5555 | Celery workers, active/completed/failed tasks |
+| Prometheus | http://localhost:9090 | Metrics scraper |
+| Grafana | http://localhost:3000 | Dashboards (`admin` / `admin`) |
+
 ### 2. Backend
 
 ```bash
@@ -89,11 +98,7 @@ npm run dev
 
 Open http://localhost:5173. The frontend proxies `/api` to the backend on port 8000.
 
-### 4. Optional – observability
-
-```bash
-docker compose up -d prometheus grafana
-```
+### Dev dashboards (from `docker compose up -d`)
 
 | Service | URL |
 |---------|-----|
@@ -101,10 +106,14 @@ docker compose up -d prometheus grafana
 | API | http://localhost:8000 |
 | API health | http://localhost:8000/api/health |
 | Metrics | http://localhost:8000/metrics |
+| **Flower** (Celery) | http://localhost:5555 |
+| **Redis Commander** | http://localhost:8081 |
 | Prometheus | http://localhost:9090 |
 | Grafana | http://localhost:3000 (admin / admin) |
 
 In Grafana: **Dashboards → Dharmiq → Dharmiq Overview**. The API must be running for Prometheus to scrape metrics.
+
+Flower shows workers and tasks once `uv run celery -A celery_app worker` is running on the host (same Redis broker). Redis Commander shows the `celery` queue and keys like `chat:req:{id}:seq`.
 
 ## Configuration
 

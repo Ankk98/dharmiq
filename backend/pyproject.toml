@@ -46,6 +46,7 @@ dev = [
     "pytest-asyncio>=0.25.0",
     "respx>=0.22.0",
     "ruff>=0.9.0",
+    "flower>=2.0.0",
 ]
 
 [project.scripts]
@@ -69,4 +70,9 @@ asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 markers = [
     "slow: downloads or runs heavyweight models",
+]
+
+[dependency-groups]
+dev = [
+    "flower>=2.0.1",
 ]

@@ -102,3 +102,28 @@ def process_user_upload(self, upload_id: str) -> dict[str, int | str]:
         raise self.retry(exc=exc, countdown=30 * (self.request.retries + 1)) from exc
 
     return {"upload_id": upload_id, "chunks": chunk_count}
+
+
+@celery_app.task(name="dharmiq.ingestion.reindex_corpus_v02", bind=True, max_retries=1)
+def reindex_corpus_v02(self) -> dict[str, int]:
+    """Backfill parent/child v0.2 chunks for all indexed corpus documents."""
+    settings = get_settings()
+    setup_logging(settings)
+    logger.info("reindex_corpus_v02_started")
+
+    async def _run(db):
+        from dharmiq.ingestion.pipeline import reindex_corpus_v02_safe
+
+        return await reindex_corpus_v02_safe(db, settings=settings)
+
+    try:
+        result = _run_async(_with_db_session(_run))
+    except Exception as exc:
+        logger.exception("reindex_corpus_v02_failed", error=str(exc))
+        raise self.retry(exc=exc, countdown=120) from exc
+
+    return {
+        "documents": result.documents,
+        "chunks_created": result.chunks_created,
+        "chunks_removed": result.chunks_removed,
+    }

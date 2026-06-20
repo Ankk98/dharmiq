@@ -13,7 +13,40 @@ if TYPE_CHECKING:
     from dharmiq.llm.retrieval import RetrievedChunk
 
 
-_CORPUS_VECTOR_SQL = text("""
+_CORPUS_SEARCHABLE_FILTER = """
+    AND (
+        (dc.metadata->>'schema_version' = 'v02' AND dc.parent_chunk_id IS NOT NULL)
+        OR (
+            COALESCE(dc.metadata->>'schema_version', '') <> 'v02'
+            AND NOT EXISTS (
+                SELECT 1
+                FROM document_chunks v02
+                WHERE v02.document_id = dc.document_id
+                  AND v02.metadata->>'schema_version' = 'v02'
+                  AND v02.parent_chunk_id IS NOT NULL
+            )
+        )
+    )
+"""
+
+_UPLOAD_SEARCHABLE_FILTER = """
+    AND (
+        (uuc.metadata->>'schema_version' = 'v02' AND uuc.parent_chunk_id IS NOT NULL)
+        OR (
+            COALESCE(uuc.metadata->>'schema_version', '') <> 'v02'
+            AND NOT EXISTS (
+                SELECT 1
+                FROM user_upload_chunks v02
+                WHERE v02.upload_id = uuc.upload_id
+                  AND v02.metadata->>'schema_version' = 'v02'
+                  AND v02.parent_chunk_id IS NOT NULL
+            )
+        )
+    )
+"""
+
+
+_CORPUS_VECTOR_SQL = text(f"""
     SELECT
         dc.id AS chunk_id,
         dc.document_id,
@@ -22,16 +55,20 @@ _CORPUS_VECTOR_SQL = text("""
         dc.chunk_index,
         dc.page_start,
         dc.page_end,
+        dc.parent_chunk_id,
+        parent.text AS parent_text,
         dc.embedding <=> :query_embedding AS distance
     FROM document_chunks dc
     JOIN source_documents sd ON dc.document_id = sd.id
+    LEFT JOIN document_chunks parent ON dc.parent_chunk_id = parent.id
     WHERE dc.embedding IS NOT NULL
+    {_CORPUS_SEARCHABLE_FILTER}
     ORDER BY distance
     LIMIT :top_k
 """)
 
 
-_CORPUS_BM25_SQL = text("""
+_CORPUS_BM25_SQL = text(f"""
     SELECT
         dc.id AS chunk_id,
         dc.document_id,
@@ -40,16 +77,20 @@ _CORPUS_BM25_SQL = text("""
         dc.chunk_index,
         dc.page_start,
         dc.page_end,
+        dc.parent_chunk_id,
+        parent.text AS parent_text,
         ts_rank(dc.search_vector, plainto_tsquery('english', :query)) AS rank
     FROM document_chunks dc
     JOIN source_documents sd ON dc.document_id = sd.id
+    LEFT JOIN document_chunks parent ON dc.parent_chunk_id = parent.id
     WHERE dc.search_vector @@ plainto_tsquery('english', :query)
+    {_CORPUS_SEARCHABLE_FILTER}
     ORDER BY rank DESC
     LIMIT :top_k
 """)
 
 
-_UPLOAD_VECTOR_SQL = text("""
+_UPLOAD_VECTOR_SQL = text(f"""
     SELECT
         uuc.id AS chunk_id,
         uuc.upload_id AS document_id,
@@ -58,19 +99,23 @@ _UPLOAD_VECTOR_SQL = text("""
         uuc.chunk_index,
         uuc.page_start,
         uuc.page_end,
+        uuc.parent_chunk_id,
+        parent.text AS parent_text,
         uuc.embedding <=> :query_embedding AS distance
     FROM user_upload_chunks uuc
     JOIN user_uploads uu ON uuc.upload_id = uu.id
+    LEFT JOIN user_upload_chunks parent ON uuc.parent_chunk_id = parent.id
     WHERE uu.user_id = :user_id
       AND uu.deleted_at IS NULL
       AND uuc.embedding IS NOT NULL
       AND uuc.upload_id = ANY(:attached_upload_ids)
+    {_UPLOAD_SEARCHABLE_FILTER}
     ORDER BY distance
     LIMIT :top_k
 """).bindparams(bindparam("attached_upload_ids", type_=ARRAY(PGUUID())))
 
 
-_UPLOAD_BM25_SQL = text("""
+_UPLOAD_BM25_SQL = text(f"""
     SELECT
         uuc.id AS chunk_id,
         uuc.upload_id AS document_id,
@@ -79,13 +124,17 @@ _UPLOAD_BM25_SQL = text("""
         uuc.chunk_index,
         uuc.page_start,
         uuc.page_end,
+        uuc.parent_chunk_id,
+        parent.text AS parent_text,
         ts_rank(uuc.search_vector, plainto_tsquery('english', :query)) AS rank
     FROM user_upload_chunks uuc
     JOIN user_uploads uu ON uuc.upload_id = uu.id
+    LEFT JOIN user_upload_chunks parent ON uuc.parent_chunk_id = parent.id
     WHERE uu.user_id = :user_id
       AND uu.deleted_at IS NULL
       AND uuc.search_vector @@ plainto_tsquery('english', :query)
       AND uuc.upload_id = ANY(:attached_upload_ids)
+    {_UPLOAD_SEARCHABLE_FILTER}
     ORDER BY rank DESC
     LIMIT :top_k
 """).bindparams(bindparam("attached_upload_ids", type_=ARRAY(PGUUID())))
@@ -124,7 +173,13 @@ def reciprocal_rank_fusion(
     ]
 
 
-def _row_to_corpus_chunk(row: object) -> RetrievedChunk:
+def _answer_text(child_text: str, parent_text: str | None) -> str:
+    if parent_text and parent_text.strip():
+        return parent_text
+    return child_text
+
+
+def _row_to_corpus_chunk(row: object, *, hydrate_parent: bool = False) -> RetrievedChunk:
     from dharmiq.llm.retrieval import RetrievedChunk
 
     mapping = row._mapping  # type: ignore[attr-defined]
@@ -132,12 +187,15 @@ def _row_to_corpus_chunk(row: object) -> RetrievedChunk:
         score = 1.0 - float(mapping["distance"])
     else:
         score = float(mapping["rank"])
+    child_text = mapping["text"]
+    parent_text = mapping.get("parent_text")
+    text = _answer_text(child_text, parent_text) if hydrate_parent else child_text
     return RetrievedChunk(
         chunk_id=mapping["chunk_id"],
         source_type="corpus",
         document_id=mapping["document_id"],
         document_title=mapping["document_title"],
-        text=mapping["text"],
+        text=text,
         score=score,
         chunk_index=mapping["chunk_index"],
         page_start=mapping["page_start"],
@@ -145,7 +203,7 @@ def _row_to_corpus_chunk(row: object) -> RetrievedChunk:
     )
 
 
-def _row_to_upload_chunk(row: object) -> RetrievedChunk:
+def _row_to_upload_chunk(row: object, *, hydrate_parent: bool = False) -> RetrievedChunk:
     from dharmiq.llm.retrieval import RetrievedChunk
 
     mapping = row._mapping  # type: ignore[attr-defined]
@@ -153,17 +211,87 @@ def _row_to_upload_chunk(row: object) -> RetrievedChunk:
         score = 1.0 - float(mapping["distance"])
     else:
         score = float(mapping["rank"])
+    child_text = mapping["text"]
+    parent_text = mapping.get("parent_text")
+    text = _answer_text(child_text, parent_text) if hydrate_parent else child_text
     return RetrievedChunk(
         chunk_id=mapping["chunk_id"],
         source_type="upload",
         document_id=mapping["document_id"],
         document_title=mapping["document_title"],
-        text=mapping["text"],
+        text=text,
         score=score,
         chunk_index=mapping["chunk_index"],
         page_start=mapping["page_start"],
         page_end=mapping["page_end"],
     )
+
+
+async def hydrate_parent_texts(
+    db: AsyncSession,
+    chunks: list[RetrievedChunk],
+) -> list[RetrievedChunk]:
+    """Swap child chunk text for parent section text when parent_chunk_id is set."""
+    from dharmiq.llm.retrieval import RetrievedChunk as Chunk
+
+    if not chunks:
+        return []
+
+    corpus_ids = [chunk.chunk_id for chunk in chunks if chunk.source_type == "corpus"]
+    upload_ids = [chunk.chunk_id for chunk in chunks if chunk.source_type == "upload"]
+
+    parent_text_by_id: dict[uuid.UUID, str] = {}
+
+    if corpus_ids:
+        result = await db.execute(
+            text(
+                """
+                SELECT child.id AS chunk_id, parent.text AS parent_text
+                FROM document_chunks child
+                JOIN document_chunks parent ON child.parent_chunk_id = parent.id
+                WHERE child.id = ANY(:chunk_ids)
+                """
+            ),
+            {"chunk_ids": corpus_ids},
+        )
+        for row in result:
+            parent_text_by_id[row.chunk_id] = row.parent_text
+
+    if upload_ids:
+        result = await db.execute(
+            text(
+                """
+                SELECT child.id AS chunk_id, parent.text AS parent_text
+                FROM user_upload_chunks child
+                JOIN user_upload_chunks parent ON child.parent_chunk_id = parent.id
+                WHERE child.id = ANY(:chunk_ids)
+                """
+            ),
+            {"chunk_ids": upload_ids},
+        )
+        for row in result:
+            parent_text_by_id[row.chunk_id] = row.parent_text
+
+    hydrated: list[RetrievedChunk] = []
+    for chunk in chunks:
+        parent_text = parent_text_by_id.get(chunk.chunk_id)
+        if not parent_text:
+            hydrated.append(chunk)
+            continue
+        hydrated.append(
+            Chunk(
+                chunk_id=chunk.chunk_id,
+                source_type=chunk.source_type,
+                document_id=chunk.document_id,
+                document_title=chunk.document_title,
+                text=parent_text,
+                score=chunk.score,
+                chunk_index=chunk.chunk_index,
+                page_start=chunk.page_start,
+                page_end=chunk.page_end,
+            )
+        )
+    return hydrated
 
 
 async def _embed_query(
@@ -182,6 +310,7 @@ async def vector_search_corpus(
     *,
     top_k: int,
     backend: EmbeddingBackend,
+    hydrate_parent: bool = False,
 ) -> list[RetrievedChunk]:
     query_vector = await _embed_query(query, backend)
     if query_vector is None:
@@ -194,7 +323,7 @@ async def vector_search_corpus(
             "top_k": top_k,
         },
     )
-    return [_row_to_corpus_chunk(row) for row in result]
+    return [_row_to_corpus_chunk(row, hydrate_parent=hydrate_parent) for row in result]
 
 
 async def bm25_search_corpus(
@@ -202,6 +331,7 @@ async def bm25_search_corpus(
     query: str,
     *,
     top_k: int,
+    hydrate_parent: bool = False,
 ) -> list[RetrievedChunk]:
     if not query.strip():
         return []
@@ -210,7 +340,7 @@ async def bm25_search_corpus(
         _CORPUS_BM25_SQL,
         {"query": query, "top_k": top_k},
     )
-    return [_row_to_corpus_chunk(row) for row in result]
+    return [_row_to_corpus_chunk(row, hydrate_parent=hydrate_parent) for row in result]
 
 
 async def vector_search_uploads(
@@ -221,6 +351,7 @@ async def vector_search_uploads(
     *,
     top_k: int,
     backend: EmbeddingBackend,
+    hydrate_parent: bool = False,
 ) -> list[RetrievedChunk]:
     if not attached_upload_ids:
         return []
@@ -238,7 +369,7 @@ async def vector_search_uploads(
             "top_k": top_k,
         },
     )
-    return [_row_to_upload_chunk(row) for row in result]
+    return [_row_to_upload_chunk(row, hydrate_parent=hydrate_parent) for row in result]
 
 
 async def bm25_search_uploads(
@@ -248,6 +379,7 @@ async def bm25_search_uploads(
     attached_upload_ids: list[uuid.UUID],
     *,
     top_k: int,
+    hydrate_parent: bool = False,
 ) -> list[RetrievedChunk]:
     if not attached_upload_ids or not query.strip():
         return []
@@ -261,7 +393,7 @@ async def bm25_search_uploads(
             "top_k": top_k,
         },
     )
-    return [_row_to_upload_chunk(row) for row in result]
+    return [_row_to_upload_chunk(row, hydrate_parent=hydrate_parent) for row in result]
 
 
 async def hybrid_search_corpus(
@@ -273,14 +405,16 @@ async def hybrid_search_corpus(
     rrf_k: int,
     rrf_top_k: int,
     backend: EmbeddingBackend,
+    hydrate_parent: bool = False,
 ) -> list[RetrievedChunk]:
     vector_hits = await vector_search_corpus(
         db,
         query,
         top_k=vector_top_k,
         backend=backend,
+        hydrate_parent=hydrate_parent,
     )
-    bm25_hits = await bm25_search_corpus(db, query, top_k=bm25_top_k)
+    bm25_hits = await bm25_search_corpus(db, query, top_k=bm25_top_k, hydrate_parent=hydrate_parent)
     return reciprocal_rank_fusion(vector_hits, bm25_hits, k=rrf_k, top_k=rrf_top_k)
 
 
@@ -295,6 +429,7 @@ async def hybrid_search_uploads(
     rrf_k: int,
     rrf_top_k: int,
     backend: EmbeddingBackend,
+    hydrate_parent: bool = False,
 ) -> list[RetrievedChunk]:
     if not attached_upload_ids:
         return []
@@ -306,6 +441,7 @@ async def hybrid_search_uploads(
         attached_upload_ids,
         top_k=vector_top_k,
         backend=backend,
+        hydrate_parent=hydrate_parent,
     )
     bm25_hits = await bm25_search_uploads(
         db,
@@ -313,5 +449,6 @@ async def hybrid_search_uploads(
         user_id,
         attached_upload_ids,
         top_k=bm25_top_k,
+        hydrate_parent=hydrate_parent,
     )
     return reciprocal_rank_fusion(vector_hits, bm25_hits, k=rrf_k, top_k=rrf_top_k)

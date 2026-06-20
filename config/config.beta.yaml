@@ -69,6 +69,11 @@ ingestion:
   corpus_dir: /opt/dharmiq/data/corpus/india_code/raw
   batch_size: 10
   concurrency: 2
+  child_chunk_target_tokens: 300
+  parent_max_tokens: 2048
+  overlap_tokens: 64
+  context_text_max_tokens: 512
+  preserve_section_atomic: true
 
 uploads:
   uploads_dir: /opt/dharmiq/data/uploads

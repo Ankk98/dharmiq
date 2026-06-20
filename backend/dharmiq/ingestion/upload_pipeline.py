@@ -4,14 +4,14 @@ import uuid
 from pathlib import Path
 
 from pgvector import Vector as PgVector
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from dharmiq.config.settings import Settings, get_settings
 from dharmiq.core.errors import IngestionError, UploadError
 from dharmiq.core.logging import get_logger
 from dharmiq.db.models.uploads import UserUpload, UserUploadChunk
-from dharmiq.ingestion.chunker import TextChunk, chunk_document
+from dharmiq.ingestion.chunker import CHUNK_SCHEMA_V02, SectionChunkGroup, chunk_document
 from dharmiq.ingestion.parser import (
     PdfParserBackend,
     extract_image_pages,
@@ -142,12 +142,12 @@ async def process_user_upload(
             details={"upload_id": str(upload_id), "error": str(exc)},
         ) from exc
 
-    chunks = chunk_document(pages, settings=cfg)
+    groups = chunk_document(pages, settings=cfg)
     await _clear_existing_chunks(db, upload_id)
-    chunk_count = await _persist_upload_chunks(
+    chunk_count = await _persist_upload_chunk_groups(
         db,
         upload_id,
-        chunks,
+        groups,
         embedder,
         batch_size=cfg.ingestion.batch_size,
     )
@@ -168,35 +168,108 @@ async def _clear_existing_chunks(db: AsyncSession, upload_id: uuid.UUID) -> None
     await db.execute(delete(UserUploadChunk).where(UserUploadChunk.upload_id == upload_id))
 
 
-async def _persist_upload_chunks(
+async def _persist_upload_chunk_groups(
     db: AsyncSession,
     upload_id: uuid.UUID,
-    chunks: list[TextChunk],
+    groups: list[SectionChunkGroup],
     embedder: EmbeddingBackend,
     *,
     batch_size: int,
 ) -> int:
-    if not chunks:
+    if not groups:
         return 0
 
     stored = 0
-    for start in range(0, len(chunks), batch_size):
-        batch = chunks[start : start + batch_size]
-        vectors = await embedder.embed_texts([chunk.text for chunk in batch])
-        for chunk, vector in zip(batch, vectors, strict=True):
-            db.add(
-                UserUploadChunk(
-                    upload_id=upload_id,
-                    chunk_index=chunk.chunk_index,
-                    text=chunk.text,
-                    page_start=chunk.page_start,
-                    page_end=chunk.page_end,
-                    embedding=PgVector(vector),
-                )
-            )
-            stored += 1
+    child_batches: list[tuple[UserUploadChunk, str]] = []
+
+    for group in groups:
+        parent_row = UserUploadChunk(
+            upload_id=upload_id,
+            chunk_index=group.parent.chunk_index,
+            text=group.parent.text,
+            context_text=group.parent.context_text,
+            chunk_metadata=group.parent.chunk_metadata,
+            page_start=group.parent.page_start,
+            page_end=group.parent.page_end,
+            embedding=None,
+        )
+        db.add(parent_row)
         await db.flush()
+
+        for child in group.children:
+            child_row = UserUploadChunk(
+                upload_id=upload_id,
+                chunk_index=child.chunk_index,
+                text=child.text,
+                context_text=child.context_text,
+                parent_chunk_id=parent_row.id,
+                chunk_metadata=child.chunk_metadata,
+                page_start=child.page_start,
+                page_end=child.page_end,
+            )
+            db.add(child_row)
+            child_batches.append((child_row, child.text))
+            stored += 1
+
+        stored += 1
+
+    for start in range(0, len(child_batches), batch_size):
+        batch = child_batches[start : start + batch_size]
+        vectors = await embedder.embed_texts([text for _, text in batch])
+        for (row, _), vector in zip(batch, vectors, strict=True):
+            row.embedding = PgVector(vector)
+        await db.flush()
+
     return stored
+
+
+async def reindex_user_upload_v02(
+    db: AsyncSession,
+    upload_id: uuid.UUID,
+    *,
+    settings: Settings | None = None,
+    pdf_parser: PdfParserBackend | None = None,
+    embedding_backend: EmbeddingBackend | None = None,
+) -> tuple[int, int]:
+    """Non-destructive v0.2 reindex for a user upload."""
+    cfg = settings or get_settings()
+    upload = await db.get(UserUpload, upload_id)
+    if upload is None or upload.deleted_at is not None:
+        raise IngestionError("Upload not found", details={"upload_id": str(upload_id)})
+
+    file_path = resolve_upload_path(upload.file_path, cfg)
+    parser = pdf_parser or get_pdf_parser(cfg)
+    embedder = embedding_backend or get_embedding_backend()
+    pages = _extract_upload_pages(upload, file_path, settings=cfg, pdf_parser=parser)
+    groups = chunk_document(pages, settings=cfg)
+
+    created = await _persist_upload_chunk_groups(
+        db,
+        upload_id,
+        groups,
+        embedder,
+        batch_size=cfg.ingestion.batch_size,
+    )
+    if created == 0:
+        raise IngestionError(
+            "v0.2 upload reindex produced no chunks",
+            details={"upload_id": str(upload_id)},
+        )
+
+    removed = (
+        await db.execute(
+            text(
+                """
+                DELETE FROM user_upload_chunks
+                WHERE upload_id = :upload_id
+                  AND COALESCE(metadata->>'schema_version', '') <> :schema_version
+                """
+            ),
+            {"upload_id": upload_id, "schema_version": CHUNK_SCHEMA_V02},
+        )
+    ).rowcount or 0
+    await db.commit()
+    return created, int(removed)
 
 
 async def process_user_upload_safe(

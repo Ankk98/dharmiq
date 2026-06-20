@@ -153,6 +153,11 @@ class IngestionSettings(BaseModel):
     chunk_min_chars: int = 2000
     chunk_max_chars: int = 4000
     chunk_overlap_chars: int = 200
+    child_chunk_target_tokens: int = 300
+    parent_max_tokens: int = 2048
+    overlap_tokens: int = 64
+    context_text_max_tokens: int = 512
+    preserve_section_atomic: bool = True
     ocr_languages: str = "eng"
 
     def resolve_corpus_dir(self, repo_root: Path) -> Path:

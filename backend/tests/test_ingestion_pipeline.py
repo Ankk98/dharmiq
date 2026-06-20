@@ -179,7 +179,7 @@ async def test_process_document_is_idempotent(tmp_path: Path, monkeypatch: pytes
         )
 
         assert first_count == second_count
-        assert first_count >= 2
+        assert first_count >= 4
 
         document = await db.get(SourceDocument, document_id)
         assert document is not None
@@ -192,3 +192,32 @@ async def test_process_document_is_idempotent(tmp_path: Path, monkeypatch: pytes
             )
         ).scalar_one()
         assert chunk_rows == first_count
+
+        parent_rows = (
+            await db.execute(
+                text(
+                    """
+                    SELECT COUNT(*)
+                    FROM document_chunks
+                    WHERE document_id = :id
+                      AND metadata->>'chunk_type' = 'parent'
+                    """
+                ),
+                {"id": document_id},
+            )
+        ).scalar_one()
+        child_rows = (
+            await db.execute(
+                text(
+                    """
+                    SELECT COUNT(*)
+                    FROM document_chunks
+                    WHERE document_id = :id
+                      AND parent_chunk_id IS NOT NULL
+                    """
+                ),
+                {"id": document_id},
+            )
+        ).scalar_one()
+        assert parent_rows >= 2
+        assert child_rows >= 2

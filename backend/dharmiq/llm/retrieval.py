@@ -249,8 +249,11 @@ async def retrieve_multi_query(
         top_k=rerank_limit,
         settings=settings,
     )
-    weak, top_score = assess_retrieval_strength(reranked, settings)
-    return RetrievalResult(chunks=reranked, weak_retrieval=weak, top_rerank_score=top_score)
+    from dharmiq.retrieval.hybrid import hydrate_parent_texts
+
+    hydrated = await hydrate_parent_texts(db, reranked)
+    weak, top_score = assess_retrieval_strength(hydrated, settings)
+    return RetrievalResult(chunks=hydrated, weak_retrieval=weak, top_rerank_score=top_score)
 
 
 def format_retrieved_context(chunks: list[RetrievedChunk]) -> str:

@@ -134,7 +134,7 @@ DHARMIQ_DATABASE_PASSWORD=<strong-db-password>
 
 OPENROUTER_API_KEY=<your-openrouter-key>
 
-# v0.2 agent graph (enabled by default in config.beta.yaml)
+# v0.2 agent graph (enabled by default in config.beta.yaml; set explicitly to be safe)
 DHARMIQ_AGENT_GRAPH_V2=true
 ```
 
@@ -621,8 +621,10 @@ tar -czf /opt/dharmiq/backups/data-$(date +%Y%m%d).tar.gz -C /opt/dharmiq data/
 
 ## Related docs
 
-- [README](../README.md) — local development quick start
-- [backend/README.md](../backend/README.md) — API endpoints, ingestion, eval
-- [frontend/README.md](../frontend/README.md) — frontend build scripts
-- [config/config.beta.yaml](../config/config.beta.yaml) — beta deployment settings (`agent_graph.enabled: true`, set `DHARMIQ_AGENT_GRAPH_V2=true`)
-- [v02-eval-baseline.md](./plans/v02-eval-baseline.md) — v0.1 eval baseline and nightly gate targets
+- [README](../README.md) — local development quick start (v0.2 agent pipeline)
+- [backend/README.md](../backend/README.md) — API endpoints, LangGraph agents, ingestion, eval
+- [frontend/README.md](../frontend/README.md) — streaming chat UI, attachments
+- [config/config.beta.yaml](../config/config.beta.yaml) — beta deployment settings (`agent_graph.enabled: true`)
+- [v0.2-prd-trd.md](./plans/v0.2-prd-trd.md) — v0.2 product & technical requirements (implemented)
+- [v0.2-implementation-phases.md](./plans/v0.2-implementation-phases.md) — phase playbook (completed)
+- [v02-eval-baseline.md](./plans/v02-eval-baseline.md) — v0.1 eval baseline and v0.2 nightly gate targets

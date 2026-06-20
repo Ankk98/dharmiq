@@ -122,3 +122,27 @@ Top-level layout:
   - Utility functions (section parsing, chunking).  
   - LLM prompts as golden tests where feasible.  
   - Ingestion idempotence.
+
+***
+
+### 4. v0.2 — Agentic architecture (completed)
+
+v0.2 is documented in [`v0.2-prd-trd.md`](./v0.2-prd-trd.md) and implemented per [`v0.2-implementation-phases.md`](./v0.2-implementation-phases.md). Summary of delivered milestones:
+
+| Phase | Deliverable |
+|-------|-------------|
+| P0 | LiteLLM gateway, `agent_graph` feature flag |
+| P1 | DB schema: events, attachments, chunk metadata, `search_vector` |
+| P2 | LangGraph agent graph + Postgres checkpointing |
+| P3 | Celery async chat + SSE event stream |
+| P4 | Progress view tiers (concise / detailed / debug) |
+| P5 | Hybrid retrieval (pgvector + BM25 + RRF) + reranker |
+| P6 | Parent-child chunking + reindex |
+| P7 | Citation enricher + prompt overhaul |
+| P8 | Validated answer streaming (replay, not regenerate) |
+| P9 | DOCX/MD uploads + per-session attachment |
+| P10 | Frontend: progress UI, SSE client, attachment picker |
+| P11 | Input guard + rate limits |
+| P12 | Eval extensions (citation/blockquote/refusal gates) |
+
+Enable locally with `DHARMIQ_AGENT_GRAPH_V2=true`. v0.1 `POST /api/chat` remains when the flag is off.

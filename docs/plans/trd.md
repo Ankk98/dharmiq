@@ -1,5 +1,7 @@
 ## 02 – Dharmiq MVP – Technical Requirements & Design (TRD)
 
+> **Note:** This document describes the **v0.1 MVP** architecture. v0.2 technical design (LangGraph, SSE, LiteLLM, hybrid retrieval) is in [`v0.2-prd-trd.md`](./v0.2-prd-trd.md).
+
 ### 1. High-level architecture
 
 #### 1.1 Overview

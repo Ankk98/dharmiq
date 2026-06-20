@@ -1,5 +1,7 @@
 ## 01 – Dharmiq MVP – Product Requirements Document (PRD)
 
+> **Note:** This document describes the **v0.1 MVP**. v0.2 agentic features (streaming, progress UI, session attachments, hybrid retrieval) are specified in [`v0.2-prd-trd.md`](./v0.2-prd-trd.md) and are implemented.
+
 ### 1. Vision and goals
 
 Dharmiq is an open-source Indian legal information assistant for ordinary citizens. It provides plain-language explanations of Indian laws and regulations, grounded in authoritative documents (e.g., IndiaCode PDFs), with clear citations and consistent reminders that it does not provide legal advice.

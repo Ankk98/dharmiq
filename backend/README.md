@@ -18,14 +18,24 @@ docker compose up -d
 
 # Set up environment
 cp .env.example .env
-# Edit .env: set OPENROUTER_API_KEY for chat/eval
+# Edit .env: set OPENROUTER_API_KEY; DHARMIQ_AGENT_GRAPH_V2=true for v0.2 pipeline
 
 # Install dependencies and create venv
 cd backend
 uv sync --dev
 
-# Run database migrations (001–006)
+# Run database migrations (001–010)
 uv run alembic upgrade head
+
+# LangGraph checkpoint tables (not managed by Alembic; idempotent)
+uv run python -c "
+import asyncio
+from dharmiq.agents.checkpoint import get_checkpointer, close_checkpointer
+async def main():
+    await get_checkpointer()
+    await close_checkpointer()
+asyncio.run(main())
+"
 
 # Create local data directories (gitignored)
 mkdir -p ../data/corpus/india_code/raw ../data/eval/datasets ../data/eval/runs
@@ -34,7 +44,7 @@ mkdir -p ../data/corpus/india_code/raw ../data/eval/datasets ../data/eval/runs
 uv run dharmiq-api
 # or: uv run uvicorn dharmiq.main:app --reload --host 0.0.0.0 --port 8000
 
-# Start Celery worker (separate terminal, from backend/)
+# Start Celery worker (required for v0.2 async chat)
 uv run celery -A celery_app worker --loglevel=info
 
 # Optional: daily corpus sync scheduler
@@ -72,8 +82,8 @@ docker compose up -d prometheus grafana
 
 Environment-specific YAML files live in `config/` at the repo root:
 
-- `config.dev.yaml` – local development
-- `config.beta.yaml` – beta deployment
+- `config.dev.yaml` – local development (`agent_graph.enabled: false`; override with `DHARMIQ_AGENT_GRAPH_V2=true`)
+- `config.beta.yaml` – beta deployment (`agent_graph.enabled: true` by default)
 
 Select the active config with `DHARMIQ_ENV` (default: `dev`).
 
@@ -86,6 +96,8 @@ Secrets can live in a repo-root `.env` file (auto-loaded) or be exported in your
 | `DHARMIQ_JWT_SECRET` | JWT signing secret (use a strong random value in production) |
 | `OPENROUTER_API_KEY` | OpenRouter API key (required for chat and eval) |
 | `DHARMIQ_ROOT` | Repo root path (auto-detected if unset) |
+| `DHARMIQ_AGENT_GRAPH_V2` | Enable v0.2 LangGraph pipeline |
+| `DHARMIQ_DEBUG_PROGRESS` | Enable debug-tier progress events (with superuser) |
 
 ## API endpoints
 
@@ -113,10 +125,21 @@ Secrets can live in a repo-root `.env` file (auto-loaded) or be exported in your
 | POST | `/api/chat/sessions` | Create a chat session |
 | GET | `/api/chat/sessions` | List user's sessions |
 | GET | `/api/chat/sessions/{id}` | Get a session |
-| POST | `/api/chat/sessions/{id}/messages` | Append a message (without LLM) |
+| POST | `/api/chat/sessions/{id}/messages` | Send a message (v0.2: `202` + async `chat_request_id`; v0.1: sync append) |
+| POST | `/api/chat/sessions/{id}/messages/{message_id}/retry` | Retry a failed v0.2 request |
 | GET | `/api/chat/sessions/{id}/messages` | List messages in a session |
-| POST | `/api/chat` | Run full RAG pipeline (clarify → retrieve → answer → validate) |
+| POST | `/api/chat` | Run pipeline synchronously (v0.1 or v0.2 depending on flag) |
 | GET | `/api/chat/requests/{id}` | Poll chat request status |
+| GET | `/api/chat/requests/{id}/stream` | SSE stream: progress steps, answer tokens, citations |
+| GET | `/api/chat/requests/{id}/events` | Poll progress events (reconnect fallback) |
+
+### Chat attachments (authenticated, v0.2)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/chat/sessions/{id}/attachments` | List uploads attached to a session |
+| POST | `/api/chat/sessions/{id}/attachments` | Attach library uploads to a session |
+| DELETE | `/api/chat/sessions/{id}/attachments/{upload_id}` | Detach an upload |
 
 ### Documents (authenticated)
 
@@ -129,14 +152,38 @@ Secrets can live in a repo-root `.env` file (auto-loaded) or be exported in your
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api/uploads` | Upload a PDF or image (max 100 MB, 30 assets per user) |
+| POST | `/api/uploads` | Upload PDF, DOCX, Markdown, or image (max 100 MB, 30 assets per user) |
 | GET | `/api/uploads` | List active uploads |
 | GET | `/api/uploads/{id}` | Get upload metadata |
 | DELETE | `/api/uploads/{id}` | Soft-delete an upload |
 
 ## Chat pipeline
 
-The `/api/chat` endpoint runs a multi-agent LangChain flow:
+### v0.2 (LangGraph, `agent_graph.enabled`)
+
+When enabled, `POST /api/chat/sessions/{id}/messages` enqueues a Celery task and returns `202 Accepted` with `chat_request_id`. The client subscribes to `/api/chat/requests/{id}/stream` for:
+
+- **Progress events** – step start/end in concise or detailed tiers (debug gated server-side)
+- **Answer stream** – validated answer replayed token-by-token (no second LLM call)
+- **Citations** – inline citation payloads for the UI
+
+Graph nodes (`dharmiq/agents/nodes/`):
+
+1. **Input guard** – rate limits, length caps, off-topic / injection heuristics
+2. **Clarifier** – up to 3 rounds of follow-up questions (END-and-return; new request per round)
+3. **Query rewriter** – statute-oriented search queries
+4. **Retrieval** – hybrid pgvector + BM25 (RRF) with cross-encoder reranking
+5. **Answerer** – comprehensive grounded draft with citations and blockquotes
+6. **Citation enricher** – normalizes citation metadata for the UI
+7. **Validator** – checks faithfulness and quote fuzzy-match; blocks release on failure
+8. **Finalizer** – replays validated answer as SSE token stream
+9. **Refusal** – structured response when retrieval is insufficient
+
+State is checkpointed in Postgres (`langgraph` schema). Event `seq` values use Redis `INCR` for race-safe ordering.
+
+### v0.1 (linear pipeline, flag off)
+
+`POST /api/chat` runs a synchronous multi-agent LangChain flow:
 
 1. **Clarifier** – asks follow-up questions if the query is underspecified
 2. **Query rewriter** – generates statute-oriented search queries
@@ -144,11 +191,13 @@ The `/api/chat` endpoint runs a multi-agent LangChain flow:
 4. **Answerer** – grounded answer with citations
 5. **Validator** – checks faithfulness; may regenerate up to 3 times
 
-Prompts live in `dharmiq/llm/prompts/*.yaml`. Request tracking uses the `chat_requests` table (migration `005`).
+Prompts live in `dharmiq/llm/prompts/*.yaml`. Request tracking uses the `chat_requests` table.
 
 ## User uploads
 
-Files are stored under `data/uploads/{user_uuid}/raw/`. Supported types: PDF and images (JPEG, PNG, WebP, TIFF). Uploading enqueues `dharmiq.ingestion.process_user_upload`.
+Files are stored under `data/uploads/{user_uuid}/raw/`. Supported types: **PDF**, **DOCX**, **Markdown**, and images (JPEG, PNG, WebP, TIFF). Uploading enqueues `dharmiq.ingestion.process_user_upload`.
+
+Uploads land in the user's library. For v0.2 retrieval, files must be **explicitly attached** to the chat session via `/api/chat/sessions/{id}/attachments`.
 
 ```yaml
 uploads:
@@ -187,40 +236,51 @@ Trigger a manual sync:
 uv run celery -A celery_app call dharmiq.ingestion.sync_india_code_pdfs
 ```
 
-Pipeline modules: `dharmiq.ingestion.scanner`, `parser`, `ocr`, `chunker`, `pipeline`.
+v0.2 uses parent-child chunking with `context_text` for reranker input. Pipeline modules: `dharmiq.ingestion.scanner`, `parser`, `ocr`, `chunker`, `parsers/docx`, `parsers/markdown`.
 
-Corpus tables (`source_documents`, `document_sections`, `document_chunks`) are created by migration `003`.
+Corpus tables (`source_documents`, `document_sections`, `document_chunks`) are created by migration `003`; v0.2 retrieval columns in `008`.
 
 ## LLM & retrieval
 
 Configured in `config/*.yaml`:
 
 ```yaml
-openrouter:
-  base_url: https://openrouter.ai/api/v1
-  default_model: deepseek/deepseek-v4-pro
-  timeout_seconds: 60
-  max_retries: 3
+llm:
+  roles:
+    primary: openrouter/deepseek/deepseek-v4-pro    # answerer
+    fast: openrouter/deepseek/deepseek-v4-flash       # aux agents
+    embedding: local                                  # fixed 384-dim for v0.2
+  agents:
+    validator:
+      model: openrouter/deepseek/deepseek-v4-pro
+      reasoning: { enabled: true }
+  rerank:
+    backend: local
+    local_model: BAAI/bge-reranker-base
 
 embeddings:
-  backend: local          # local | remote
+  backend: local
   local_model_name: sentence-transformers/all-MiniLM-L6-v2
   local_dimensions: 384
-  remote_model_id: openai/text-embedding-3-small
-  remote_dimensions: 1536
 
 retrieval:
   top_k: 5
-  multi_query_top_k: 5
+  vector_top_k: 30
+  bm25_top_k: 30
+  rrf_k: 60
+  rerank_top_k: 8
+  min_rerank_score: 0.35
+  min_relevant_chunks: 2
 ```
 
-- **`dharmiq.llm.openrouter_client`** – async OpenRouter wrapper (chat + embeddings) with retries
-- **`dharmiq.llm.embeddings`** – local CPU (`sentence-transformers`) or remote OpenRouter embeddings
-- **`dharmiq.llm.retrieval`** – pgvector cosine search over `document_chunks` and `user_upload_chunks`
+- **`dharmiq.llm.litellm_service`** – LiteLLM wrapper for chat and remote rerank
+- **`dharmiq.llm.embeddings`** – local CPU (`sentence-transformers`) embeddings (384-dim, not swappable without re-embed)
+- **`dharmiq.retrieval.hybrid`** – pgvector + BM25 with reciprocal rank fusion
+- **`dharmiq.retrieval.reranker`** – local CrossEncoder (default) or LiteLLM remote rerank
 
 ## Evaluation
 
-Curated eval datasets are JSONL files under `data/eval/datasets/` (committed to the repo). See `dharmiq/eval/dataset_format.md` for the schema. The sample dataset `v1_fundamental_rights.jsonl` ships with 8 fundamental-rights questions including citation, blockquote, and refusal expectations.
+Curated eval datasets are JSONL files under `data/eval/datasets/` (committed to the repo). See `dharmiq/eval/dataset_format.md` for the schema. The sample dataset `v1_fundamental_rights.jsonl` includes citation count, blockquote, and refusal expectations for v0.2.
 
 **Requires an indexed corpus** before running; the CLI fails fast if `document_chunks` is empty.
 
@@ -242,6 +302,9 @@ Metrics computed per question:
 
 - **Ragas**: faithfulness, answer_correctness
 - **LLM judge** (OpenRouter): semantic answer correctness, citation correctness
+- **v0.2**: citation count met, blockquote met, refusal correct
+
+See [`docs/plans/v02-eval-baseline.md`](../docs/plans/v02-eval-baseline.md) for v0.1 baseline vs v0.2 targets.
 
 ## Observability
 
@@ -268,17 +331,21 @@ Generate traffic (health checks, chat, ingestion) so panels have data.
 ```
 backend/
   dharmiq/
-    api/           # FastAPI routes
+    agents/        # LangGraph graph, nodes, checkpoint, streaming, progress
+    api/           # FastAPI routes (chat, stream, attachments)
     auth/          # fastapi-users integration
     config/        # Settings loader
     core/          # Logging, errors
     db/            # SQLAlchemy + models
     eval/          # Dataset loader, RAG eval runner, LLM judge
-    ingestion/     # PDF scan, parse, chunk, embed pipeline
-    llm/           # OpenRouter client, agents, retrieval, pipeline
+    guardrails/    # Input validator, rate limiter
+    ingestion/     # PDF/DOCX/MD scan, parse, chunk, embed pipeline
+    llm/           # LiteLLM service, legacy agents, prompts
     observability/ # Prometheus metrics and HTTP middleware
-    tasks/         # Celery tasks (ingestion, eval)
-  alembic/         # Database migrations
+    retrieval/     # Hybrid search, reranker
+    tasks/         # Celery tasks (agent graph, ingestion, eval)
+    uploads/       # Session attachment helpers
+  alembic/         # Database migrations (001–010)
   celery_app.py    # Celery CLI entry point
 ```
 
@@ -294,3 +361,5 @@ uv run pytest -m slow
 # Lint
 uv run ruff check .
 ```
+
+Key v0.2 test modules: `test_agent_graph.py`, `test_chat_stream.py`, `test_hybrid_retrieval.py`, `test_session_attachments.py`, `test_v02_e2e_smoke.py`.

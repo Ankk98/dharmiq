@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from dharmiq.core.errors import UploadError
 from dharmiq.db.models.chats import ChatSession, ChatSessionUpload
 from dharmiq.db.models.uploads import UserUpload, UserUploadChunk
+from dharmiq.uploads.attachment_events import record_attachment_event
 
 
 @dataclass(frozen=True)
@@ -31,16 +32,21 @@ async def _upload_is_indexed(db: AsyncSession, upload_id: uuid.UUID) -> bool:
 async def list_attached_uploads(
     db: AsyncSession,
     session_id: uuid.UUID,
+    *,
+    as_of: datetime | None = None,
 ) -> list[AttachedUploadInfo]:
-    result = await db.execute(
+    query = (
         select(ChatSessionUpload, UserUpload)
         .join(UserUpload, UserUpload.id == ChatSessionUpload.upload_id)
         .where(
             ChatSessionUpload.session_id == session_id,
             UserUpload.deleted_at.is_(None),
         )
-        .order_by(ChatSessionUpload.attached_at.asc())
     )
+    if as_of is not None:
+        query = query.where(ChatSessionUpload.attached_at <= as_of)
+    query = query.order_by(ChatSessionUpload.attached_at.asc())
+    result = await db.execute(query)
     rows = result.all()
     attached: list[AttachedUploadInfo] = []
     for link, upload in rows:
@@ -110,6 +116,14 @@ async def attach_uploads_to_session(
                 attached_at=now,
             )
         )
+        await record_attachment_event(
+            db,
+            session=session,
+            user_id=user_id,
+            event="attached",
+            upload_id=upload_id,
+            filename=uploads[upload_id].original_filename,
+        )
 
     await db.commit()
     return await list_attached_uploads(db, session.id)
@@ -118,12 +132,30 @@ async def attach_uploads_to_session(
 async def detach_upload_from_session(
     db: AsyncSession,
     *,
-    session_id: uuid.UUID,
+    session: ChatSession,
+    user_id: uuid.UUID,
     upload_id: uuid.UUID,
 ) -> None:
+    result = await db.execute(
+        select(UserUpload).where(
+            UserUpload.id == upload_id,
+            UserUpload.deleted_at.is_(None),
+        )
+    )
+    upload = result.scalar_one_or_none()
+    if upload is not None:
+        await record_attachment_event(
+            db,
+            session=session,
+            user_id=user_id,
+            event="detached",
+            upload_id=upload_id,
+            filename=upload.original_filename,
+        )
+
     await db.execute(
         delete(ChatSessionUpload).where(
-            ChatSessionUpload.session_id == session_id,
+            ChatSessionUpload.session_id == session.id,
             ChatSessionUpload.upload_id == upload_id,
         )
     )

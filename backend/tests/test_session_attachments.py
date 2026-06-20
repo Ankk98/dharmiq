@@ -11,11 +11,13 @@ from pypdf import PdfWriter
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from dharmiq.db.models.chats import ChatSessionUpload
+from dharmiq.db.models.chats import ChatMessage, ChatSessionUpload, MessageRole
 from dharmiq.db.models.uploads import UserUpload, UserUploadChunk
 from dharmiq.db.session import get_session_factory
 from dharmiq.llm.retrieval import retrieve_user_upload_chunks
+from dharmiq.llm.agents.base import format_chat_history
 from dharmiq.llm.embeddings import EmbeddingBackend
+from dharmiq.uploads.session_attachments import list_attached_uploads
 
 
 class _FixedEmbeddingBackend(EmbeddingBackend):
@@ -276,3 +278,166 @@ async def test_attach_other_user_upload_403(
         json={"upload_ids": [other_upload_id]},
     )
     assert attach_resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_attach_records_system_message(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+) -> None:
+    session_resp = await client.post(
+        "/api/chat/sessions",
+        headers=auth_headers,
+        json={"title": "Timeline attach"},
+    )
+    session_id = uuid.UUID(session_resp.json()["id"])
+    user_id = uuid.UUID(session_resp.json()["user_id"])
+
+    factory = get_session_factory()
+    async with factory() as db:
+        upload = await _seed_indexed_upload(db, user_id)
+
+    attach_resp = await client.post(
+        f"/api/chat/sessions/{session_id}/attachments",
+        headers=auth_headers,
+        json={"upload_ids": [str(upload.id)]},
+    )
+    assert attach_resp.status_code == 200
+
+    factory = get_session_factory()
+    async with factory() as db:
+        result = await db.execute(
+            select(ChatMessage)
+            .where(
+                ChatMessage.session_id == session_id,
+                ChatMessage.role == MessageRole.SYSTEM,
+            )
+            .order_by(ChatMessage.created_at.asc())
+        )
+        messages = list(result.scalars().all())
+        assert len(messages) == 1
+        assert "Attached document: contract.pdf" in messages[0].content
+        assert messages[0].message_metadata == {
+            "event_type": "attachment_attached",
+            "upload_id": str(upload.id),
+            "filename": "contract.pdf",
+        }
+
+
+@pytest.mark.asyncio
+async def test_detach_records_system_message(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+) -> None:
+    session_resp = await client.post(
+        "/api/chat/sessions",
+        headers=auth_headers,
+        json={"title": "Timeline detach"},
+    )
+    session_id = uuid.UUID(session_resp.json()["id"])
+    user_id = uuid.UUID(session_resp.json()["user_id"])
+
+    factory = get_session_factory()
+    async with factory() as db:
+        upload = await _seed_indexed_upload(db, user_id)
+
+    attach_resp = await client.post(
+        f"/api/chat/sessions/{session_id}/attachments",
+        headers=auth_headers,
+        json={"upload_ids": [str(upload.id)]},
+    )
+    assert attach_resp.status_code == 200
+
+    detach_resp = await client.delete(
+        f"/api/chat/sessions/{session_id}/attachments/{upload.id}",
+        headers=auth_headers,
+    )
+    assert detach_resp.status_code == 204
+
+    factory = get_session_factory()
+    async with factory() as db:
+        result = await db.execute(
+            select(ChatMessage)
+            .where(
+                ChatMessage.session_id == session_id,
+                ChatMessage.role == MessageRole.SYSTEM,
+            )
+            .order_by(ChatMessage.created_at.asc())
+        )
+        messages = list(result.scalars().all())
+        assert len(messages) == 2
+        assert "Attached document: contract.pdf" in messages[0].content
+        assert "Removed document: contract.pdf" in messages[1].content
+
+
+@pytest.mark.asyncio
+async def test_list_attached_uploads_respects_as_of(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    session_resp = await client.post(
+        "/api/chat/sessions",
+        headers=auth_headers,
+        json={"title": "As-of attach"},
+    )
+    session_id = uuid.UUID(session_resp.json()["id"])
+    user_id = uuid.UUID(session_resp.json()["user_id"])
+
+    factory = get_session_factory()
+    async with factory() as db:
+        upload = await _seed_indexed_upload(db, user_id)
+
+    attach_resp = await client.post(
+        f"/api/chat/sessions/{session_id}/attachments",
+        headers=auth_headers,
+        json={"upload_ids": [str(upload.id)]},
+    )
+    assert attach_resp.status_code == 200
+
+    before_attach = datetime.now(UTC) - timedelta(minutes=5)
+    after_attach = datetime.now(UTC) + timedelta(minutes=5)
+
+    factory = get_session_factory()
+    async with factory() as db:
+        past = await list_attached_uploads(db, session_id, as_of=before_attach)
+        present = await list_attached_uploads(db, session_id, as_of=after_attach)
+        assert past == []
+        assert len(present) == 1
+        assert present[0].upload_id == upload.id
+
+
+@pytest.mark.asyncio
+async def test_format_chat_history_includes_attachment_events(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+) -> None:
+    session_resp = await client.post(
+        "/api/chat/sessions",
+        headers=auth_headers,
+        json={"title": "History attach"},
+    )
+    session_id = uuid.UUID(session_resp.json()["id"])
+    user_id = uuid.UUID(session_resp.json()["user_id"])
+
+    factory = get_session_factory()
+    async with factory() as db:
+        upload = await _seed_indexed_upload(db, user_id)
+
+    attach_resp = await client.post(
+        f"/api/chat/sessions/{session_id}/attachments",
+        headers=auth_headers,
+        json={"upload_ids": [str(upload.id)]},
+    )
+    assert attach_resp.status_code == 200
+
+    factory = get_session_factory()
+    async with factory() as db:
+        result = await db.execute(
+            select(ChatMessage)
+            .where(ChatMessage.session_id == session_id)
+            .order_by(ChatMessage.created_at.asc())
+        )
+        history = format_chat_history(list(result.scalars().all()))
+        assert "system: Attached document: contract.pdf" in history

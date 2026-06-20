@@ -48,7 +48,7 @@ export const SessionAttachmentsProvider: FC<SessionAttachmentsProviderProps> = (
   sessionId,
   children,
 }) => {
-  const { registerAttachPicker } = useChatRuntimeState();
+  const { registerAttachPicker, refreshMessages } = useChatRuntimeState();
   const [attachments, setAttachments] = useState<SessionAttachment[]>([]);
   const [uploadsById, setUploadsById] = useState<Map<string, UserUpload>>(new Map());
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -146,6 +146,7 @@ export const SessionAttachmentsProvider: FC<SessionAttachmentsProviderProps> = (
       await attachUploads(sessionId, Array.from(selected));
       setPickerOpen(false);
       await refresh();
+      await refreshMessages();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Attach failed");
     }
@@ -159,6 +160,7 @@ export const SessionAttachmentsProvider: FC<SessionAttachmentsProviderProps> = (
     try {
       await detachUpload(sessionId, uploadId);
       await refresh();
+      await refreshMessages();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Detach failed");
     }

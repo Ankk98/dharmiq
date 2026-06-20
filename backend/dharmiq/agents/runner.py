@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 import uuid
+from datetime import datetime
 
 from langchain_core.runnables import RunnableConfig
 from sqlalchemy import select
@@ -38,10 +39,16 @@ from dharmiq.schemas.chat import ChatMessageRead
 logger = get_logger(__name__)
 
 
-async def _load_attached_upload_ids(db: AsyncSession, session_id: uuid.UUID) -> list[str]:
-    result = await db.execute(
-        select(ChatSessionUpload.upload_id).where(ChatSessionUpload.session_id == session_id)
-    )
+async def _load_attached_upload_ids(
+    db: AsyncSession,
+    session_id: uuid.UUID,
+    *,
+    as_of: datetime | None = None,
+) -> list[str]:
+    query = select(ChatSessionUpload.upload_id).where(ChatSessionUpload.session_id == session_id)
+    if as_of is not None:
+        query = query.where(ChatSessionUpload.attached_at <= as_of)
+    result = await db.execute(query)
     return [str(upload_id) for upload_id in result.scalars().all()]
 
 
@@ -136,6 +143,7 @@ async def create_agent_graph_request(
     )
     db.add(chat_request)
     await db.flush()
+    await db.refresh(chat_request)
 
     user_msg = ChatMessage(
         session_id=chat_session.id,
@@ -150,7 +158,11 @@ async def create_agent_graph_request(
         chat_session.title = user_message.strip().replace("\n", " ")[:80]
 
     history = await _load_history(db, chat_session.id, limit=cfg.chat.history_limit)
-    attached_upload_ids = await _load_attached_upload_ids(db, chat_session.id)
+    attached_upload_ids = await _load_attached_upload_ids(
+        db,
+        chat_session.id,
+        as_of=chat_request.started_at,
+    )
     await db.commit()
     await db.refresh(chat_request)
     await db.refresh(user_msg)
@@ -206,6 +218,7 @@ async def retry_agent_graph_request(
     )
     db.add(chat_request)
     await db.flush()
+    await db.refresh(chat_request)
 
     user_message.message_metadata = {
         **(user_message.message_metadata or {}),
@@ -213,7 +226,11 @@ async def retry_agent_graph_request(
     }
 
     history = await _load_history(db, chat_session.id, limit=cfg.chat.history_limit)
-    attached_upload_ids = await _load_attached_upload_ids(db, chat_session.id)
+    attached_upload_ids = await _load_attached_upload_ids(
+        db,
+        chat_session.id,
+        as_of=chat_request.started_at,
+    )
     await db.commit()
     await db.refresh(chat_request)
     await db.refresh(user_message)
@@ -289,7 +306,11 @@ async def _load_runtime_for_request(
         raise ValueError(f"User message not found for chat request {chat_request.id}")
 
     history = await _load_history(db, chat_session.id, limit=cfg.chat.history_limit)
-    attached_upload_ids = await _load_attached_upload_ids(db, chat_session.id)
+    attached_upload_ids = await _load_attached_upload_ids(
+        db,
+        chat_session.id,
+        as_of=chat_request.started_at,
+    )
 
     return GraphRuntime(
         db=db,

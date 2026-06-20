@@ -13,8 +13,10 @@ def format_chat_history(messages: list[ChatMessage], *, limit: int = 20) -> str:
     recent = messages[-limit:]
     lines: list[str] = []
     for message in recent:
-        role = message.role.value
-        lines.append(f"{role}: {message.content.strip()}")
+        if message.role == MessageRole.SYSTEM:
+            lines.append(f"system: {message.content.strip()}")
+        else:
+            lines.append(f"{message.role.value}: {message.content.strip()}")
     return "\n".join(lines) if lines else "(no prior messages)"
 
 

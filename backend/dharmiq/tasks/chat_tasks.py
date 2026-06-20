@@ -31,9 +31,35 @@ async def _with_db_session(coro_factory):
 
 
 async def execute_agent_graph(chat_request_id: uuid.UUID) -> None:
-    await _with_db_session(
-        lambda db: run_agent_graph_for_request(db, chat_request_id, settings=get_settings())
-    )
+    async def _run(db: AsyncSession) -> None:
+        try:
+            await run_agent_graph_for_request(
+                db,
+                chat_request_id,
+                settings=get_settings(),
+            )
+        except Exception:
+            from sqlalchemy import select
+
+            from dharmiq.db.models.chats import ChatRequest, ChatRequestStatus
+            from dharmiq.llm.pipeline import _mark_request_failed
+
+            result = await db.execute(
+                select(ChatRequest).where(ChatRequest.id == chat_request_id)
+            )
+            chat_request = result.scalar_one_or_none()
+            if chat_request is not None and chat_request.status in {
+                ChatRequestStatus.PENDING,
+                ChatRequestStatus.RUNNING,
+            }:
+                await _mark_request_failed(
+                    db,
+                    chat_request,
+                    error_message="Internal error",
+                )
+            raise
+
+    await _with_db_session(_run)
 
 
 def recover_pending_agent_graph_requests() -> int:

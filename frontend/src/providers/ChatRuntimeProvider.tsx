@@ -49,7 +49,7 @@ import { useChatStream } from "@/hooks/useChatStream";
 
 type StoredMessage = {
   id: string;
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "system";
   content: string;
   chatRequestId?: string;
   progress?: TurnProgress;
@@ -71,6 +71,7 @@ type ChatRuntimeContextValue = {
   streamError: string | null;
   openAttachPicker: () => void;
   registerAttachPicker: (handler: (() => void) | null) => void;
+  refreshMessages: () => Promise<void>;
 };
 
 const ChatRuntimeContext = createContext<ChatRuntimeContextValue | null>(null);
@@ -107,6 +108,14 @@ function mapBackendMessage(
   citations: Citation[] = [],
   progressByRequestId: Map<string, TurnProgress> = new Map(),
 ): StoredMessage {
+  if (message.role === "system") {
+    return {
+      id: message.id,
+      role: "system",
+      content: message.content,
+    };
+  }
+
   const role = message.role === "user" ? "user" : "assistant";
   const chatRequestId = chatRequestIdFromMetadata(message.metadata);
   let content = message.content;
@@ -290,6 +299,14 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
     },
     [detectClarification, progressView],
   );
+
+  const refreshMessages = useCallback(async () => {
+    const id = sessionIdRef.current;
+    if (!id || isRunning) {
+      return;
+    }
+    await loadMessages(id);
+  }, [isRunning, loadMessages]);
 
   useEffect(() => {
     if (skipProgressViewRefreshRef.current) {
@@ -565,6 +582,7 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
       streamError,
       openAttachPicker,
       registerAttachPicker,
+      refreshMessages,
     }),
     [
       slowNotice,
@@ -582,6 +600,7 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
       streamError,
       openAttachPicker,
       registerAttachPicker,
+      refreshMessages,
     ],
   );
 

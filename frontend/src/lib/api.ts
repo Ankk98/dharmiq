@@ -1,4 +1,4 @@
-export type MessageRole = "user" | "assistant" | "clarifier" | "validator";
+export type MessageRole = "user" | "assistant" | "clarifier" | "validator" | "system";
 
 export type ChatSession = {
   id: string;

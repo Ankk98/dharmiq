@@ -78,5 +78,10 @@ async def detach_upload(
     user: User = Depends(current_active_user),
     db: AsyncSession = Depends(get_db_session),
 ) -> None:
-    await _get_user_session(session_id, user, db)
-    await detach_upload_from_session(db, session_id=session_id, upload_id=upload_id)
+    chat_session = await _get_user_session(session_id, user, db)
+    await detach_upload_from_session(
+        db,
+        session=chat_session,
+        user_id=user.id,
+        upload_id=upload_id,
+    )

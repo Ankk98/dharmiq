@@ -17,6 +17,7 @@ class MessageRole(str, enum.Enum):
     ASSISTANT = "assistant"
     CLARIFIER = "clarifier"
     VALIDATOR = "validator"
+    SYSTEM = "system"
 
 
 class ChatRequestStatus(str, enum.Enum):

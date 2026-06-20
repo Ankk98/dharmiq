@@ -19,7 +19,10 @@ def _format_attached_documents(attached) -> str:
     if not attached:
         return "None"
     lines = [
-        f"- {item.original_filename} ({item.mime_type}, indexed={item.indexed})"
+        (
+            f"- {item.original_filename} ({item.mime_type}, indexed={item.indexed}, "
+            f"attached_at={item.attached_at.isoformat()})"
+        )
         for item in attached
     ]
     return "\n".join(lines)
@@ -27,7 +30,11 @@ def _format_attached_documents(attached) -> str:
 
 async def list_attached_uploads_for_session(runtime: GraphRuntime) -> str:
     """Clarifier tool: metadata for uploads explicitly attached to this chat session."""
-    attached = await list_attached_uploads(runtime.db, runtime.chat_session.id)
+    attached = await list_attached_uploads(
+        runtime.db,
+        runtime.chat_session.id,
+        as_of=runtime.chat_request.started_at,
+    )
     return _format_attached_documents(attached)
 
 

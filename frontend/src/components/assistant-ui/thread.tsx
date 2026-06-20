@@ -91,8 +91,24 @@ const ThreadMessage: FC = () => {
   const isEditing = useAuiState((s) => s.message.composer.isEditing);
 
   if (isEditing) return <EditComposer />;
+  if (role === "system") return <SystemEventMessage />;
   if (role === "user") return <UserMessage />;
   return <AssistantMessage />;
+};
+
+const SystemEventMessage: FC = () => {
+  return (
+    <MessagePrimitive.Root
+      data-slot="aui_system-message-root"
+      data-role="system"
+      className="fade-in animate-in flex justify-center px-2 duration-150"
+    >
+      <div className="text-muted-foreground bg-muted/60 inline-flex max-w-full items-center gap-1.5 rounded-full border px-3 py-1 text-xs">
+        <PaperclipIcon className="size-3 shrink-0" />
+        <MessagePrimitive.Parts />
+      </div>
+    </MessagePrimitive.Root>
+  );
 };
 
 const ThreadScrollToBottom: FC = () => {

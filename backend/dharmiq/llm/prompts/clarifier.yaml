@@ -27,6 +27,8 @@ user_template: |
   Documents attached to this chat (library uploads the user selected for this session):
   {attached_documents}
 
+  Attachment events may also appear as system lines in the conversation history above.
+
   Latest user message:
   {user_question}
 

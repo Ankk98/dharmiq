@@ -1,7 +1,16 @@
 import { PaperclipIcon, XIcon } from "lucide-react";
-import { useCallback, useEffect, useState, type FC } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  type FC,
+  type ReactNode,
+} from "react";
 
 import { Button } from "@/components/ui/button";
+import { useChatRuntimeState } from "@/providers/ChatRuntimeProvider";
 import {
   attachUploads,
   detachUpload,
@@ -12,15 +21,34 @@ import {
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-type SessionAttachmentsProps = {
+type SessionAttachmentsContextValue = {
   sessionId: string | null;
-  className?: string;
+  attachedUploads: UserUpload[];
+  error: string | null;
+  openPicker: () => void;
+  handleDetach: (uploadId: string) => Promise<void>;
 };
 
-export const SessionAttachments: FC<SessionAttachmentsProps> = ({
+const SessionAttachmentsContext = createContext<SessionAttachmentsContextValue | null>(null);
+
+function useSessionAttachmentsContext(): SessionAttachmentsContextValue {
+  const context = useContext(SessionAttachmentsContext);
+  if (!context) {
+    throw new Error("SessionAttachments components must be used within SessionAttachmentsProvider");
+  }
+  return context;
+}
+
+type SessionAttachmentsProviderProps = {
+  sessionId: string | null;
+  children: ReactNode;
+};
+
+export const SessionAttachmentsProvider: FC<SessionAttachmentsProviderProps> = ({
   sessionId,
-  className,
+  children,
 }) => {
+  const { registerAttachPicker } = useChatRuntimeState();
   const [attachments, setAttachments] = useState<SessionAttachment[]>([]);
   const [uploadsById, setUploadsById] = useState<Map<string, UserUpload>>(new Map());
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -92,7 +120,7 @@ export const SessionAttachments: FC<SessionAttachmentsProps> = ({
     };
   }, [sessionId]);
 
-  const openPicker = async () => {
+  const openPicker = useCallback(async () => {
     setPickerOpen(true);
     setSelected(new Set());
     setError(null);
@@ -102,7 +130,12 @@ export const SessionAttachments: FC<SessionAttachmentsProps> = ({
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load library");
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    registerAttachPicker(openPicker);
+    return () => registerAttachPicker(null);
+  }, [openPicker, registerAttachPicker]);
 
   const confirmAttach = async () => {
     if (!sessionId || selected.size === 0) {
@@ -136,52 +169,16 @@ export const SessionAttachments: FC<SessionAttachmentsProps> = ({
     .filter((upload): upload is UserUpload => upload != null);
 
   return (
-    <div className={cn("flex flex-col gap-2", className)}>
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-          Attached to chat
-        </p>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-7 gap-1 text-xs"
-          disabled={!sessionId}
-          onClick={() => void openPicker()}
-        >
-          <PaperclipIcon className="size-3.5" />
-          Attach
-        </Button>
-      </div>
-
-      {error ? <p className="text-destructive text-xs">{error}</p> : null}
-
-      {attachedUploads.length === 0 ? (
-        <p className="text-muted-foreground text-xs">
-          No documents attached. Uploads in your library are not searched until attached.
-        </p>
-      ) : (
-        <div className="flex flex-wrap gap-1.5">
-          {attachedUploads.map((upload) => (
-            <span
-              key={upload.id}
-              className="bg-primary/10 text-primary inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs"
-            >
-              <PaperclipIcon className="size-3" />
-              <span className="max-w-36 truncate">{upload.original_filename}</span>
-              <button
-                type="button"
-                className="hover:text-destructive rounded-full p-0.5"
-                aria-label={`Remove ${upload.original_filename}`}
-                onClick={() => void handleDetach(upload.id)}
-              >
-                <XIcon className="size-3" />
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
-
+    <SessionAttachmentsContext.Provider
+      value={{
+        sessionId,
+        attachedUploads,
+        error,
+        openPicker,
+        handleDetach,
+      }}
+    >
+      {children}
       {pickerOpen ? (
         <div className="bg-background fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
@@ -257,6 +254,74 @@ export const SessionAttachments: FC<SessionAttachmentsProps> = ({
           </div>
         </div>
       ) : null}
+    </SessionAttachmentsContext.Provider>
+  );
+};
+
+type SessionAttachmentsPanelProps = {
+  className?: string;
+};
+
+export const SessionAttachmentsPanel: FC<SessionAttachmentsPanelProps> = ({ className }) => {
+  const { sessionId, attachedUploads, error, openPicker, handleDetach } =
+    useSessionAttachmentsContext();
+
+  return (
+    <div className={cn("flex flex-col gap-2", className)}>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+          Attached to chat
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-7 gap-1 text-xs"
+          disabled={!sessionId}
+          onClick={() => void openPicker()}
+        >
+          <PaperclipIcon className="size-3.5" />
+          Attach
+        </Button>
+      </div>
+
+      {error ? <p className="text-destructive text-xs">{error}</p> : null}
+
+      {attachedUploads.length === 0 ? (
+        <p className="text-muted-foreground text-xs">
+          No documents attached. Uploads in your library are not searched until attached.
+        </p>
+      ) : (
+        <div className="flex flex-wrap gap-1.5">
+          {attachedUploads.map((upload) => (
+            <span
+              key={upload.id}
+              className="bg-primary/10 text-primary inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs"
+            >
+              <PaperclipIcon className="size-3" />
+              <span className="max-w-36 truncate">{upload.original_filename}</span>
+              <button
+                type="button"
+                className="hover:text-destructive rounded-full p-0.5"
+                aria-label={`Remove ${upload.original_filename}`}
+                onClick={() => void handleDetach(upload.id)}
+              >
+                <XIcon className="size-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
+
+/** @deprecated Use SessionAttachmentsProvider + SessionAttachmentsPanel */
+export const SessionAttachments: FC<{ sessionId: string | null; className?: string }> = ({
+  sessionId,
+  className,
+}) => (
+  <SessionAttachmentsProvider sessionId={sessionId}>
+    <SessionAttachmentsPanel className={className} />
+  </SessionAttachmentsProvider>
+);

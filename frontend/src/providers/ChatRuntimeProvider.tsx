@@ -68,6 +68,8 @@ type ChatRuntimeContextValue = {
   awaitingClarification: boolean;
   forceAnswer: () => Promise<void>;
   streamError: string | null;
+  openAttachPicker: () => void;
+  registerAttachPicker: (handler: (() => void) | null) => void;
 };
 
 const ChatRuntimeContext = createContext<ChatRuntimeContextValue | null>(null);
@@ -146,6 +148,7 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
   const [progressView, setProgressViewState] = useState<ProgressView>(getProgressView);
   const [awaitingClarification, setAwaitingClarification] = useState(false);
   const slowTimerRef = useRef<number | null>(null);
+  const attachPickerRef = useRef<(() => void) | null>(null);
   const sessionIdRef = useRef<string | null>(sessionId);
   const initStartedRef = useRef(false);
   const skipProgressViewRefreshRef = useRef(true);
@@ -254,6 +257,14 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
     const rows = await listSessions();
     setSessions(rows);
     return rows;
+  }, []);
+
+  const registerAttachPicker = useCallback((handler: (() => void) | null) => {
+    attachPickerRef.current = handler;
+  }, []);
+
+  const openAttachPicker = useCallback(() => {
+    attachPickerRef.current?.();
   }, []);
 
   const detectClarification = useCallback((rows: ChatMessage[]) => {
@@ -500,6 +511,8 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
       awaitingClarification,
       forceAnswer,
       streamError,
+      openAttachPicker,
+      registerAttachPicker,
     }),
     [
       slowNotice,
@@ -515,6 +528,8 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
       awaitingClarification,
       forceAnswer,
       streamError,
+      openAttachPicker,
+      registerAttachPicker,
     ],
   );
 

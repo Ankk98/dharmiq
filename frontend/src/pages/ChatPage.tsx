@@ -1,7 +1,10 @@
 import { Thread } from "@/components/assistant-ui/thread";
 import { ThreadList } from "@/components/assistant-ui/thread-list";
 import { DebugPanel } from "@/components/chat/DebugPanel";
-import { SessionAttachments } from "@/components/uploads/SessionAttachments";
+import {
+  SessionAttachmentsPanel,
+  SessionAttachmentsProvider,
+} from "@/components/uploads/SessionAttachments";
 import { UploadLibrary } from "@/components/uploads/UploadLibrary";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
@@ -12,7 +15,8 @@ function ChatLayout() {
   const { slowNotice, isRunning, sessionId, debugEvents, streamError } = useChatRuntimeState();
 
   return (
-    <div className="flex h-full flex-col">
+    <SessionAttachmentsProvider sessionId={sessionId}>
+      <div className="flex h-full flex-col">
       <header className="border-border flex items-center justify-between border-b px-4 py-3">
         <div>
           <h1 className="text-lg font-semibold">Dharmiq</h1>
@@ -39,7 +43,7 @@ function ChatLayout() {
             <ThreadList />
           </div>
           <UploadLibrary />
-          <SessionAttachments sessionId={sessionId} />
+          <SessionAttachmentsPanel />
         </aside>
 
         <main className="flex min-w-0 flex-1 flex-col">
@@ -59,6 +63,7 @@ function ChatLayout() {
         </main>
       </div>
     </div>
+    </SessionAttachmentsProvider>
   );
 }
 

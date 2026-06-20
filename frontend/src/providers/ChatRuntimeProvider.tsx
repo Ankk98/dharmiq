@@ -19,12 +19,22 @@ import {
   createSession,
   listMessages,
   listSessions,
+  postSessionMessage,
   sendChatMessage,
   type ChatMessage,
   type ChatSession,
   type Citation,
 } from "@/lib/api";
-import { formatAssistantContent } from "@/lib/citations";
+import {
+  citationsFromMetadata,
+  formatAssistantContent,
+} from "@/lib/citations";
+import {
+  getProgressView,
+  setProgressView,
+  type ProgressView,
+} from "@/lib/chatPreferences";
+import { useChatStream, type ProgressStep } from "@/hooks/useChatStream";
 
 type StoredMessage = {
   id: string;
@@ -37,18 +47,29 @@ type ChatRuntimeContextValue = {
   isRunning: boolean;
   lastCitations: Citation[];
   refreshSessions: () => Promise<ChatSession[]>;
+  sessionId: string | null;
+  progressView: ProgressView;
+  setProgressView: (view: ProgressView) => void;
+  progressSteps: ProgressStep[];
+  streamStatus: ReturnType<typeof useChatStream>["status"];
+  debugEvents: ReturnType<typeof useChatStream>["debugEvents"];
+  awaitingClarification: boolean;
+  forceAnswer: () => Promise<void>;
+  streamError: string | null;
 };
 
 const ChatRuntimeContext = createContext<ChatRuntimeContextValue | null>(null);
 
 const SLOW_THRESHOLD_MS = 30_000;
+const STREAMING_MESSAGE_ID = "__streaming_assistant__";
 
 function mapBackendMessage(message: ChatMessage, citations: Citation[] = []): StoredMessage {
   const role = message.role === "user" ? "user" : "assistant";
   let content = message.content;
   if (role === "assistant") {
-    const messageCitations =
-      (message.metadata?.citations as Citation[] | undefined) ?? citations;
+    const messageCitations = citationsFromMetadata(message.metadata).length
+      ? citationsFromMetadata(message.metadata)
+      : citations;
     content = formatAssistantContent(content, messageCitations);
     if (message.role === "clarifier") {
       content = `**Clarification needed**\n\n${content}`;
@@ -72,7 +93,26 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
   const [isRunning, setIsRunning] = useState(false);
   const [slowNotice, setSlowNotice] = useState(false);
   const [lastCitations, setLastCitations] = useState<Citation[]>([]);
+  const [progressView, setProgressViewState] = useState<ProgressView>(getProgressView);
+  const [awaitingClarification, setAwaitingClarification] = useState(false);
   const slowTimerRef = useRef<number | null>(null);
+  const sessionIdRef = useRef<string | null>(sessionId);
+
+  useEffect(() => {
+    sessionIdRef.current = sessionId;
+  }, [sessionId]);
+
+  const {
+    status: streamStatus,
+    progressSteps,
+    streamingText,
+    streamCitations,
+    debugEvents,
+    errorMessage: streamError,
+    connect,
+    disconnect,
+    reset: resetStream,
+  } = useChatStream(progressView);
 
   const clearSlowTimer = useCallback(() => {
     if (slowTimerRef.current != null) {
@@ -82,16 +122,30 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
     setSlowNotice(false);
   }, []);
 
+  const handleProgressViewChange = useCallback((view: ProgressView) => {
+    setProgressView(view);
+    setProgressViewState(view);
+  }, []);
+
   const refreshSessions = useCallback(async () => {
     const rows = await listSessions();
     setSessions(rows);
     return rows;
   }, []);
 
-  const loadMessages = useCallback(async (id: string) => {
-    const rows = await listMessages(id);
-    setMessages(rows.map((row) => mapBackendMessage(row)));
+  const detectClarification = useCallback((rows: ChatMessage[]) => {
+    const last = rows.at(-1);
+    setAwaitingClarification(last?.role === "clarifier");
   }, []);
+
+  const loadMessages = useCallback(
+    async (id: string) => {
+      const rows = await listMessages(id);
+      setMessages(rows.map((row) => mapBackendMessage(row)));
+      detectClarification(rows);
+    },
+    [detectClarification],
+  );
 
   useEffect(() => {
     void (async () => {
@@ -109,62 +163,147 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
     })();
   }, [loadMessages, refreshSessions]);
 
-  const onNew = useCallback(
-    async (message: AppendMessage) => {
-      if (!sessionId) {
+  const displayMessages = useMemo(() => {
+    if (!isRunning || streamStatus !== "streaming" || !streamingText) {
+      return messages;
+    }
+    const withoutStreaming = messages.filter((message) => message.id !== STREAMING_MESSAGE_ID);
+    return [
+      ...withoutStreaming,
+      {
+        id: STREAMING_MESSAGE_ID,
+        role: "assistant" as const,
+        content: formatAssistantContent(
+          streamingText,
+          streamCitations.map((item) => ({
+            marker: item.marker,
+            chunk_id: item.chunk_id,
+            source_type: item.source_type ?? "corpus",
+            document_id: item.document_id ?? item.chunk_id,
+            document_title: item.document_title,
+            quote_text: item.quote_text,
+          })),
+        ),
+      },
+    ];
+  }, [isRunning, messages, streamCitations, streamStatus, streamingText]);
+
+  const finalizeFromStream = useCallback(
+    async (id: string, citations: Citation[]) => {
+      setLastCitations(citations);
+      await loadMessages(id);
+      await refreshSessions();
+    },
+    [loadMessages, refreshSessions],
+  );
+
+  const runLegacyPipeline = useCallback(
+    async (id: string, userText: string) => {
+      const response = await sendChatMessage(id, userText);
+      setLastCitations(response.citations);
+      if (response.taking_longer_than_expected) {
+        setSlowNotice(true);
+      }
+      setAwaitingClarification(response.needs_clarification);
+      await loadMessages(id);
+      await refreshSessions();
+    },
+    [loadMessages, refreshSessions],
+  );
+
+  const submitMessage = useCallback(
+    async (userText: string, options?: { forceAnswer?: boolean }) => {
+      const id = sessionIdRef.current;
+      if (!id) {
         return;
       }
+
+      setMessages((prev) => [
+        ...prev.filter((message) => message.id !== STREAMING_MESSAGE_ID),
+        { id: crypto.randomUUID(), role: "user", content: userText },
+      ]);
+      setIsRunning(true);
+      setAwaitingClarification(false);
+      clearSlowTimer();
+      resetStream();
+      slowTimerRef.current = window.setTimeout(() => setSlowNotice(true), SLOW_THRESHOLD_MS);
+
+      try {
+        const result = await postSessionMessage(id, userText, {
+          forceAnswer: options?.forceAnswer,
+        });
+
+        if (result.mode === "async") {
+          const streamResult = await connect(result.chat_request_id);
+          const citations: Citation[] = streamResult.streamCitations.map((item) => ({
+            marker: item.marker,
+            chunk_id: item.chunk_id,
+            source_type: item.source_type ?? "corpus",
+            document_id: item.document_id ?? item.chunk_id,
+            document_title: item.document_title,
+            quote_text: item.quote_text,
+          }));
+          await finalizeFromStream(id, citations);
+        } else {
+          await runLegacyPipeline(id, userText);
+        }
+      } finally {
+        disconnect();
+        clearSlowTimer();
+        setIsRunning(false);
+        setMessages((prev) => prev.filter((message) => message.id !== STREAMING_MESSAGE_ID));
+      }
+    },
+    [
+      clearSlowTimer,
+      connect,
+      disconnect,
+      finalizeFromStream,
+      resetStream,
+      runLegacyPipeline,
+    ],
+  );
+
+  const onNew = useCallback(
+    async (message: AppendMessage) => {
       const firstPart = message.content[0];
       if (!firstPart || firstPart.type !== "text") {
         throw new Error("Only text messages are supported");
       }
-
-      const userText = firstPart.text;
-      setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "user", content: userText }]);
-      setIsRunning(true);
-      clearSlowTimer();
-      slowTimerRef.current = window.setTimeout(() => setSlowNotice(true), SLOW_THRESHOLD_MS);
-
-      try {
-        const response = await sendChatMessage(sessionId, userText);
-        setLastCitations(response.citations);
-        if (response.taking_longer_than_expected) {
-          setSlowNotice(true);
-        }
-
-        const mapped = response.messages.map((row) =>
-          mapBackendMessage(
-            row,
-            row.role === "assistant" ? response.citations : [],
-          ),
-        );
-        setMessages(mapped);
-        await refreshSessions();
-      } finally {
-        clearSlowTimer();
-        setIsRunning(false);
-      }
+      await submitMessage(firstPart.text);
     },
-    [sessionId, clearSlowTimer, refreshSessions],
+    [submitMessage],
   );
 
+  const forceAnswer = useCallback(async () => {
+    await submitMessage("Please answer with the information you have.", {
+      forceAnswer: true,
+    });
+  }, [submitMessage]);
+
   const onSwitchToNewThread = useCallback(async () => {
+    disconnect();
+    resetStream();
     const created = await createSession();
     setSessions((prev) => [created, ...prev]);
     setSessionId(created.id);
     setMessages([]);
     setLastCitations([]);
+    setAwaitingClarification(false);
     clearSlowTimer();
-  }, [clearSlowTimer]);
+  }, [clearSlowTimer, disconnect, resetStream]);
 
   const onSwitchToThread = useCallback(
     async (threadId: string) => {
+      disconnect();
+      resetStream();
       setSessionId(threadId);
       setLastCitations([]);
+      setAwaitingClarification(false);
       clearSlowTimer();
       await loadMessages(threadId);
     },
-    [clearSlowTimer, loadMessages],
+    [clearSlowTimer, disconnect, loadMessages, resetStream],
   );
 
   const threadListAdapter = useMemo(
@@ -184,7 +323,7 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
 
   const runtime = useExternalStoreRuntime({
     isRunning,
-    messages,
+    messages: displayMessages,
     convertMessage,
     onNew,
     setMessages: (next) => setMessages([...next]),
@@ -192,8 +331,36 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
   });
 
   const contextValue = useMemo(
-    () => ({ slowNotice, isRunning, lastCitations, refreshSessions }),
-    [slowNotice, isRunning, lastCitations, refreshSessions],
+    () => ({
+      slowNotice,
+      isRunning,
+      lastCitations,
+      refreshSessions,
+      sessionId,
+      progressView,
+      setProgressView: handleProgressViewChange,
+      progressSteps,
+      streamStatus,
+      debugEvents,
+      awaitingClarification,
+      forceAnswer,
+      streamError,
+    }),
+    [
+      slowNotice,
+      isRunning,
+      lastCitations,
+      refreshSessions,
+      sessionId,
+      progressView,
+      handleProgressViewChange,
+      progressSteps,
+      streamStatus,
+      debugEvents,
+      awaitingClarification,
+      forceAnswer,
+      streamError,
+    ],
   );
 
   return (

@@ -10,11 +10,25 @@ import {
 } from "@assistant-ui/react-markdown";
 import { Link } from "react-router-dom";
 import remarkGfm from "remark-gfm";
-import { type FC, memo, useState } from "react";
+import { Children, isValidElement, type FC, memo, type ReactNode, useState } from "react";
 import { CheckIcon, CopyIcon } from "lucide-react";
 
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { cn } from "@/lib/utils";
+
+function flattenMarkdownChildren(children: ReactNode): string {
+  return Children.toArray(children)
+    .map((child) => {
+      if (typeof child === "string" || typeof child === "number") {
+        return String(child);
+      }
+      if (isValidElement<{ children?: ReactNode }>(child)) {
+        return flattenMarkdownChildren(child.props.children);
+      }
+      return "";
+    })
+    .join("");
+}
 
 const MarkdownTextImpl = () => {
   return (
@@ -154,15 +168,36 @@ const defaultComponents = memoizeMarkdownComponents({
       />
     );
   },
-  blockquote: ({ className, ...props }) => (
-    <blockquote
-      className={cn(
-        "aui-md-blockquote border-muted-foreground/30 text-muted-foreground my-2.5 border-s-2 ps-3 italic",
-        className,
-      )}
-      {...props}
-    />
-  ),
+  blockquote: ({ className, children, ...props }) => {
+    const text = flattenMarkdownChildren(children).toLowerCase();
+    const isUploadQuote =
+      text.includes("your document") ||
+      text.includes("contract") ||
+      text.includes("clause");
+    return (
+      <blockquote
+        className={cn(
+          "aui-md-blockquote my-3 border-s-4 ps-4 not-italic",
+          isUploadQuote
+            ? "border-amber-500/70 bg-amber-500/5 text-foreground"
+            : "border-primary/60 bg-primary/5 text-foreground",
+          className,
+        )}
+        {...props}
+      >
+        {isUploadQuote ? (
+          <span className="text-muted-foreground mb-1 block text-xs font-medium uppercase tracking-wide">
+            Your document says
+          </span>
+        ) : (
+          <span className="text-muted-foreground mb-1 block text-xs font-medium uppercase tracking-wide">
+            The law says
+          </span>
+        )}
+        {children}
+      </blockquote>
+    );
+  },
   ul: ({ className, ...props }) => (
     <ul
       className={cn(

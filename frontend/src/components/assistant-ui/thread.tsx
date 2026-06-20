@@ -19,6 +19,7 @@ import {
 import { ToolFallback } from "@/components/assistant-ui/tool-fallback";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { Button } from "@/components/ui/button";
+import { useChatRuntimeState } from "@/providers/ChatRuntimeProvider";
 import { cn } from "@/lib/utils";
 import {
   ActionBarMorePrimitive,
@@ -139,8 +140,23 @@ const ThreadSuggestionItem: FC = () => {
 };
 
 const Composer: FC = () => {
+  const { awaitingClarification, forceAnswer, isRunning } = useChatRuntimeState();
+
   return (
-    <ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col">
+    <ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col gap-2">
+      {awaitingClarification && !isRunning ? (
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="text-xs"
+            onClick={() => void forceAnswer()}
+          >
+            Answer with what you have
+          </Button>
+        </div>
+      ) : null}
       <ComposerPrimitive.AttachmentDropzone render={<div data-slot="aui_composer-shell" className="bg-background focus-within:border-ring/75 focus-within:ring-ring/20 data-[dragging=true]:border-ring data-[dragging=true]:bg-accent/50 flex w-full flex-col gap-2 rounded-(--composer-radius) border p-(--composer-padding) transition-shadow focus-within:ring-2 data-[dragging=true]:border-dashed" />}><ComposerAttachments /><ComposerPrimitive.Input
                       placeholder="Send a message..."
                       className="aui-composer-input placeholder:text-muted-foreground/80 max-h-32 min-h-10 w-full resize-none bg-transparent px-1.75 py-1 text-sm outline-none"

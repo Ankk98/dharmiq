@@ -3,8 +3,7 @@ from __future__ import annotations
 import json
 
 import pytest
-import respx
-from httpx import AsyncClient, Response
+from httpx import AsyncClient
 
 from dharmiq.eval.judge import run_llm_judge
 from dharmiq.llm.openrouter_client import OpenRouterClient
@@ -17,6 +16,7 @@ from dharmiq.observability.metrics import (
     record_llm_tokens,
     reset_ingestion_metrics,
 )
+from tests.litellm_helpers import chat_response_dict, mock_litellm_acompletion
 
 
 @pytest.fixture(autouse=True)
@@ -48,26 +48,15 @@ def test_record_http_and_llm_metrics() -> None:
     )
 
 
-@respx.mock
-async def test_llm_judge_parses_scores() -> None:
+async def test_llm_judge_parses_scores(monkeypatch: pytest.MonkeyPatch) -> None:
     payload = {
-        "choices": [
-            {
-                "message": {
-                    "content": json.dumps(
-                        {
-                            "answer_correctness": 0.85,
-                            "citation_correctness": 0.7,
-                            "reason": "Covers Article 22 adequately.",
-                        }
-                    )
-                }
-            }
-        ],
-        "usage": {"total_tokens": 42},
+        "answer_correctness": 0.85,
+        "citation_correctness": 0.7,
+        "reason": "Covers Article 22 adequately.",
     }
-    respx.post("https://openrouter.ai/api/v1/chat/completions").mock(
-        return_value=Response(200, json=payload)
+    mock_litellm_acompletion(
+        monkeypatch,
+        [chat_response_dict(json.dumps(payload), total_tokens=42)],
     )
 
     client = OpenRouterClient()
@@ -78,7 +67,6 @@ async def test_llm_judge_parses_scores() -> None:
         reference_answer="Article 22 protects against arbitrary arrest.",
         expected_citations=[{"section": "Article 22"}],
     )
-    await client.close()
 
     assert scores.answer_correctness == 0.85
     assert scores.citation_correctness == 0.7

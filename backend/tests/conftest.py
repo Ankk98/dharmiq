@@ -10,6 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from dharmiq.config.settings import get_settings
 from dharmiq.db.session import close_db, get_session_factory, init_db
 from dharmiq.llm.embeddings import reset_embedding_backend_cache
+from dharmiq.llm.litellm_service import reset_litellm_service
+from dharmiq.llm.openrouter_client import close_openrouter_client
 from dharmiq.main import create_app
 
 
@@ -28,11 +30,15 @@ def _env(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture(autouse=True)
 async def _db_engine_lifecycle() -> None:
     await close_db()
+    await close_openrouter_client()
+    reset_litellm_service()
     reset_embedding_backend_cache()
     get_settings.cache_clear()
     await init_db()
     yield
     await close_db()
+    await close_openrouter_client()
+    reset_litellm_service()
     reset_embedding_backend_cache()
     get_settings.cache_clear()
 

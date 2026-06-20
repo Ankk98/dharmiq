@@ -4,8 +4,6 @@ import json
 import uuid
 
 import pytest
-import respx
-from httpx import Response
 from pgvector import Vector as PgVector
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -24,6 +22,7 @@ from dharmiq.llm.retrieval import (
     retrieve_merged_chunks,
     retrieve_multi_query,
 )
+from tests.litellm_helpers import chat_response_dict, mock_litellm_acompletion
 from tests.vector_helpers import blend_vectors, unit_vector
 
 
@@ -200,33 +199,24 @@ def test_load_prompt_templates() -> None:
 
 
 @pytest.mark.asyncio
-@respx.mock
-async def test_run_clarifier_parses_json_response() -> None:
+async def test_run_clarifier_parses_json_response(monkeypatch: pytest.MonkeyPatch) -> None:
     payload = {
         "topic": "police_arrest",
         "needs_more_info": True,
         "followup_questions": ["Are you under arrest?"],
         "reason": "Need arrest status",
     }
-    respx.post("https://openrouter.ai/api/v1/chat/completions").mock(
-        return_value=Response(
-            200,
-            json={
-                "choices": [{"message": {"role": "assistant", "content": json.dumps(payload)}}],
-                "usage": {"total_tokens": 42},
-            },
-        )
+    mock_litellm_acompletion(
+        monkeypatch,
+        [chat_response_dict(json.dumps(payload), total_tokens=42)],
     )
 
     client = OpenRouterClient()
-    try:
-        result = await run_clarifier(
-            client,
-            user_question="Police stopped me",
-            history=[],
-        )
-    finally:
-        await client.close()
+    result = await run_clarifier(
+        client,
+        user_question="Police stopped me",
+        history=[],
+    )
 
     assert result.needs_more_info is True
     assert result.followup_questions == ["Are you under arrest?"]
@@ -234,29 +224,20 @@ async def test_run_clarifier_parses_json_response() -> None:
 
 
 @pytest.mark.asyncio
-@respx.mock
-async def test_run_query_rewriter_returns_queries() -> None:
+async def test_run_query_rewriter_returns_queries(monkeypatch: pytest.MonkeyPatch) -> None:
     payload = {"queries": ["Section 12 refund rights", "consumer protection defective goods"]}
-    respx.post("https://openrouter.ai/api/v1/chat/completions").mock(
-        return_value=Response(
-            200,
-            json={
-                "choices": [{"message": {"role": "assistant", "content": json.dumps(payload)}}],
-                "usage": {"total_tokens": 30},
-            },
-        )
+    mock_litellm_acompletion(
+        monkeypatch,
+        [chat_response_dict(json.dumps(payload), total_tokens=30)],
     )
 
     client = OpenRouterClient()
-    try:
-        result = await run_query_rewriter(
-            client,
-            user_question="My product arrived damaged",
-            topic="consumer_refund",
-            facts="Ordered online last week",
-        )
-    finally:
-        await client.close()
+    result = await run_query_rewriter(
+        client,
+        user_question="My product arrived damaged",
+        topic="consumer_refund",
+        facts="Ordered online last week",
+    )
 
     assert len(result.queries) == 2
     assert result.tokens_used == 30

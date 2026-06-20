@@ -16,6 +16,24 @@ database:
 redis:
   url: redis://localhost:6379/0
 
+agent_graph:
+  enabled: false
+
+llm:
+  roles:
+    primary: openrouter/deepseek/deepseek-v4-pro
+    fast: openrouter/deepseek/deepseek-v4-flash
+    embedding: local
+  agents:
+    validator:
+      model: openrouter/deepseek/deepseek-v4-pro
+      reasoning:
+        enabled: true
+  rerank:
+    backend: local
+    local_model: BAAI/bge-reranker-base
+    litellm_model: cohere/rerank-english-v3.0
+
 openrouter:
   base_url: https://openrouter.ai/api/v1
   default_model: deepseek/deepseek-v4-pro

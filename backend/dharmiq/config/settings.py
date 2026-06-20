@@ -69,6 +69,42 @@ class RedisSettings(BaseModel):
     url: str = "redis://localhost:6379/0"
 
 
+class AgentGraphSettings(BaseModel):
+    enabled: bool = False
+
+
+class LLMRoleSettings(BaseModel):
+    primary: str = "openrouter/deepseek/deepseek-v4-pro"
+    fast: str = "openrouter/deepseek/deepseek-v4-flash"
+    embedding: Literal["local"] = "local"
+
+
+class LLMAgentReasoningSettings(BaseModel):
+    enabled: bool = False
+
+
+class LLMAgentSettings(BaseModel):
+    model: str | None = None
+    reasoning: LLMAgentReasoningSettings = Field(default_factory=LLMAgentReasoningSettings)
+
+
+class LLMAgentsSettings(BaseModel):
+    validator: LLMAgentSettings = Field(default_factory=LLMAgentSettings)
+
+
+class LLMRerankSettings(BaseModel):
+    backend: Literal["local", "litellm"] = "local"
+    local_model: str = "BAAI/bge-reranker-base"
+    litellm_model: str = "cohere/rerank-english-v3.0"
+    api_key_env: str = "COHERE_API_KEY"
+
+
+class LLMSettings(BaseModel):
+    roles: LLMRoleSettings = Field(default_factory=LLMRoleSettings)
+    agents: LLMAgentsSettings = Field(default_factory=LLMAgentsSettings)
+    rerank: LLMRerankSettings = Field(default_factory=LLMRerankSettings)
+
+
 class OpenRouterSettings(BaseModel):
     base_url: str = "https://openrouter.ai/api/v1"
     default_model: str = "deepseek/deepseek-v4-pro"
@@ -166,6 +202,8 @@ class Settings(BaseModel):
     server: ServerSettings = Field(default_factory=ServerSettings)
     database: DatabaseSettings = Field(default_factory=DatabaseSettings)
     redis: RedisSettings = Field(default_factory=RedisSettings)
+    agent_graph: AgentGraphSettings = Field(default_factory=AgentGraphSettings)
+    llm: LLMSettings = Field(default_factory=LLMSettings)
     openrouter: OpenRouterSettings = Field(default_factory=OpenRouterSettings)
     embeddings: EmbeddingsSettings = Field(default_factory=EmbeddingsSettings)
     retrieval: RetrievalSettings = Field(default_factory=RetrievalSettings)
@@ -198,6 +236,14 @@ def _apply_env_overrides(settings_dict: dict) -> dict:
     auth = settings_dict.setdefault("auth", {})
     if jwt_secret := os.environ.get("DHARMIQ_JWT_SECRET"):
         auth["jwt_secret"] = jwt_secret
+
+    agent_graph = settings_dict.setdefault("agent_graph", {})
+    if (flag := os.environ.get("DHARMIQ_AGENT_GRAPH_V2")) and flag.lower() in {
+        "1",
+        "true",
+        "yes",
+    }:
+        agent_graph["enabled"] = True
 
     return settings_dict
 

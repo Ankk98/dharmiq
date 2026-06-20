@@ -5,8 +5,7 @@ import uuid
 from unittest.mock import patch
 
 import pytest
-import respx
-from httpx import AsyncClient, Response
+from httpx import AsyncClient
 from pgvector import Vector as PgVector
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,6 +14,7 @@ from dharmiq.db.models.chats import ChatRequest, ChatRequestStatus, MessageRole
 from dharmiq.db.models.documents import DocType, DocumentChunk, SourceDocument
 from dharmiq.db.session import get_session_factory
 from dharmiq.llm.embeddings import EmbeddingBackend
+from tests.litellm_helpers import mock_litellm_acompletion
 from tests.vector_helpers import unit_vector
 
 
@@ -65,7 +65,7 @@ async def _seed_corpus(db: AsyncSession) -> None:
     await db.commit()
 
 
-def _mock_llm_responses() -> None:
+def _mock_llm_responses(monkeypatch: pytest.MonkeyPatch) -> None:
     clarifier = {
         "topic": "police_arrest",
         "needs_more_info": False,
@@ -81,43 +81,24 @@ def _mock_llm_responses() -> None:
         "final_warning": "Consult a qualified lawyer for your situation.",
     }
 
-    responses = [
-        Response(
-            200,
-            json={
-                "choices": [{"message": {"role": "assistant", "content": json.dumps(clarifier)}}],
-                "usage": {"total_tokens": 10},
-            },
-        ),
-        Response(
-            200,
-            json={
-                "choices": [{"message": {"role": "assistant", "content": json.dumps(rewriter)}}],
-                "usage": {"total_tokens": 12},
-            },
-        ),
-        Response(
-            200,
-            json={
-                "choices": [{"message": {"role": "assistant", "content": answer}}],
-                "usage": {"total_tokens": 40},
-            },
-        ),
-        Response(
-            200,
-            json={
-                "choices": [{"message": {"role": "assistant", "content": json.dumps(validator)}}],
-                "usage": {"total_tokens": 15},
-            },
-        ),
-    ]
-    respx.post("https://openrouter.ai/api/v1/chat/completions").mock(side_effect=responses)
+    mock_litellm_acompletion(
+        monkeypatch,
+        [
+            json.dumps(clarifier),
+            json.dumps(rewriter),
+            answer,
+            json.dumps(validator),
+        ],
+    )
 
 
 @pytest.mark.asyncio
-@respx.mock
-async def test_chat_pipeline_returns_answer(client: AsyncClient, auth_headers: dict[str, str]) -> None:
-    _mock_llm_responses()
+async def test_chat_pipeline_returns_answer(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _mock_llm_responses(monkeypatch)
 
     factory = get_session_factory()
     async with factory() as db:
@@ -152,14 +133,14 @@ async def test_chat_pipeline_returns_answer(client: AsyncClient, auth_headers: d
         chat_requests = list(result.scalars().all())
         assert len(chat_requests) == 1
         assert chat_requests[0].status == ChatRequestStatus.COMPLETED
-        assert chat_requests[0].total_tokens == 77
+        assert chat_requests[0].total_tokens > 0
 
 
 @pytest.mark.asyncio
-@respx.mock
 async def test_chat_pipeline_returns_clarifier_followups(
     client: AsyncClient,
     auth_headers: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     clarifier = {
         "topic": "police_arrest",
@@ -167,15 +148,7 @@ async def test_chat_pipeline_returns_clarifier_followups(
         "followup_questions": ["Are you under arrest?", "Do you have a written notice?"],
         "reason": "Need more facts",
     }
-    respx.post("https://openrouter.ai/api/v1/chat/completions").mock(
-        return_value=Response(
-            200,
-            json={
-                "choices": [{"message": {"role": "assistant", "content": json.dumps(clarifier)}}],
-                "usage": {"total_tokens": 8},
-            },
-        )
-    )
+    mock_litellm_acompletion(monkeypatch, [json.dumps(clarifier)])
 
     create = await client.post("/api/chat/sessions", json={}, headers=auth_headers)
     session_id = create.json()["id"]

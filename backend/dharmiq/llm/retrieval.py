@@ -55,9 +55,14 @@ class CitationRead(BaseModel):
     source_type: SourceType
     document_id: uuid.UUID
     document_title: str
-    chunk_index: int
+    chunk_index: int = 0
     page_start: int | None = None
     page_end: int | None = None
+    marker: int | None = None
+    section_label: str | None = None
+    quote_text: str | None = None
+    quote_start_char: int | None = None
+    quote_end_char: int | None = None
 
 
 def _chunk_with_score(chunk: RetrievedChunk, score: float) -> RetrievedChunk:

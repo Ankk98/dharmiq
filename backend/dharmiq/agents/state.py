@@ -14,6 +14,8 @@ class ValidatorVerdictState(TypedDict, total=False):
     issues: list[str]
     regeneration_instructions: str
     final_warning: str | None
+    unsupported_claims: list[str]
+    statutory_claims_checked: int
 
 
 class AgentGraphState(TypedDict, total=False):
@@ -39,10 +41,12 @@ class AgentGraphState(TypedDict, total=False):
     facts: str
 
     draft_answer: str
+    citation_map: list[dict[str, Any]]
     regeneration_instructions: str | None
     regeneration_count: int
     max_validator_retries: int
     validator_verdict: ValidatorVerdictState
+    validation_blocked: bool
     final_answer: str
     final_warning: str | None
     citations: list[dict[str, Any]]

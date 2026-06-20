@@ -296,6 +296,25 @@ async def run_agent_graph_for_request(
                 new_messages=[ChatMessageRead.model_validate(runtime.user_msg)],
             )
 
+        if final_state.get("validation_blocked"):
+            error_message = (
+                final_state.get("final_answer")
+                or "Answer could not be verified against retrieved sources."
+            )
+            await db.commit()
+            if runtime.emitter is not None:
+                await runtime.emitter.emit_done(message_id=None, status=ChatRequestStatus.FAILED)
+            return ChatPipelineResult(
+                chat_request_id=runtime.chat_request.id,
+                status=ChatRequestStatus.FAILED,
+                needs_clarification=False,
+                answer=error_message,
+                citations=_citations_from_state(final_state),
+                error_message=error_message,
+                taking_longer_than_expected=_elapsed_over_threshold(started, cfg),
+                new_messages=[ChatMessageRead.model_validate(message) for message in runtime.new_messages],
+            )
+
         await db.commit()
 
         assistant_msg = next(

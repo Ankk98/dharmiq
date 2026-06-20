@@ -22,6 +22,7 @@ NODE_PROGRESS_LABELS: dict[str, str] = {
     "retrieve": "Searching laws…",
     "refusal": "Checking sources…",
     "answerer": "Drafting answer…",
+    "citation_enricher": "Mapping citations…",
     "validator": "Checking answer…",
     "finalizer": "Finalizing answer…",
 }
@@ -33,6 +34,7 @@ AGENT_DISPLAY_NAMES: dict[str, str] = {
     "retrieve": "Retrieve",
     "refusal": "Refusal",
     "answerer": "Answerer",
+    "citation_enricher": "CitationEnricher",
     "validator": "Validator",
     "finalizer": "Finalizer",
 }

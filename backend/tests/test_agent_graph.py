@@ -102,7 +102,11 @@ def _mock_full_pipeline_llm(monkeypatch: pytest.MonkeyPatch) -> None:
         "reason": "Enough detail",
     }
     rewriter = {"queries": ["Article 22 arrest rights", "police station questioning rights"]}
-    answer = "You have protections under Article 22 [doc:abc|chunk:def]. This is not legal advice."
+    answer = (
+        "You have protections under Article 22 [1].\n\n"
+        "> Article 22 protects against arbitrary arrest and detention.\n\n"
+        "This is not legal advice."
+    )
     validator = {
         "must_regenerate": False,
         "issues": [],

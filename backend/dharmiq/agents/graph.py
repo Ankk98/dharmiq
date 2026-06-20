@@ -8,6 +8,7 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, StateGraph
 
 from dharmiq.agents.nodes.answerer import answerer_node
+from dharmiq.agents.nodes.citation_enricher import citation_enricher_node
 from dharmiq.agents.nodes.clarifier import clarifier_node
 from dharmiq.agents.nodes.finalizer import finalizer_node
 from dharmiq.agents.nodes.input_guard import input_guard_node
@@ -105,6 +106,8 @@ def _route_after_retrieve(state: AgentGraphState) -> Literal["refusal", "answere
 
 
 def _route_after_validator(state: AgentGraphState) -> Literal["answerer", "finalizer"]:
+    if state.get("validation_blocked"):
+        return "finalizer"
     verdict = state.get("validator_verdict") or {}
     max_retries = state.get("max_validator_retries", 3)
     if verdict.get("must_regenerate") and state.get("regeneration_count", 0) < max_retries:
@@ -123,6 +126,7 @@ def build_agent_graph(
     builder.add_node("retrieve", with_progress("retrieve", retrieve_node))
     builder.add_node("refusal", with_progress("refusal", refusal_node))
     builder.add_node("answerer", with_progress("answerer", answerer_node))
+    builder.add_node("citation_enricher", with_progress("citation_enricher", citation_enricher_node))
     builder.add_node("validator", with_progress("validator", validator_node))
     builder.add_node("finalizer", with_progress("finalizer", finalizer_node))
 
@@ -132,7 +136,8 @@ def build_agent_graph(
     builder.add_edge("query_rewriter", "retrieve")
     builder.add_conditional_edges("retrieve", _route_after_retrieve)
     builder.add_edge("refusal", "finalizer")
-    builder.add_edge("answerer", "validator")
+    builder.add_edge("answerer", "citation_enricher")
+    builder.add_edge("citation_enricher", "validator")
     builder.add_conditional_edges("validator", _route_after_validator)
     builder.add_edge("finalizer", END)
 

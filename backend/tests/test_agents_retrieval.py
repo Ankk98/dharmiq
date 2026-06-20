@@ -2,13 +2,25 @@ from __future__ import annotations
 
 import json
 import uuid
+from unittest.mock import patch
 
 import pytest
 from pgvector import Vector as PgVector
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from dharmiq.db.models.chats import ChatSession, ChatSessionUpload
+from dharmiq.agents.graph import build_agent_graph
+from dharmiq.agents.progress import ProgressEmitter
+from dharmiq.agents.runtime import GraphRuntime
+from dharmiq.config.settings import load_settings
+from dharmiq.db.models.chats import (
+    ChatMessage,
+    ChatRequest,
+    ChatRequestStatus,
+    ChatSession,
+    ChatSessionUpload,
+    MessageRole,
+)
 from dharmiq.db.models.documents import DocType, DocumentChunk, SourceDocument
 from dharmiq.db.models.uploads import UserUpload, UserUploadChunk
 from dharmiq.db.models.users import User
@@ -16,7 +28,7 @@ from dharmiq.db.session import get_session_factory
 from dharmiq.llm.agents.clarifier import run_clarifier
 from dharmiq.llm.agents.query_rewriter import run_query_rewriter
 from dharmiq.llm.embeddings import EmbeddingBackend
-from dharmiq.llm.openrouter_client import OpenRouterClient
+from dharmiq.llm.openrouter_client import OpenRouterClient, get_openrouter_client
 from dharmiq.llm.prompts.loader import load_prompt
 from dharmiq.llm.retrieval import (
     DharmiqPgVectorRetriever,
@@ -24,7 +36,7 @@ from dharmiq.llm.retrieval import (
     retrieve_multi_query,
 )
 from tests.litellm_helpers import chat_response_dict, mock_litellm_acompletion
-from tests.rerank_helpers import mock_rerank
+from tests.rerank_helpers import mock_rerank, weak_rerank
 from tests.vector_helpers import blend_vectors, unit_vector
 
 
@@ -275,3 +287,199 @@ async def test_run_query_rewriter_returns_queries(monkeypatch: pytest.MonkeyPatc
 
     assert len(result.queries) == 2
     assert result.tokens_used == 30
+
+
+@pytest.mark.asyncio
+async def test_refusal_node_no_answerer_call(
+    db: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    mock_rerank(monkeypatch, handler=weak_rerank)
+    clarifier = {
+        "topic": "police_arrest",
+        "needs_more_info": False,
+        "followup_questions": [],
+        "reason": "Enough detail",
+    }
+    rewriter = {"queries": ["Article 22 arrest rights"]}
+    mock_litellm_acompletion(
+        monkeypatch,
+        [json.dumps(clarifier), json.dumps(rewriter)],
+    )
+
+    document = SourceDocument(
+        source_id=f"refusal-{uuid.uuid4()}",
+        title="Constitution of India (test)",
+        doc_type=DocType.ACT,
+        jurisdiction="central",
+        content_hash="hash-refusal",
+        file_path="/tmp/constitution.pdf",
+    )
+    db.add(document)
+    await db.flush()
+    db.add(
+        DocumentChunk(
+            document_id=document.id,
+            chunk_index=0,
+            text="Article 22 protects against arbitrary arrest and detention.",
+            page_start=1,
+            page_end=1,
+            embedding=PgVector(unit_vector(0)),
+        )
+    )
+
+    user = User(email=f"refusal-{uuid.uuid4()}@example.com", hashed_password="hashed")
+    db.add(user)
+    await db.flush()
+    session = ChatSession(user_id=user.id)
+    db.add(session)
+    await db.flush()
+    chat_request = ChatRequest(
+        session_id=session.id,
+        user_id=user.id,
+        status=ChatRequestStatus.PENDING,
+    )
+    db.add(chat_request)
+    user_msg = ChatMessage(
+        session_id=session.id,
+        user_id=user.id,
+        role=MessageRole.USER,
+        content="What are my arrest rights?",
+    )
+    db.add(user_msg)
+    await db.commit()
+
+    captured_steps: list[str] = []
+
+    async def _capture_publish(event) -> None:
+        if event.payload.get("step_id"):
+            captured_steps.append(str(event.payload["step_id"]))
+
+    emitter = ProgressEmitter(
+        db,
+        chat_request.id,
+        publish=_capture_publish,
+    )
+    runtime = GraphRuntime(
+        db=db,
+        settings=load_settings(),
+        client=get_openrouter_client(),
+        user=user,
+        chat_session=session,
+        chat_request=chat_request,
+        history=[user_msg],
+        user_msg=user_msg,
+        emitter=emitter,
+    )
+
+    with patch(
+        "dharmiq.llm.retrieval.get_embedding_backend",
+        return_value=_MappedEmbeddingBackend({"Article 22 arrest rights": unit_vector(0)}),
+    ):
+        graph = build_agent_graph()
+        final_state = await graph.ainvoke(
+            {
+                "user_message": user_msg.content,
+                "clarifier_round": 0,
+                "force_answer": False,
+                "total_tokens": 0,
+                "max_validator_retries": load_settings().chat.max_validator_retries,
+            },
+            {"configurable": {"thread_id": str(chat_request.id), "runtime": runtime}},
+        )
+
+    await emitter.close()
+    assert final_state.get("weak_retrieval") is True
+    assert "answerer" not in captured_steps
+
+
+@pytest.mark.asyncio
+async def test_clarifier_three_round_cap(
+    db: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    mock_rerank(monkeypatch, handler=weak_rerank)
+    clarifier = {
+        "topic": "police_arrest",
+        "needs_more_info": True,
+        "followup_questions": ["Are you currently detained?"],
+        "reason": "Need more facts",
+    }
+    rewriter = {"queries": ["Article 22 arrest rights"]}
+    mock_litellm_acompletion(
+        monkeypatch,
+        [json.dumps(clarifier), json.dumps(rewriter)],
+    )
+
+    document = SourceDocument(
+        source_id=f"clarifier-cap-{uuid.uuid4()}",
+        title="Constitution of India (test)",
+        doc_type=DocType.ACT,
+        jurisdiction="central",
+        content_hash="hash-clarifier-cap",
+        file_path="/tmp/constitution.pdf",
+    )
+    db.add(document)
+    await db.flush()
+    db.add(
+        DocumentChunk(
+            document_id=document.id,
+            chunk_index=0,
+            text="Article 22 protects against arbitrary arrest and detention.",
+            page_start=1,
+            page_end=1,
+            embedding=PgVector(unit_vector(0)),
+        )
+    )
+
+    user = User(email=f"clarifier-cap-{uuid.uuid4()}@example.com", hashed_password="hashed")
+    db.add(user)
+    await db.flush()
+    session = ChatSession(user_id=user.id)
+    db.add(session)
+    await db.flush()
+    chat_request = ChatRequest(
+        session_id=session.id,
+        user_id=user.id,
+        status=ChatRequestStatus.PENDING,
+    )
+    db.add(chat_request)
+    user_msg = ChatMessage(
+        session_id=session.id,
+        user_id=user.id,
+        role=MessageRole.USER,
+        content="Police stopped me",
+    )
+    db.add(user_msg)
+    await db.commit()
+
+    runtime = GraphRuntime(
+        db=db,
+        settings=load_settings(),
+        client=get_openrouter_client(),
+        user=user,
+        chat_session=session,
+        chat_request=chat_request,
+        history=[user_msg],
+        user_msg=user_msg,
+    )
+
+    with patch(
+        "dharmiq.llm.retrieval.get_embedding_backend",
+        return_value=_MappedEmbeddingBackend({"Article 22 arrest rights": unit_vector(0)}),
+    ):
+        graph = build_agent_graph()
+        final_state = await graph.ainvoke(
+            {
+                "user_message": user_msg.content,
+                "clarifier_round": 3,
+                "force_answer": False,
+                "total_tokens": 0,
+                "max_validator_retries": load_settings().chat.max_validator_retries,
+            },
+            {"configurable": {"thread_id": str(chat_request.id), "runtime": runtime}},
+        )
+
+    assert final_state.get("needs_clarification") is True
+    assert final_state.get("search_queries")
+    assert final_state.get("weak_retrieval") is True

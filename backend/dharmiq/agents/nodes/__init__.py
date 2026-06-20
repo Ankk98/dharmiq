@@ -1,4 +1,5 @@
 from dharmiq.agents.nodes.answerer import answerer_node
+from dharmiq.agents.nodes.citation_enricher import citation_enricher_node
 from dharmiq.agents.nodes.clarifier import clarifier_node
 from dharmiq.agents.nodes.finalizer import finalizer_node
 from dharmiq.agents.nodes.input_guard import input_guard_node
@@ -8,6 +9,7 @@ from dharmiq.agents.nodes.validator import validator_node
 
 __all__ = [
     "answerer_node",
+    "citation_enricher_node",
     "clarifier_node",
     "finalizer_node",
     "input_guard_node",

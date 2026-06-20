@@ -1,0 +1,96 @@
+server:
+  host: "0.0.0.0"
+  port: 8000
+  debug: false
+  cors_origins:
+    - "http://localhost:5173"
+    - "http://127.0.0.1:5173"
+
+database:
+  host: localhost
+  port: 5433
+  name: dharmiq_test
+  user: dharmiq
+  # password via DHARMIQ_DATABASE_PASSWORD env var
+
+redis:
+  url: redis://localhost:6379/1
+
+agent_graph:
+  enabled: false
+
+llm:
+  roles:
+    primary: openrouter/deepseek/deepseek-v4-pro
+    fast: openrouter/deepseek/deepseek-v4-flash
+    embedding: local
+  agents:
+    validator:
+      model: openrouter/deepseek/deepseek-v4-pro
+      reasoning:
+        enabled: true
+  rerank:
+    backend: local
+    local_model: BAAI/bge-reranker-base
+    litellm_model: cohere/rerank-english-v3.0
+
+openrouter:
+  base_url: https://openrouter.ai/api/v1
+  default_model: deepseek/deepseek-v4-pro
+  timeout_seconds: 60
+  max_retries: 3
+
+embeddings:
+  backend: local
+  local_model_name: sentence-transformers/all-MiniLM-L6-v2
+  local_dimensions: 384
+  remote_model_id: openai/text-embedding-3-small
+  remote_dimensions: 1536
+
+retrieval:
+  top_k: 5
+  multi_query_top_k: 5
+  vector_top_k: 30
+  bm25_top_k: 30
+  rrf_k: 60
+  rrf_top_k: 20
+  rerank_top_k: 8
+  min_rerank_score: 0.35
+  min_relevant_chunks: 2
+
+chat:
+  history_limit: 20
+  max_validator_retries: 3
+  slow_threshold_seconds: 30
+  server_timeout_seconds: 60
+
+guardrails:
+  max_message_length: 8192
+  requests_per_minute: 10
+  requests_per_day: 200
+
+ingestion:
+  corpus_dir: data/corpus/india_code/raw
+  batch_size: 10
+  concurrency: 2
+  child_chunk_target_tokens: 300
+  parent_max_tokens: 2048
+  overlap_tokens: 64
+  context_text_max_tokens: 512
+  preserve_section_atomic: true
+
+uploads:
+  uploads_dir: data/uploads
+  max_assets_per_user: 30
+  max_size_bytes: 104857600
+
+eval:
+  datasets_dir: data/eval/datasets
+  runs_dir: data/eval/runs
+
+logging:
+  level: WARNING
+  format: console
+
+auth:
+  jwt_lifetime_seconds: 3600

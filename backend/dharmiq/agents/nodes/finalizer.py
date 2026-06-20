@@ -102,7 +102,10 @@ async def finalizer_node(state: AgentGraphState, config: RunnableConfig) -> dict
     )
     runtime.chat_request.total_tokens = state.get("total_tokens", 0)
     runtime.chat_request.finished_at = runtime.utcnow()
-    await runtime.db.flush()
+    await runtime.db.commit()
+
+    for message in runtime.new_messages:
+        await runtime.db.refresh(message)
 
     return {
         "final_answer": answer_text,

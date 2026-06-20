@@ -43,6 +43,8 @@ uv run celery -A celery_app beat --loglevel=info
 
 Local Postgres listens on **port 5433** (see `config/config.dev.yaml`).
 
+Pytest uses a separate database (`dharmiq_test`, see `config/config.test.yaml`) so running tests does not wipe dev chat history. The test database is created and migrated automatically on first `uv run pytest`.
+
 ## Docker Compose services
 
 | Service | Port | Purpose |

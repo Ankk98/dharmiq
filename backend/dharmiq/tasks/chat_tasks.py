@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 import uuid
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from dharmiq.agents.runner import run_agent_graph_for_request
 from dharmiq.config.settings import get_settings
 from dharmiq.core.logging import get_logger, setup_logging
@@ -32,6 +34,29 @@ async def execute_agent_graph(chat_request_id: uuid.UUID) -> None:
     await _with_db_session(
         lambda db: run_agent_graph_for_request(db, chat_request_id, settings=get_settings())
     )
+
+
+def recover_pending_agent_graph_requests() -> int:
+    """Re-enqueue chat requests left pending after Redis/worker restarts."""
+
+    async def _recover(db: AsyncSession) -> int:
+        from sqlalchemy import select
+
+        from dharmiq.db.models.chats import ChatRequest, ChatRequestStatus
+
+        result = await db.execute(
+            select(ChatRequest.id).where(
+                ChatRequest.status.in_(
+                    [ChatRequestStatus.PENDING, ChatRequestStatus.RUNNING]
+                )
+            )
+        )
+        request_ids = list(result.scalars().all())
+        for request_id in request_ids:
+            enqueue_agent_graph(request_id)
+        return len(request_ids)
+
+    return _run_async(_with_db_session(_recover))
 
 
 def enqueue_agent_graph(chat_request_id: uuid.UUID) -> None:

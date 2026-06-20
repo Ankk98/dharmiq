@@ -34,6 +34,7 @@ import {
   setProgressView,
   type ProgressView,
 } from "@/lib/chatPreferences";
+import { getStoredSessionId, setStoredSessionId } from "@/lib/chatSession";
 import { useChatStream, type ProgressStep } from "@/hooks/useChatStream";
 
 type StoredMessage = {
@@ -97,10 +98,20 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
   const [awaitingClarification, setAwaitingClarification] = useState(false);
   const slowTimerRef = useRef<number | null>(null);
   const sessionIdRef = useRef<string | null>(sessionId);
+  const initStartedRef = useRef(false);
 
   useEffect(() => {
     sessionIdRef.current = sessionId;
   }, [sessionId]);
+
+  const selectSession = useCallback(
+    (id: string | null) => {
+      sessionIdRef.current = id;
+      setSessionId(id);
+      setStoredSessionId(id);
+    },
+    [],
+  );
 
   const {
     status: streamStatus,
@@ -148,6 +159,11 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
+    if (initStartedRef.current) {
+      return;
+    }
+    initStartedRef.current = true;
+
     void (async () => {
       let rows = await refreshSessions();
       if (rows.length === 0) {
@@ -155,13 +171,18 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
         rows = [created];
         setSessions([created]);
       }
-      const initial = rows[0]?.id ?? null;
-      setSessionId(initial);
+
+      const storedSessionId = getStoredSessionId();
+      const initial =
+        (storedSessionId && rows.some((row) => row.id === storedSessionId)
+          ? storedSessionId
+          : rows[0]?.id) ?? null;
+      selectSession(initial);
       if (initial) {
         await loadMessages(initial);
       }
     })();
-  }, [loadMessages, refreshSessions]);
+  }, [loadMessages, refreshSessions, selectSession]);
 
   const displayMessages = useMemo(() => {
     if (!isRunning || streamStatus !== "streaming" || !streamingText) {
@@ -233,6 +254,10 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
           forceAnswer: options?.forceAnswer,
         });
 
+        if (result.mode === "sync") {
+          await loadMessages(id);
+        }
+
         if (result.mode === "async") {
           const streamResult = await connect(result.chat_request_id);
           const citations: Citation[] = streamResult.streamCitations.map((item) => ({
@@ -259,6 +284,7 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
       connect,
       disconnect,
       finalizeFromStream,
+      loadMessages,
       resetStream,
       runLegacyPipeline,
     ],
@@ -286,24 +312,24 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
     resetStream();
     const created = await createSession();
     setSessions((prev) => [created, ...prev]);
-    setSessionId(created.id);
+    selectSession(created.id);
     setMessages([]);
     setLastCitations([]);
     setAwaitingClarification(false);
     clearSlowTimer();
-  }, [clearSlowTimer, disconnect, resetStream]);
+  }, [clearSlowTimer, disconnect, resetStream, selectSession]);
 
   const onSwitchToThread = useCallback(
     async (threadId: string) => {
       disconnect();
       resetStream();
-      setSessionId(threadId);
+      selectSession(threadId);
       setLastCitations([]);
       setAwaitingClarification(false);
       clearSlowTimer();
       await loadMessages(threadId);
     },
-    [clearSlowTimer, disconnect, loadMessages, resetStream],
+    [clearSlowTimer, disconnect, loadMessages, resetStream, selectSession],
   );
 
   const threadListAdapter = useMemo(

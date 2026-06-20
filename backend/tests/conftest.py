@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import os
+import subprocess
 import uuid
+from pathlib import Path
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -15,9 +17,93 @@ from dharmiq.retrieval.reranker import reset_reranker_cache
 from dharmiq.llm.openrouter_client import close_openrouter_client
 from dharmiq.main import create_app
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+_TEST_DB_BOOTSTRAPPED = False
+
+
+def _ensure_test_database() -> None:
+    global _TEST_DB_BOOTSTRAPPED
+    if _TEST_DB_BOOTSTRAPPED:
+        return
+
+    password = os.environ.get("DHARMIQ_DATABASE_PASSWORD", "dharmiq")
+    create_db = subprocess.run(
+        [
+            "docker",
+            "compose",
+            "exec",
+            "-T",
+            "postgres",
+            "psql",
+            "-U",
+            "dharmiq",
+            "-d",
+            "postgres",
+            "-tc",
+            "SELECT 1 FROM pg_database WHERE datname = 'dharmiq_test'",
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if create_db.returncode != 0:
+        pytest.skip(
+            "Postgres is unavailable; start it with `docker compose up -d postgres` "
+            "before running tests."
+        )
+    if create_db.stdout.strip() != "1":
+        created = subprocess.run(
+            [
+                "docker",
+                "compose",
+                "exec",
+                "-T",
+                "postgres",
+                "psql",
+                "-U",
+                "dharmiq",
+                "-d",
+                "postgres",
+                "-c",
+                "CREATE DATABASE dharmiq_test OWNER dharmiq;",
+            ],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if created.returncode != 0:
+            raise RuntimeError(f"Failed to create dharmiq_test database: {created.stderr}")
+
+    migrated = subprocess.run(
+        ["uv", "run", "alembic", "upgrade", "head"],
+        cwd=REPO_ROOT / "backend",
+        env={
+            **os.environ,
+            "DHARMIQ_ENV": "test",
+            "DHARMIQ_DATABASE_PASSWORD": password,
+        },
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if migrated.returncode != 0:
+        raise RuntimeError(f"Failed to migrate dharmiq_test database: {migrated.stderr}")
+
+    _TEST_DB_BOOTSTRAPPED = True
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _test_database() -> None:
+    os.environ["DHARMIQ_ENV"] = "test"
+    get_settings.cache_clear()
+    _ensure_test_database()
+
 
 @pytest.fixture(autouse=True)
 def _env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DHARMIQ_ENV", "test")
     monkeypatch.setenv(
         "DHARMIQ_DATABASE_PASSWORD",
         os.environ.get("DHARMIQ_DATABASE_PASSWORD", "dharmiq"),
@@ -26,6 +112,7 @@ def _env(monkeypatch: pytest.MonkeyPatch) -> None:
         "DHARMIQ_JWT_SECRET",
         os.environ.get("DHARMIQ_JWT_SECRET", "test-jwt-secret-with-32-byte-min"),
     )
+    get_settings.cache_clear()
 
 
 @pytest.fixture(autouse=True)

@@ -23,11 +23,13 @@ async def run_clarifier(
     user_question: str,
     history: list[ChatMessage],
     history_limit: int = 20,
+    attached_documents: str = "None",
 ) -> ClarifierResult:
     prompt = load_prompt("clarifier")
     user_content = prompt.render_user(
         user_question=user_question,
         history=format_chat_history(history, limit=history_limit),
+        attached_documents=attached_documents,
     )
     data, tokens = await call_json_agent(
         client,

@@ -100,6 +100,10 @@ class ChatSessionUploadRead(BaseModel):
     attached_at: datetime
 
 
+class ChatSessionUploadAttachRequest(BaseModel):
+    upload_ids: list[uuid.UUID] = Field(min_length=1)
+
+
 class ChatRequestEventRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

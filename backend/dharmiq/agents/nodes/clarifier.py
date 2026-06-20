@@ -8,21 +8,41 @@ from dharmiq.agents.runtime import GraphRuntime
 from dharmiq.agents.state import AgentGraphState
 from dharmiq.llm.agents.clarifier import run_clarifier
 from dharmiq.observability.metrics import record_llm_tokens
+from dharmiq.uploads.session_attachments import list_attached_uploads
 
 
 def _runtime(config: RunnableConfig) -> GraphRuntime:
     return config["configurable"]["runtime"]
 
 
+def _format_attached_documents(attached) -> str:
+    if not attached:
+        return "None"
+    lines = [
+        f"- {item.original_filename} ({item.mime_type}, indexed={item.indexed})"
+        for item in attached
+    ]
+    return "\n".join(lines)
+
+
+async def list_attached_uploads_for_session(runtime: GraphRuntime) -> str:
+    """Clarifier tool: metadata for uploads explicitly attached to this chat session."""
+    attached = await list_attached_uploads(runtime.db, runtime.chat_session.id)
+    return _format_attached_documents(attached)
+
+
 async def clarifier_node(state: AgentGraphState, config: RunnableConfig) -> dict[str, Any]:
     runtime = _runtime(config)
     cfg = runtime.settings
+
+    attached_documents = await list_attached_uploads_for_session(runtime)
 
     clarifier = await run_clarifier(
         runtime.client,
         user_question=state["user_message"],
         history=runtime.history[:-1],
         history_limit=cfg.chat.history_limit,
+        attached_documents=attached_documents,
     )
     record_llm_tokens(
         model=runtime.model_name,

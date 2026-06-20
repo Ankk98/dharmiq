@@ -24,9 +24,13 @@ user_template: |
   Conversation history:
   {history}
 
+  Documents attached to this chat (library uploads the user selected for this session):
+  {attached_documents}
+
   Latest user message:
   {user_question}
 
 variables:
   - history
+  - attached_documents
   - user_question

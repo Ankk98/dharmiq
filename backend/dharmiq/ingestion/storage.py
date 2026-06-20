@@ -13,14 +13,19 @@ logger = get_logger(__name__)
 ALLOWED_MIME_TYPES = frozenset(
     {
         "application/pdf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "image/jpeg",
         "image/png",
         "image/webp",
         "image/tiff",
+        "text/markdown",
+        "text/x-markdown",
     }
 )
 
-ALLOWED_EXTENSIONS = frozenset({".pdf", ".jpg", ".jpeg", ".png", ".webp", ".tif", ".tiff"})
+ALLOWED_EXTENSIONS = frozenset(
+    {".pdf", ".docx", ".md", ".jpg", ".jpeg", ".png", ".webp", ".tif", ".tiff"}
+)
 
 _FILENAME_UNSAFE = re.compile(r"[^\w.\- ]+")
 

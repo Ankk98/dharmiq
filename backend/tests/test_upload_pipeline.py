@@ -5,6 +5,7 @@ from io import BytesIO
 from pathlib import Path
 
 import pytest
+from docx import Document
 from pypdf import PdfWriter
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -51,6 +52,7 @@ def _pdf_bytes() -> bytes:
 async def _clean_uploads() -> None:
     factory = get_session_factory()
     async with factory() as db:
+        await db.execute(text("DELETE FROM chat_session_uploads"))
         await db.execute(text("DELETE FROM user_upload_chunks"))
         await db.execute(text("DELETE FROM user_uploads"))
         await db.commit()
@@ -124,3 +126,118 @@ async def test_process_user_upload_is_idempotent(
             )
         ).scalars().all()
         assert len(chunk_count) == first
+
+
+def _docx_bytes() -> bytes:
+    document = Document()
+    document.add_heading("Termination", level=1)
+    document.add_paragraph("The employee must provide thirty days written notice.")
+    document.add_heading("Benefits", level=1)
+    document.add_paragraph("Health insurance continues through the notice period.")
+    buffer = BytesIO()
+    document.save(buffer)
+    return buffer.getvalue()
+
+
+def _markdown_bytes() -> bytes:
+    content = """# Termination
+
+The employee must provide thirty days written notice.
+
+# Benefits
+
+Health insurance continues through the notice period.
+"""
+    return content.encode("utf-8")
+
+
+@pytest.mark.asyncio
+async def test_docx_upload_parsed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DHARMIQ_ROOT", str(tmp_path))
+
+    from dharmiq.config.settings import get_settings
+
+    get_settings.cache_clear()
+    settings = get_settings()
+    factory: async_sessionmaker[AsyncSession] = get_session_factory()
+    backend = _FixedEmbeddingBackend()
+
+    async with factory() as db:
+        user = await _create_user(db)
+        upload = await create_user_upload(
+            db,
+            user_id=user.id,
+            filename="contract.docx",
+            mime_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            content=_docx_bytes(),
+            settings=settings,
+        )
+        chunk_count = await process_user_upload(
+            db,
+            upload.id,
+            settings=settings,
+            embedding_backend=backend,
+        )
+        assert chunk_count >= 2
+
+        chunks = (
+            await db.execute(
+                select(UserUploadChunk).where(UserUploadChunk.upload_id == upload.id)
+            )
+        ).scalars().all()
+        assert len(chunks) == chunk_count
+        labels = {
+            chunk.chunk_metadata.get("section_label")
+            for chunk in chunks
+            if chunk.chunk_metadata.get("section_label")
+        }
+        assert any("Termination" in (label or "") for label in labels)
+
+
+@pytest.mark.asyncio
+async def test_md_upload_parsed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DHARMIQ_ROOT", str(tmp_path))
+
+    from dharmiq.config.settings import get_settings
+
+    get_settings.cache_clear()
+    settings = get_settings()
+    factory: async_sessionmaker[AsyncSession] = get_session_factory()
+    backend = _FixedEmbeddingBackend()
+
+    async with factory() as db:
+        user = await _create_user(db)
+        upload = await create_user_upload(
+            db,
+            user_id=user.id,
+            filename="contract.md",
+            mime_type="text/markdown",
+            content=_markdown_bytes(),
+            settings=settings,
+        )
+        chunk_count = await process_user_upload(
+            db,
+            upload.id,
+            settings=settings,
+            embedding_backend=backend,
+        )
+        assert chunk_count >= 2
+
+        chunks = (
+            await db.execute(
+                select(UserUploadChunk).where(UserUploadChunk.upload_id == upload.id)
+            )
+        ).scalars().all()
+        section_labels = [
+            chunk.chunk_metadata.get("section_label")
+            for chunk in chunks
+            if chunk.chunk_metadata.get("section_label")
+        ]
+        assert any("Termination" in (label or "") for label in section_labels)
+        assert any("Benefits" in (label or "") for label in section_labels)

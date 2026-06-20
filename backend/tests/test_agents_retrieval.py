@@ -238,6 +238,7 @@ def test_load_prompt_templates() -> None:
     clarifier = load_prompt("clarifier")
     rendered = clarifier.render_user(
         history="user: hello",
+        attached_documents="None",
         user_question="What are my rights?",
     )
     assert "What are my rights?" in rendered

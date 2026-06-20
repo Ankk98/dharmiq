@@ -17,6 +17,8 @@ from dharmiq.ingestion.parser import (
     extract_image_pages,
     get_pdf_parser,
 )
+from dharmiq.ingestion.parsers.docx import extract_docx_pages
+from dharmiq.ingestion.parsers.markdown import extract_markdown_pages
 from dharmiq.ingestion.storage import (
     resolve_upload_path,
     save_user_upload_file,
@@ -28,6 +30,8 @@ from dharmiq.observability.metrics import record_ingestion_failure, record_inges
 logger = get_logger(__name__)
 
 PDF_MIME = "application/pdf"
+DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+MARKDOWN_MIMES = frozenset({"text/markdown", "text/x-markdown"})
 IMAGE_MIME_PREFIX = "image/"
 
 
@@ -98,9 +102,14 @@ def _extract_upload_pages(
     settings: Settings,
     pdf_parser: PdfParserBackend,
 ) -> list:
-    if upload.mime_type == PDF_MIME or file_path.suffix.lower() == ".pdf":
+    suffix = file_path.suffix.lower()
+    if upload.mime_type == PDF_MIME or suffix == ".pdf":
         return pdf_parser.extract_pages(file_path)
-    if upload.mime_type.startswith(IMAGE_MIME_PREFIX) or file_path.suffix.lower() in {
+    if upload.mime_type == DOCX_MIME or suffix == ".docx":
+        return extract_docx_pages(file_path)
+    if upload.mime_type in MARKDOWN_MIMES or suffix == ".md":
+        return extract_markdown_pages(file_path)
+    if upload.mime_type.startswith(IMAGE_MIME_PREFIX) or suffix in {
         ".jpg",
         ".jpeg",
         ".png",

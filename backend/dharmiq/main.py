@@ -6,7 +6,7 @@ from collections.abc import AsyncIterator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from dharmiq.api.routes import auth, chat, chat_stream, docs, health, metrics, uploads
+from dharmiq.api.routes import auth, chat, chat_attachments, chat_stream, docs, health, metrics, uploads
 from dharmiq.config.settings import get_settings
 from dharmiq.core.logging import get_logger, setup_logging
 from dharmiq.db.session import close_db, init_db
@@ -43,6 +43,7 @@ def create_app() -> FastAPI:
     app.include_router(auth.users_router, prefix="/api/users", tags=["users"])
     app.include_router(chat.router, prefix="/api")
     app.include_router(chat_stream.router, prefix="/api")
+    app.include_router(chat_attachments.router, prefix="/api")
     app.include_router(uploads.router, prefix="/api")
     app.include_router(docs.router, prefix="/api")
     app.include_router(metrics.router)

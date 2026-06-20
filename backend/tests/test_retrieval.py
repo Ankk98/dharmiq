@@ -11,7 +11,7 @@ from dharmiq.db.models.documents import DocType, DocumentChunk, SourceDocument
 from dharmiq.db.session import get_session_factory
 from dharmiq.llm.embeddings import EmbeddingBackend
 from dharmiq.llm.retrieval import retrieve_document_chunks
-from tests.vector_helpers import blend_vectors, unit_vector
+from tests.vector_helpers import unit_vector
 
 
 @pytest.fixture(autouse=True)
@@ -86,7 +86,7 @@ async def test_retrieve_document_chunks_ranks_by_similarity() -> None:
     query = "What are my rights if police arrest me?"
     backend = _MappedEmbeddingBackend(
         {
-            query: blend_vectors(unit_vector(0), unit_vector(1, dimensions=384)),
+            query: unit_vector(0),
         }
     )
 

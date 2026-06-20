@@ -19,7 +19,9 @@ from dharmiq.schemas.chat import (
     ChatSessionCreate,
     ChatSessionRead,
 )
+from dharmiq.config.settings import get_settings
 from dharmiq.llm.pipeline import run_chat_pipeline
+from dharmiq.agents.runner import run_agent_graph_sync
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -137,12 +139,22 @@ async def chat(
     db: AsyncSession = Depends(get_db_session),
 ) -> ChatPipelineResponse:
     chat_session = await _get_user_session(body.session_id, user, db)
-    result = await run_chat_pipeline(
-        db,
-        chat_session=chat_session,
-        user=user,
-        user_message=body.message,
-    )
+    settings = get_settings()
+    if settings.agent_graph.enabled:
+        result = await run_agent_graph_sync(
+            db,
+            chat_session=chat_session,
+            user=user,
+            user_message=body.message,
+            settings=settings,
+        )
+    else:
+        result = await run_chat_pipeline(
+            db,
+            chat_session=chat_session,
+            user=user,
+            user_message=body.message,
+        )
     return ChatPipelineResponse(
         chat_request_id=result.chat_request_id,
         status=result.status,

@@ -16,6 +16,7 @@ from dharmiq.core.logging import get_logger
 from dharmiq.db.models.documents import DocumentChunk, SourceDocument
 from dharmiq.db.models.evals import EvalDataset, EvalQuestion, EvalResult, EvalRun
 from dharmiq.eval.dataset_loader import EvalDatasetRecord, load_dataset_records
+from dharmiq.eval.expectations import evaluate_answer_expectations
 from dharmiq.eval.judge import run_llm_judge
 from dharmiq.llm.agents.answerer import run_answerer
 from dharmiq.llm.agents.query_rewriter import run_query_rewriter
@@ -175,6 +176,12 @@ async def _evaluate_question(
         "llm_citation_correctness": judge_scores.citation_correctness,
         "llm_judge_reason": judge_scores.reason,
         "retrieved_context_count": len(contexts),
+        **evaluate_answer_expectations(
+            answer=answer,
+            expect_refusal=record.expect_refusal,
+            min_citation_count=record.min_citation_count,
+            expect_blockquote=record.expect_blockquote,
+        ),
     }
 
     return _QuestionEvalResult(
@@ -194,11 +201,19 @@ def _aggregate_metrics(results: list[_QuestionEvalResult]) -> dict[str, float]:
         "answer_correctness",
         "llm_answer_correctness",
         "llm_citation_correctness",
+        "citation_count_met",
+        "blockquote_met",
+        "refusal_correct",
     ]
     aggregate: dict[str, float] = {}
     for key in keys:
-        values = [float(result.metrics.get(key, 0.0)) for result in results]
-        aggregate[key] = sum(values) / len(values)
+        values = [
+            float(result.metrics[key])
+            for result in results
+            if key in result.metrics and isinstance(result.metrics[key], (int, float))
+        ]
+        if values:
+            aggregate[key] = sum(values) / len(values)
     aggregate["question_count"] = float(len(results))
     return aggregate
 

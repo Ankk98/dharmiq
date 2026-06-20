@@ -30,6 +30,9 @@ htmlcov/
 logs/
 *.log
 data/
+!data/eval/
+!data/eval/datasets/
+!data/eval/datasets/**
 
 # OS
 .DS_Store

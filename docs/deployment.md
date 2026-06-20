@@ -133,6 +133,9 @@ DHARMIQ_JWT_SECRET=<random-64-char-hex>
 DHARMIQ_DATABASE_PASSWORD=<strong-db-password>
 
 OPENROUTER_API_KEY=<your-openrouter-key>
+
+# v0.2 agent graph (enabled by default in config.beta.yaml)
+DHARMIQ_AGENT_GRAPH_V2=true
 ```
 
 Lock down the env file:
@@ -195,6 +198,26 @@ cd /opt/dharmiq/backend
 uv sync                    # production deps only; omit --dev
 uv run alembic upgrade head
 ```
+
+### LangGraph checkpoint bootstrap (one-time, idempotent)
+
+LangGraph checkpoint tables live in Postgres schema `langgraph` and are **not** managed by Alembic. On first deploy (or after wiping the DB), run the checkpointer setup once:
+
+```bash
+cd /opt/dharmiq/backend
+uv run python -c "
+import asyncio
+from dharmiq.agents.checkpoint import get_checkpointer, close_checkpointer
+
+async def main():
+    await get_checkpointer()
+    await close_checkpointer()
+
+asyncio.run(main())
+"
+```
+
+This calls `AsyncPostgresSaver.setup()` which creates `checkpoints`, `checkpoint_writes`, etc. in the `langgraph` schema. Safe to re-run — it is idempotent. The API and Celery worker also invoke setup lazily on first graph run, but running it explicitly after migrations avoids a race on the first chat request.
 
 Smoke-test the API manually (before systemd):
 
@@ -358,6 +381,20 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # SSE chat stream — disable buffering so events arrive immediately
+    location /api/chat/requests/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 300s;
+        chunked_transfer_encoding off;
     }
 
     # Optional: block public access to metrics
@@ -560,7 +597,7 @@ tar -czf /opt/dharmiq/backups/data-$(date +%Y%m%d).tar.gz -C /opt/dharmiq data/
 | Symptom | Things to check |
 |---------|-----------------|
 | 502 Bad Gateway on `/api` | `systemctl status dharmiq-api`; `curl http://127.0.0.1:8000/api/health` |
-| Chat hangs or times out | Nginx `proxy_read_timeout`; OpenRouter key and quota; Celery worker running |
+| Chat hangs or times out | Nginx `proxy_read_timeout`; SSE routes need `proxy_buffering off` (see §8); OpenRouter key and quota; Celery worker running |
 | Upload fails | `client_max_body_size` in Nginx; disk space; `dharmiq-celery` logs |
 | DB connection errors | `docker compose ps postgres`; password in `.env` matches compose; port 5432 |
 | Embeddings slow / OOM | Server RAM; consider `embeddings.backend: remote` in config |
@@ -587,4 +624,5 @@ tar -czf /opt/dharmiq/backups/data-$(date +%Y%m%d).tar.gz -C /opt/dharmiq data/
 - [README](../README.md) — local development quick start
 - [backend/README.md](../backend/README.md) — API endpoints, ingestion, eval
 - [frontend/README.md](../frontend/README.md) — frontend build scripts
-- [config/config.beta.yaml](../config/config.beta.yaml) — beta deployment settings
+- [config/config.beta.yaml](../config/config.beta.yaml) — beta deployment settings (`agent_graph.enabled: true`, set `DHARMIQ_AGENT_GRAPH_V2=true`)
+- [v02-eval-baseline.md](./plans/v02-eval-baseline.md) — v0.1 eval baseline and nightly gate targets

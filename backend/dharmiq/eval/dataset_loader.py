@@ -16,6 +16,9 @@ class EvalDatasetRecord:
     expected_citations: list[dict[str, Any]]
     topic: str
     facts: str
+    expect_refusal: bool | None = None
+    min_citation_count: int | None = None
+    expect_blockquote: bool | None = None
 
 
 def resolve_dataset_path(dataset_name: str, settings: Settings | None = None) -> Path:
@@ -55,6 +58,21 @@ def load_dataset_records(
         if not isinstance(citations, list):
             raise ValueError(f"Line {line_number} in {path}: expected_citations must be a list")
 
+        expect_refusal = payload.get("expect_refusal")
+        if expect_refusal is not None and not isinstance(expect_refusal, bool):
+            raise ValueError(f"Line {line_number} in {path}: expect_refusal must be a boolean")
+
+        min_citation_count = payload.get("min_citation_count")
+        if min_citation_count is not None:
+            if not isinstance(min_citation_count, int) or min_citation_count < 0:
+                raise ValueError(
+                    f"Line {line_number} in {path}: min_citation_count must be a non-negative integer"
+                )
+
+        expect_blockquote = payload.get("expect_blockquote")
+        if expect_blockquote is not None and not isinstance(expect_blockquote, bool):
+            raise ValueError(f"Line {line_number} in {path}: expect_blockquote must be a boolean")
+
         records.append(
             EvalDatasetRecord(
                 external_id=external_id,
@@ -63,6 +81,9 @@ def load_dataset_records(
                 expected_citations=citations,
                 topic=str(payload.get("topic") or "general"),
                 facts=str(payload.get("facts") or question),
+                expect_refusal=expect_refusal,
+                min_citation_count=min_citation_count,
+                expect_blockquote=expect_blockquote,
             )
         )
 

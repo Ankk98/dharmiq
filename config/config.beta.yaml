@@ -17,7 +17,7 @@ redis:
   url: redis://localhost:6379/0
 
 agent_graph:
-  enabled: false
+  enabled: true   # v0.2 default; override with DHARMIQ_AGENT_GRAPH_V2=false to fall back to v0.1
 
 llm:
   roles:

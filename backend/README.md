@@ -218,7 +218,7 @@ retrieval:
 
 ## Evaluation
 
-Curated eval datasets are JSONL files under `data/eval/datasets/`. See `dharmiq/eval/dataset_format.md` for the schema. A sample dataset ships locally as `v1_fundamental_rights.jsonl` (under `data/`, which is gitignored—create the directory and add questions yourself, or copy from a teammate).
+Curated eval datasets are JSONL files under `data/eval/datasets/` (committed to the repo). See `dharmiq/eval/dataset_format.md` for the schema. The sample dataset `v1_fundamental_rights.jsonl` ships with 8 fundamental-rights questions including citation, blockquote, and refusal expectations.
 
 **Requires an indexed corpus** before running; the CLI fails fast if `document_chunks` is empty.
 

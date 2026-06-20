@@ -20,6 +20,9 @@ Each line must be a JSON object with these fields:
 | `expected_citations` | array | no | Expected citation hints (section labels, document IDs) |
 | `topic` | string | no | Hint for query rewriter (defaults to `general`) |
 | `facts` | string | no | Pre-supplied fact pattern (skips clarifier in eval runs) |
+| `min_citation_count` | integer | no | Minimum `[n]` citation markers expected in the generated answer |
+| `expect_blockquote` | boolean | no | Whether a Markdown blockquote (`> …`) is required |
+| `expect_refusal` | boolean | no | Whether the pipeline should refuse (insufficient sources) |
 
 ### `expected_citations` entries
 

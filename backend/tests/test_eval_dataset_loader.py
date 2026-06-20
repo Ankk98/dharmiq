@@ -12,6 +12,8 @@ def test_load_v1_dataset() -> None:
     assert "police" in records[0].question.lower()
     assert records[0].expected_citations
     assert records[0].topic == "police_arrest"
+    assert records[0].min_citation_count == 1
+    assert records[0].expect_blockquote is True
 
 
 def test_load_dataset_missing_file() -> None:

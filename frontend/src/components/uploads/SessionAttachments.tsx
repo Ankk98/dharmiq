@@ -10,7 +10,7 @@ import {
 } from "react";
 
 import { Button } from "@/components/ui/button";
-import { useChatRuntimeState } from "@/providers/ChatRuntimeProvider";
+import { useChatRuntimeState } from "@/hooks/useChatRuntimeState";
 import {
   attachUploads,
   detachUpload,

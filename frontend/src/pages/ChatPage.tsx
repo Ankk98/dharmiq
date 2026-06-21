@@ -7,8 +7,9 @@ import {
 } from "@/components/uploads/SessionAttachments";
 import { UploadLibrary } from "@/components/uploads/UploadLibrary";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/lib/auth";
-import { ChatRuntimeProvider, useChatRuntimeState } from "@/providers/ChatRuntimeProvider";
+import { useAuth } from "@/hooks/useAuth";
+import { ChatRuntimeProvider } from "@/providers/ChatRuntimeProvider";
+import { useChatRuntimeState } from "@/hooks/useChatRuntimeState";
 
 function ChatLayout() {
   const { user, logout } = useAuth();

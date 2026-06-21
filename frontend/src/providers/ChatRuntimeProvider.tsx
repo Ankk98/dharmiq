@@ -1,7 +1,5 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -46,6 +44,7 @@ import {
   type TurnProgress,
 } from "@/lib/progress";
 import { useChatStream } from "@/hooks/useChatStream";
+import { ChatRuntimeContext } from "@/providers/chat-runtime-context";
 
 type StoredMessage = {
   id: string;
@@ -54,27 +53,6 @@ type StoredMessage = {
   chatRequestId?: string;
   progress?: TurnProgress;
 };
-
-type ChatRuntimeContextValue = {
-  slowNotice: boolean;
-  isRunning: boolean;
-  lastCitations: Citation[];
-  refreshSessions: () => Promise<ChatSession[]>;
-  sessionId: string | null;
-  progressView: ProgressView;
-  setProgressView: (view: ProgressView) => void;
-  getMessageProgress: (messageId: string) => TurnProgress | undefined;
-  streamStatus: ReturnType<typeof useChatStream>["status"];
-  debugEvents: ReturnType<typeof useChatStream>["debugEvents"];
-  awaitingClarification: boolean;
-  forceAnswer: () => Promise<void>;
-  streamError: string | null;
-  openAttachPicker: () => void;
-  registerAttachPicker: (handler: (() => void) | null) => void;
-  refreshMessages: () => Promise<void>;
-};
-
-const ChatRuntimeContext = createContext<ChatRuntimeContextValue | null>(null);
 
 const SLOW_THRESHOLD_MS = 30_000;
 const STREAMING_MESSAGE_ID = "__streaming_assistant__";
@@ -614,13 +592,3 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
 export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
   return <ChatRuntimeInner>{children}</ChatRuntimeInner>;
 }
-
-export function useChatRuntimeState(): ChatRuntimeContextValue {
-  const context = useContext(ChatRuntimeContext);
-  if (!context) {
-    throw new Error("useChatRuntimeState must be used within ChatRuntimeProvider");
-  }
-  return context;
-}
-
-export type { StoredMessage, TurnProgress };

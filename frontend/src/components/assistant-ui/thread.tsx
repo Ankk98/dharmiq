@@ -16,7 +16,7 @@ import {
 import { ToolFallback } from "@/components/assistant-ui/tool-fallback";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { Button } from "@/components/ui/button";
-import { useChatRuntimeState } from "@/providers/ChatRuntimeProvider";
+import { useChatRuntimeState } from "@/hooks/useChatRuntimeState";
 import { cn } from "@/lib/utils";
 import {
   ActionBarMorePrimitive,

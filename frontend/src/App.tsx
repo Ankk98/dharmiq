@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AuthProvider, useAuth } from "@/lib/auth";
+import { AuthProvider } from "@/lib/auth";
+import { useAuth } from "@/hooks/useAuth";
 import { ChatPage } from "@/pages/ChatPage";
 import { DocumentViewerPage } from "@/pages/DocumentViewerPage";
 import { LoginPage } from "@/pages/LoginPage";

@@ -10,12 +10,13 @@ export function DocumentViewerPage() {
   const sourceType = (params.get("source_type") ?? "corpus") as "corpus" | "upload";
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [title, setTitle] = useState("Document");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() =>
+    !getToken() || !documentId ? "Unable to load document." : null,
+  );
 
   useEffect(() => {
     const token = getToken();
     if (!token || !documentId) {
-      setError("Unable to load document.");
       return;
     }
 

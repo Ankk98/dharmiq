@@ -318,6 +318,48 @@ export const SessionAttachmentsPanel: FC<SessionAttachmentsPanelProps> = ({ clas
   );
 };
 
+/** Attachment chips rendered above the chat composer (demo `.attach` row). */
+export const ComposerAttachmentChips: FC = () => {
+  const { sessionId, attachedUploads, openPicker, handleDetach } =
+    useSessionAttachmentsContext();
+
+  if (attachedUploads.length === 0 && !sessionId) {
+    return null;
+  }
+
+  return (
+    <div className="flex w-full flex-wrap gap-1.5">
+      {attachedUploads.map((upload) => (
+        <span
+          key={upload.id}
+          className="composer-attach-chip bg-card text-foreground inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[0.74em] shadow-[var(--card-highlight)]"
+        >
+          <span className="bg-brand-accent size-1.5 shrink-0 rounded-full" aria-hidden />
+          <span className="max-w-36 truncate">{upload.original_filename}</span>
+          <button
+            type="button"
+            className="text-faint hover:text-destructive rounded-full p-0.5 transition-colors"
+            aria-label={`Remove ${upload.original_filename}`}
+            onClick={() => void handleDetach(upload.id)}
+          >
+            <XIcon className="size-3" />
+          </button>
+        </span>
+      ))}
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="text-muted-foreground h-auto px-2 py-1 text-[0.72em] font-normal"
+        disabled={!sessionId}
+        onClick={() => void openPicker()}
+      >
+        + Attach document
+      </Button>
+    </div>
+  );
+};
+
 /** @deprecated Use SessionAttachmentsProvider + SessionAttachmentsPanel */
 export const SessionAttachments: FC<{ sessionId: string | null; className?: string }> = ({
   sessionId,

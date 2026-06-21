@@ -30,6 +30,8 @@ import {
 import {
   citationsFromMetadata,
   formatAssistantContent,
+  isRefusalAnswer,
+  parseClarifierQuestions,
 } from "@/lib/citations";
 import {
   getProgressView,
@@ -43,6 +45,10 @@ import {
   chatRequestIdFromMetadata,
   type TurnProgress,
 } from "@/lib/progress";
+import {
+  STREAMING_MESSAGE_ID,
+  type StoredMessageMeta,
+} from "@/lib/messageMeta";
 import { useChatStream } from "@/hooks/useChatStream";
 import { ChatRuntimeContext } from "@/providers/chat-runtime-context";
 
@@ -52,10 +58,10 @@ type StoredMessage = {
   content: string;
   chatRequestId?: string;
   progress?: TurnProgress;
+  meta?: StoredMessageMeta;
 };
 
 const SLOW_THRESHOLD_MS = 30_000;
-const STREAMING_MESSAGE_ID = "__streaming_assistant__";
 
 function citationsFromStream(items: StreamCitationPayload[]): Citation[] {
   return items.map((item) => ({
@@ -94,18 +100,37 @@ function mapBackendMessage(
     };
   }
 
-  const role = message.role === "user" ? "user" : "assistant";
   const chatRequestId = chatRequestIdFromMetadata(message.metadata);
+
+  if (message.role === "clarifier") {
+    return {
+      id: message.id,
+      role: "assistant",
+      content: message.content,
+      chatRequestId,
+      meta: {
+        backendRole: "clarifier",
+        clarifierReason:
+          typeof message.metadata?.reason === "string"
+            ? message.metadata.reason
+            : undefined,
+        clarifierQuestions: parseClarifierQuestions(message.content),
+      },
+    };
+  }
+
+  const role = message.role === "user" ? "user" : "assistant";
   let content = message.content;
+  const agent =
+    typeof message.metadata?.agent === "string" ? message.metadata.agent : undefined;
+
   if (role === "assistant") {
     const messageCitations = citationsFromMetadata(message.metadata).length
       ? citationsFromMetadata(message.metadata)
       : citations;
     content = formatAssistantContent(content, messageCitations);
-    if (message.role === "clarifier") {
-      content = `**Clarification needed**\n\n${content}`;
-    }
   }
+
   return {
     id: message.id,
     role,
@@ -114,6 +139,13 @@ function mapBackendMessage(
     progress:
       role === "assistant" && chatRequestId
         ? progressByRequestId.get(chatRequestId)
+        : undefined,
+    meta:
+      role === "assistant"
+        ? {
+            backendRole: message.role,
+            agent: agent ?? (isRefusalAnswer(message.content) ? "refusal" : undefined),
+          }
         : undefined,
   };
 }
@@ -518,6 +550,13 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
     [messages],
   );
 
+  const getMessageMeta = useCallback(
+    (messageId: string) => messages.find((message) => message.id === messageId)?.meta,
+    [messages],
+  );
+
+  const streamingMessageId = isRunning ? STREAMING_MESSAGE_ID : null;
+
   const threadListAdapter = useMemo(
     () => ({
       threadId: sessionId ?? undefined,
@@ -554,10 +593,13 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
       progressView,
       setProgressView: handleProgressViewChange,
       getMessageProgress,
+      getMessageMeta,
+      streamingMessageId,
       streamStatus,
       debugEvents,
       awaitingClarification,
       forceAnswer,
+      submitUserMessage: submitMessage,
       streamError,
       openAttachPicker,
       registerAttachPicker,
@@ -573,10 +615,13 @@ function ChatRuntimeInner({ children }: { children: ReactNode }) {
       progressView,
       handleProgressViewChange,
       getMessageProgress,
+      getMessageMeta,
+      streamingMessageId,
       streamStatus,
       debugEvents,
       awaitingClarification,
       forceAnswer,
+      submitMessage,
       streamError,
       openAttachPicker,
       registerAttachPicker,

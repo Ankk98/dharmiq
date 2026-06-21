@@ -1,6 +1,9 @@
 import { UserMessageAttachments } from "@/components/assistant-ui/attachment";
 import { MarkdownText } from "@/components/assistant-ui/markdown-text";
+import { ClarifyCard } from "@/components/chat/ClarifyCard";
 import { MessageProgress } from "@/components/chat/MessageProgress";
+import { RefusalCard } from "@/components/chat/RefusalCard";
+import { StreamingCaret } from "@/components/chat/StreamingCaret";
 import {
   Reasoning,
   ReasoningContent,
@@ -19,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { ComposerAttachmentChips } from "@/components/uploads/SessionAttachments";
 import { useChatRuntimeState } from "@/hooks/useChatRuntimeState";
 import { READING_MEASURE } from "@/lib/design/constants";
+import { messagePresentation } from "@/lib/messageMeta";
 import { cn } from "@/lib/utils";
 import {
   ActionBarMorePrimitive,
@@ -175,24 +179,9 @@ const ThreadSuggestionItem: FC = () => {
 };
 
 const Composer: FC = () => {
-  const { awaitingClarification, forceAnswer, isRunning } = useChatRuntimeState();
-
   return (
     <ComposerPrimitive.Root className="aui-composer-root mx-auto flex w-full max-w-(--thread-max-width) flex-col gap-2.5">
       <ComposerAttachmentChips />
-      {awaitingClarification && !isRunning ? (
-        <div className="flex justify-end">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="border-dashed text-xs"
-            onClick={() => void forceAnswer()}
-          >
-            Answer with what you have
-          </Button>
-        </div>
-      ) : null}
       <div className="flex items-end gap-2.5">
         <div
           data-slot="aui_composer-field"
@@ -282,88 +271,128 @@ const MessageError: FC = () => {
 
 const AssistantMessage: FC = () => {
   const messageId = useAuiState((state) => state.message.id);
-  const { getMessageProgress, progressView } = useChatRuntimeState();
+  const messageText = useAuiState((state) => {
+    const part = state.message.content.find((item) => item.type === "text");
+    return part?.type === "text" ? part.text : "";
+  });
+  const {
+    getMessageProgress,
+    getMessageMeta,
+    progressView,
+    streamingMessageId,
+    streamStatus,
+  } = useChatRuntimeState();
   const progress = getMessageProgress(messageId);
+  const presentation = messagePresentation(messageText, getMessageMeta(messageId));
+  const isStreaming =
+    messageId === streamingMessageId &&
+    (streamStatus === "streaming" || streamStatus === "connecting");
 
   const ACTION_BAR_PT = "pt-1.5";
   const ACTION_BAR_HEIGHT = `-mb-7.5 min-h-7.5 ${ACTION_BAR_PT}`;
+
+  if (presentation.kind === "clarifier") {
+    return (
+      <MessagePrimitive.Root
+        data-slot="aui_assistant-message-root"
+        data-role="assistant"
+        className="thread-msg-enter relative px-2"
+      >
+        <ClarifyCard reason={presentation.reason} questions={presentation.questions} />
+      </MessagePrimitive.Root>
+    );
+  }
+
+  const showRefusal = presentation.kind === "refusal";
 
   return (
     <MessagePrimitive.Root
       data-slot="aui_assistant-message-root"
       data-role="assistant"
       className="thread-msg-enter relative"
+      aria-busy={isStreaming}
     >
       <div
         data-slot="aui_assistant-message-content"
-        className="text-foreground px-2 leading-relaxed wrap-break-word [contain-intrinsic-size:auto_24px] [content-visibility:auto]"
+        className="text-foreground px-2 leading-relaxed wrap-break-word [contain-intrinsic-size:auto_24px] [content-visibility:auto] [lang=hi]:leading-[1.9]"
       >
         {progress && progress.steps.length > 0 ? (
           <MessageProgress progress={progress} view={progressView} />
         ) : null}
-        <MessagePrimitive.GroupedParts
-          groupBy={groupPartByType({
-            reasoning: ["group-chainOfThought", "group-reasoning"],
-            "tool-call": ["group-chainOfThought", "group-tool"],
-            "standalone-tool-call": [],
-          })}
-        >
-          {({ part, children }) => {
-            switch (part.type) {
-              case "group-chainOfThought":
-                return <div data-slot="aui_chain-of-thought">{children}</div>;
-              case "group-reasoning": {
-                const running = part.status.type === "running";
-                return (
-                  <ReasoningRoot defaultOpen={running}>
-                    <ReasoningTrigger active={running} />
-                    <ReasoningContent aria-busy={running}>
-                      <ReasoningText>{children}</ReasoningText>
-                    </ReasoningContent>
-                  </ReasoningRoot>
-                );
+        {showRefusal ? (
+          <RefusalCard content={messageText} />
+        ) : (
+          <MessagePrimitive.GroupedParts
+            groupBy={groupPartByType({
+              reasoning: ["group-chainOfThought", "group-reasoning"],
+              "tool-call": ["group-chainOfThought", "group-tool"],
+              "standalone-tool-call": [],
+            })}
+          >
+            {({ part, children }) => {
+              switch (part.type) {
+                case "group-chainOfThought":
+                  return <div data-slot="aui_chain-of-thought">{children}</div>;
+                case "group-reasoning": {
+                  const running = part.status.type === "running";
+                  return (
+                    <ReasoningRoot defaultOpen={running}>
+                      <ReasoningTrigger active={running} />
+                      <ReasoningContent aria-busy={running}>
+                        <ReasoningText>{children}</ReasoningText>
+                      </ReasoningContent>
+                    </ReasoningRoot>
+                  );
+                }
+                case "group-tool":
+                  return (
+                    <ToolGroupRoot>
+                      <ToolGroupTrigger
+                        count={part.indices.length}
+                        active={part.status.type === "running"}
+                      />
+                      <ToolGroupContent>{children}</ToolGroupContent>
+                    </ToolGroupRoot>
+                  );
+                case "text":
+                  return (
+                    <>
+                      <MarkdownText />
+                      {isStreaming ? <StreamingCaret /> : null}
+                    </>
+                  );
+                case "reasoning":
+                  return <Reasoning {...part} />;
+                case "tool-call":
+                  return part.toolUI ?? <ToolFallback {...part} />;
+                case "indicator":
+                  return (
+                    <span
+                      data-slot="aui_assistant-message-indicator"
+                      className="animate-pulse font-sans"
+                      aria-label="Assistant is working"
+                    >
+                      {"●"}
+                    </span>
+                  );
+                default:
+                  return null;
               }
-              case "group-tool":
-                return (
-                  <ToolGroupRoot>
-                    <ToolGroupTrigger
-                      count={part.indices.length}
-                      active={part.status.type === "running"}
-                    />
-                    <ToolGroupContent>{children}</ToolGroupContent>
-                  </ToolGroupRoot>
-                );
-              case "text":
-                return <MarkdownText />;
-              case "reasoning":
-                return <Reasoning {...part} />;
-              case "tool-call":
-                return part.toolUI ?? <ToolFallback {...part} />;
-              case "indicator":
-                return (
-                  <span
-                    data-slot="aui_assistant-message-indicator"
-                    className="animate-pulse font-sans"
-                    aria-label="Assistant is working"
-                  >
-                    {"●"}
-                  </span>
-                );
-              default:
-                return null;
-            }
-          }}
-        </MessagePrimitive.GroupedParts>
+            }}
+          </MessagePrimitive.GroupedParts>
+        )}
         <MessageError />
       </div>
 
-      <div
-        data-slot="aui_assistant-message-footer"
-        className={cn("ms-2 flex items-center", ACTION_BAR_HEIGHT)}
-      >
-        <BranchPicker />
-        <AssistantActionBar />
-      </div>
+      {!showRefusal ? (
+        <div
+          data-slot="aui_assistant-message-footer"
+          className={cn("ms-2 flex items-center", ACTION_BAR_HEIGHT)}
+        >
+          <BranchPicker />
+          <AssistantActionBar />
+        </div>
+      ) : null}
     </MessagePrimitive.Root>
   );
 };
@@ -373,26 +402,43 @@ const AssistantActionBar: FC = () => {
     <ActionBarPrimitive.Root
       hideWhenRunning
       autohide="not-last"
-      className="aui-assistant-action-bar-root text-muted-foreground col-start-3 row-start-2 -ms-1 flex gap-1"
+      className="aui-assistant-action-bar-root text-faint col-start-3 row-start-2 -ms-1 flex gap-1.5"
     >
-      <ActionBarPrimitive.Copy render={<TooltipIconButton tooltip="Copy" />}>
+      <ActionBarPrimitive.Copy
+        render={
+          <TooltipIconButton
+            tooltip="Copy"
+            className="message-action-btn border-border-subtle text-faint hover:text-foreground hover:border-border hover:bg-accent size-[30px] rounded-lg border bg-transparent p-0"
+          />
+        }
+      >
         <AuiIf condition={(s) => s.message.isCopied}>
-          <CheckIcon />
+          <CheckIcon className="size-[15px] stroke-[1.7]" />
         </AuiIf>
         <AuiIf condition={(s) => !s.message.isCopied}>
-          <CopyIcon />
+          <CopyIcon className="size-[15px] stroke-[1.7]" />
         </AuiIf>
       </ActionBarPrimitive.Copy>
-      <ActionBarPrimitive.Reload render={<TooltipIconButton tooltip="Refresh" />}>
-        <RefreshCwIcon />
+      <ActionBarPrimitive.Reload
+        render={
+          <TooltipIconButton
+            tooltip="Regenerate"
+            className="message-action-btn border-border-subtle text-faint hover:text-foreground hover:border-border hover:bg-accent size-[30px] rounded-lg border bg-transparent p-0"
+          />
+        }
+      >
+        <RefreshCwIcon className="size-[15px] stroke-[1.7]" />
       </ActionBarPrimitive.Reload>
       <ActionBarMorePrimitive.Root>
         <ActionBarMorePrimitive.Trigger
           render={
-            <TooltipIconButton tooltip="More" className="data-[state=open]:bg-accent" />
+            <TooltipIconButton
+              tooltip="More"
+              className="message-action-btn border-border-subtle text-faint hover:text-foreground hover:border-border hover:bg-accent data-[state=open]:bg-accent size-[30px] rounded-lg border bg-transparent p-0"
+            />
           }
         >
-          <MoreHorizontalIcon />
+          <MoreHorizontalIcon className="size-[15px] stroke-[1.7]" />
         </ActionBarMorePrimitive.Trigger>
         <ActionBarMorePrimitive.Content
           side="bottom"

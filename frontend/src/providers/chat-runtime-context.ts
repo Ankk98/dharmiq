@@ -2,6 +2,7 @@ import { createContext } from "react";
 
 import type { ProgressView } from "@/lib/chatPreferences";
 import type { Citation, ChatSession } from "@/lib/api";
+import type { StoredMessageMeta } from "@/lib/messageMeta";
 import type { TurnProgress } from "@/lib/progress";
 import type { useChatStream } from "@/hooks/useChatStream";
 
@@ -15,10 +16,13 @@ export type ChatRuntimeContextValue = {
   progressView: ProgressView;
   setProgressView: (view: ProgressView) => void;
   getMessageProgress: (messageId: string) => TurnProgress | undefined;
+  getMessageMeta: (messageId: string) => StoredMessageMeta | undefined;
+  streamingMessageId: string | null;
   streamStatus: ReturnType<typeof useChatStream>["status"];
   debugEvents: ReturnType<typeof useChatStream>["debugEvents"];
   awaitingClarification: boolean;
   forceAnswer: () => Promise<void>;
+  submitUserMessage: (text: string) => Promise<void>;
   streamError: string | null;
   openAttachPicker: () => void;
   registerAttachPicker: (handler: (() => void) | null) => void;

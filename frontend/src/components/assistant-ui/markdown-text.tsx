@@ -10,25 +10,17 @@ import {
 } from "@assistant-ui/react-markdown";
 import { Link } from "react-router-dom";
 import remarkGfm from "remark-gfm";
-import { Children, isValidElement, type FC, memo, type ReactNode, useState } from "react";
+import { type FC, memo, useState } from "react";
 import { CheckIcon, CopyIcon } from "lucide-react";
 
+import { DisclaimerBlock } from "@/components/chat/DisclaimerBlock";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
+import {
+  detectBlockquoteSourceType,
+  flattenMarkdownChildren,
+  isDisclaimerBlockquote,
+} from "@/lib/citations";
 import { cn } from "@/lib/utils";
-
-function flattenMarkdownChildren(children: ReactNode): string {
-  return Children.toArray(children)
-    .map((child) => {
-      if (typeof child === "string" || typeof child === "number") {
-        return String(child);
-      }
-      if (isValidElement<{ children?: ReactNode }>(child)) {
-        return flattenMarkdownChildren(child.props.children);
-      }
-      return "";
-    })
-    .join("");
-}
 
 const MarkdownTextImpl = () => {
   return (
@@ -86,11 +78,28 @@ const useCopyToClipboard = ({
   return { isCopied, copyToClipboard };
 };
 
+function CitationLabel({ sourceType }: { sourceType: "corpus" | "upload" }) {
+  if (sourceType === "upload") {
+    return (
+      <span className="text-citation-doc mb-1 block text-[0.64em] font-semibold uppercase tracking-wide [lang=hi]:normal-case [lang=hi]:tracking-normal">
+        Your document says
+      </span>
+    );
+  }
+
+  return (
+    <span className="text-citation-law mb-1 flex items-center gap-1.5 text-[0.64em] font-semibold uppercase tracking-wide [lang=hi]:normal-case [lang=hi]:tracking-normal">
+      <span className="bg-brand-accent size-1.25 shrink-0 rounded-full" aria-hidden />
+      Law says · verified
+    </span>
+  );
+}
+
 const defaultComponents = memoizeMarkdownComponents({
   h1: ({ className, ...props }) => (
     <h1
       className={cn(
-        "aui-md-h1 mb-2 scroll-m-20 text-base font-semibold first:mt-0 last:mb-0",
+        "aui-md-h1 font-display mb-2 scroll-m-20 text-base font-semibold first:mt-0 last:mb-0",
         className,
       )}
       {...props}
@@ -99,7 +108,7 @@ const defaultComponents = memoizeMarkdownComponents({
   h2: ({ className, ...props }) => (
     <h2
       className={cn(
-        "aui-md-h2 mt-3 mb-1.5 scroll-m-20 text-sm font-semibold first:mt-0 last:mb-0",
+        "aui-md-h2 font-display mt-3 mb-1.5 scroll-m-20 text-sm font-semibold first:mt-0 last:mb-0",
         className,
       )}
       {...props}
@@ -108,7 +117,7 @@ const defaultComponents = memoizeMarkdownComponents({
   h3: ({ className, ...props }) => (
     <h3
       className={cn(
-        "aui-md-h3 mt-2.5 mb-1 scroll-m-20 text-sm font-semibold first:mt-0 last:mb-0",
+        "aui-md-h3 font-display mt-2.5 mb-1 scroll-m-20 text-sm font-semibold first:mt-0 last:mb-0",
         className,
       )}
       {...props}
@@ -117,7 +126,7 @@ const defaultComponents = memoizeMarkdownComponents({
   h4: ({ className, ...props }) => (
     <h4
       className={cn(
-        "aui-md-h4 mt-2 mb-1 scroll-m-20 text-sm font-medium first:mt-0 last:mb-0",
+        "aui-md-h4 font-display mt-2 mb-1 scroll-m-20 text-sm font-medium first:mt-0 last:mb-0",
         className,
       )}
       {...props}
@@ -126,7 +135,7 @@ const defaultComponents = memoizeMarkdownComponents({
   h5: ({ className, ...props }) => (
     <h5
       className={cn(
-        "aui-md-h5 mt-2 mb-1 text-sm font-medium first:mt-0 last:mb-0",
+        "aui-md-h5 font-display mt-2 mb-1 text-[0.92em] font-semibold first:mt-0 last:mb-0",
         className,
       )}
       {...props}
@@ -135,7 +144,7 @@ const defaultComponents = memoizeMarkdownComponents({
   h6: ({ className, ...props }) => (
     <h6
       className={cn(
-        "aui-md-h6 mt-2 mb-1 text-sm font-medium first:mt-0 last:mb-0",
+        "aui-md-h6 font-display mt-2 mb-1 text-sm font-medium first:mt-0 last:mb-0",
         className,
       )}
       {...props}
@@ -144,18 +153,34 @@ const defaultComponents = memoizeMarkdownComponents({
   p: ({ className, ...props }) => (
     <p
       className={cn(
-        "aui-md-p my-2.5 leading-normal first:mt-0 last:mb-0",
+        "aui-md-p my-2.5 leading-normal first:mt-0 last:mb-0 [lang=hi]:leading-[1.9]",
         className,
       )}
       {...props}
     />
   ),
-  a: ({ className, href, ...props }) => {
+  a: ({ className, href, children, ...props }) => {
+    const markerText = flattenMarkdownChildren(children).trim();
+    const isDocLink = href?.startsWith("/docs/");
+    const isCitationMarker = isDocLink && /^\d+$/.test(markerText);
+
+    if (isCitationMarker && href) {
+      return (
+        <Link
+          to={href}
+          className="citation-marker bg-primary-muted text-primary hover:bg-primary hover:text-primary-foreground mx-px inline-flex min-h-[1.15em] min-w-[1.15em] items-center justify-center rounded-[5px] px-1 align-super font-mono text-[0.62em] font-semibold no-underline transition-colors"
+          {...props}
+        >
+          {markerText}
+        </Link>
+      );
+    }
+
     const classes = cn(
       "aui-md-a text-primary hover:text-primary/80 underline underline-offset-2",
       className,
     );
-    if (href?.startsWith("/docs/")) {
+    if (isDocLink && href) {
       return <Link to={href} className={classes} {...props} />;
     }
     return (
@@ -169,31 +194,27 @@ const defaultComponents = memoizeMarkdownComponents({
     );
   },
   blockquote: ({ className, children, ...props }) => {
-    const text = flattenMarkdownChildren(children).toLowerCase();
-    const isUploadQuote =
-      text.includes("your document") ||
-      text.includes("contract") ||
-      text.includes("clause");
+    const text = flattenMarkdownChildren(children);
+
+    if (isDisclaimerBlockquote(text)) {
+      return <DisclaimerBlock>{children}</DisclaimerBlock>;
+    }
+
+    const sourceType = detectBlockquoteSourceType(children, text);
+    const isUploadQuote = sourceType === "upload";
+
     return (
       <blockquote
         className={cn(
-          "aui-md-blockquote my-3 border-s-4 ps-4 not-italic",
+          "aui-md-blockquote my-3 border-s-3 ps-3.5 not-italic transition-transform duration-150 hover:translate-x-0.5",
           isUploadQuote
-            ? "border-amber-500/70 bg-amber-500/5 text-foreground"
-            : "border-primary/60 bg-primary/5 text-foreground",
+            ? "border-citation-doc bg-citation-doc-bg text-foreground"
+            : "border-citation-law bg-citation-law-bg text-foreground",
           className,
         )}
         {...props}
       >
-        {isUploadQuote ? (
-          <span className="text-muted-foreground mb-1 block text-xs font-medium uppercase tracking-wide">
-            Your document says
-          </span>
-        ) : (
-          <span className="text-muted-foreground mb-1 block text-xs font-medium uppercase tracking-wide">
-            The law says
-          </span>
-        )}
+        <CitationLabel sourceType={sourceType} />
         {children}
       </blockquote>
     );
@@ -261,11 +282,10 @@ const defaultComponents = memoizeMarkdownComponents({
   li: ({ className, ...props }) => (
     <li className={cn("aui-md-li leading-normal", className)} {...props} />
   ),
-  sup: ({ className, ...props }) => (
-    <sup
-      className={cn("aui-md-sup [&>a]:text-xs [&>a]:no-underline", className)}
-      {...props}
-    />
+  sup: ({ className, children, ...props }) => (
+    <sup className={cn("aui-md-sup leading-none", className)} {...props}>
+      {children}
+    </sup>
   ),
   pre: ({ className, ...props }) => (
     <pre

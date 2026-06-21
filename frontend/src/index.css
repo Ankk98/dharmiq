@@ -368,3 +368,25 @@ a {
     animation: none;
   }
 }
+
+@keyframes streaming-caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.streaming-caret {
+  height: 1.05em;
+  margin-left: 1px;
+  animation: streaming-caret-blink 1s steps(1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .streaming-caret {
+    animation: none;
+  }
+}
+
+.message-action-btn:active {
+  transform: scale(0.96);
+}

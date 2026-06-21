@@ -344,3 +344,27 @@ a {
     animation: none;
   }
 }
+
+@keyframes progress-step-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(0.8);
+  }
+}
+
+.progress-step-dot--running {
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent),
+    var(--glow);
+  animation: progress-step-pulse 1.3s var(--ease-default) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-step-dot--running {
+    animation: none;
+  }
+}

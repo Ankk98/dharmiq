@@ -282,7 +282,7 @@ const MessageError: FC = () => {
 
 const AssistantMessage: FC = () => {
   const messageId = useAuiState((state) => state.message.id);
-  const { getMessageProgress, progressView, setProgressView } = useChatRuntimeState();
+  const { getMessageProgress, progressView } = useChatRuntimeState();
   const progress = getMessageProgress(messageId);
 
   const ACTION_BAR_PT = "pt-1.5";
@@ -299,12 +299,7 @@ const AssistantMessage: FC = () => {
         className="text-foreground px-2 leading-relaxed wrap-break-word [contain-intrinsic-size:auto_24px] [content-visibility:auto]"
       >
         {progress && progress.steps.length > 0 ? (
-          <MessageProgress
-            progress={progress}
-            view={progressView}
-            onViewChange={setProgressView}
-            defaultOpen={progress.status === "running"}
-          />
+          <MessageProgress progress={progress} view={progressView} />
         ) : null}
         <MessagePrimitive.GroupedParts
           groupBy={groupPartByType({

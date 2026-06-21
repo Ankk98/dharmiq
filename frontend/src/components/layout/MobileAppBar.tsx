@@ -1,8 +1,7 @@
 import { MenuIcon } from "lucide-react";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/useAuth";
+import { DefaultAvatar } from "@/components/ui/default-avatar";
 
 import { Wordmark } from "./Wordmark";
 
@@ -11,9 +10,6 @@ type MobileAppBarProps = {
 };
 
 export function MobileAppBar({ onMenuClick }: MobileAppBarProps) {
-  const { user } = useAuth();
-  const emailInitial = user?.email?.charAt(0).toUpperCase() ?? "?";
-
   return (
     <header className="border-border bg-card/85 flex items-center gap-2.5 border-b px-4 py-2.5 md:hidden">
       <Button
@@ -27,11 +23,7 @@ export function MobileAppBar({ onMenuClick }: MobileAppBarProps) {
         <MenuIcon className="size-5" strokeWidth={1.8} />
       </Button>
       <Wordmark className="flex-1" />
-      <Avatar className="border-border-subtle bg-primary-muted text-primary size-7 border">
-        <AvatarFallback className="bg-primary-muted text-primary text-[0.65em] font-medium">
-          {emailInitial}
-        </AvatarFallback>
-      </Avatar>
+      <DefaultAvatar className="size-7" />
     </header>
   );
 }

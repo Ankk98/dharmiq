@@ -59,7 +59,7 @@ export function MobileTabBar({ onNavigate }: MobileTabBarProps) {
           end={end}
           onClick={onNavigate}
           className={cn(
-            "text-faint flex flex-1 flex-col items-center gap-0.5 py-2 text-[0.6em] transition-colors",
+            "text-faint flex flex-1 flex-col items-center gap-0.5 py-2 text-[0.6em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
             isActive(id) && "text-primary",
           )}
         >

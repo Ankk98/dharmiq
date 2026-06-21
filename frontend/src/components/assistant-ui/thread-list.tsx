@@ -71,7 +71,7 @@ const ThreadListItem: FC = () => {
   return (
     <ThreadListItemPrimitive.Root
       className={cn(
-        "aui-thread-list-item group hover:bg-border-subtle focus-visible:bg-border-subtle data-active:bg-primary-muted flex h-9 items-center gap-2 rounded-[9px] transition-colors duration-[var(--duration-instant)] focus-visible:outline-none",
+        "aui-thread-list-item group hover:bg-border-subtle focus-visible:bg-border-subtle data-active:bg-primary-muted flex h-9 items-center gap-2 rounded-[9px] transition-colors duration-[var(--duration-instant)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
       )}
     >
       <ThreadListItemPrimitive.Trigger className="aui-thread-list-item-trigger data-active:text-primary flex h-full min-w-0 flex-1 items-center px-2.5 text-start text-[0.84em]">

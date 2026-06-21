@@ -92,6 +92,8 @@ export const MessageProgress: FC<MessageProgressProps> = ({ progress, view }) =>
     <div
       className="border-border bg-card mb-3 overflow-hidden rounded-xl border shadow-[var(--card-highlight)]"
       data-detailed={showDetails ? "true" : "false"}
+      role="region"
+      aria-label="Answer progress"
     >
       <div className="flex items-center gap-2.5 px-3.5 py-2.5">
         {isActive ? (
@@ -121,7 +123,11 @@ export const MessageProgress: FC<MessageProgressProps> = ({ progress, view }) =>
         ) : null}
       </div>
 
-      <ol className="flex flex-col gap-px px-3.5 pb-3">
+      <ol
+        className="flex flex-col gap-px px-3.5 pb-3"
+        aria-live="polite"
+        aria-relevant="text"
+      >
         {display.steps.map((step) => (
           <ProgressStepRow key={step.id} step={step} showDetails={showDetails} />
         ))}

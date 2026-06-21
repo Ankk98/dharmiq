@@ -215,7 +215,7 @@ const ComposerAttachButton: FC = () => {
   return (
     <button
       type="button"
-      className="text-muted-foreground hover:text-primary hover:bg-accent grid size-9 shrink-0 place-items-center rounded-lg transition-colors disabled:opacity-40"
+      className="text-muted-foreground hover:text-primary hover:bg-accent composer-control grid size-9 shrink-0 place-items-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-40"
       aria-label="Attach documents"
       disabled={!sessionId}
       onClick={() => openAttachPicker()}
@@ -312,6 +312,11 @@ const AssistantMessage: FC = () => {
       className="thread-msg-enter relative"
       aria-busy={isStreaming}
     >
+      {isStreaming ? (
+        <span className="sr-only" aria-live="polite" aria-atomic="true">
+          Answer is streaming
+        </span>
+      ) : null}
       <div
         data-slot="aui_assistant-message-content"
         className="text-foreground px-2 leading-relaxed wrap-break-word [contain-intrinsic-size:auto_24px] [content-visibility:auto] [lang=hi]:leading-[1.9]"

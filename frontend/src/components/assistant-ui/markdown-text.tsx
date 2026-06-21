@@ -168,7 +168,7 @@ const defaultComponents = memoizeMarkdownComponents({
       return (
         <DocumentCitationLink
           href={href}
-          className="citation-marker bg-primary-muted text-primary hover:bg-primary hover:text-primary-foreground mx-px inline-flex min-h-[1.15em] min-w-[1.15em] items-center justify-center rounded-[5px] px-1 align-super font-mono text-[0.62em] font-semibold no-underline transition-colors"
+          className="citation-marker bg-primary-muted text-primary hover:bg-primary hover:text-primary-foreground mx-px inline-flex min-h-[1.15em] min-w-[1.15em] items-center justify-center rounded-[5px] px-1 align-super font-mono text-[0.62em] font-semibold no-underline"
         >
           {markerText}
         </DocumentCitationLink>
@@ -209,7 +209,7 @@ const defaultComponents = memoizeMarkdownComponents({
     return (
       <blockquote
         className={cn(
-          "aui-md-blockquote my-3 border-s-3 ps-3.5 not-italic transition-transform duration-150 hover:translate-x-0.5",
+          "aui-md-blockquote citation-blockquote my-3 border-s-3 ps-3.5 not-italic",
           isUploadQuote
             ? "border-citation-doc bg-citation-doc-bg text-foreground"
             : "border-citation-law bg-citation-law-bg text-foreground",

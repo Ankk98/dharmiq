@@ -610,3 +610,35 @@ a {
     opacity: 1;
   }
 }
+
+/* D11 — micro-interactions: focus rings, citation nudge, composer controls */
+.citation-marker {
+  transition:
+    color var(--duration-instant) var(--ease-default),
+    background-color var(--duration-instant) var(--ease-default),
+    transform var(--duration-instant) var(--ease-default);
+}
+
+.citation-marker:hover {
+  transform: translateY(-0.5px);
+}
+
+.citation-blockquote {
+  transition: transform var(--duration-fast) var(--ease-default);
+}
+
+.citation-blockquote:hover {
+  transform: translateX(2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .citation-marker:hover,
+  .citation-blockquote:hover {
+    transform: none;
+  }
+}
+
+.composer-control:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ring) 55%, transparent);
+}

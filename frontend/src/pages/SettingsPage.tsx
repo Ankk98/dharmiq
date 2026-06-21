@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { DefaultAvatar } from "@/components/ui/default-avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { useChatRuntimeState } from "@/hooks/useChatRuntimeState";
 import { useTheme, type Theme } from "@/hooks/useTheme";
@@ -32,7 +32,7 @@ function OptionToggle<T extends string>({
           type="button"
           aria-pressed={value === option.value}
           className={cn(
-            "border-border bg-card text-muted-foreground cursor-pointer rounded-lg border px-2.5 py-1.5 text-[0.74em] transition-colors",
+            "border-border bg-card text-muted-foreground cursor-pointer rounded-lg border px-2.5 py-1.5 text-[0.74em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
             value === option.value &&
               "bg-primary-muted text-primary border-primary font-medium",
           )}
@@ -99,8 +99,6 @@ export function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { progressView, setProgressView } = useChatRuntimeState();
 
-  const emailInitial = user?.email?.charAt(0).toUpperCase() ?? "?";
-
   return (
     <div className="flex-1 overflow-y-auto p-6 max-md:p-4">
       <h1 className="font-display mb-1 text-[1.25em] font-semibold">Settings</h1>
@@ -141,11 +139,7 @@ export function SettingsPage() {
 
         <SettingsCard title="Account">
           <div className="border-border-subtle flex items-center gap-3 px-4 py-3">
-            <Avatar className="border-border-subtle bg-primary-muted text-primary size-[34px] border shadow-[var(--card-highlight)]">
-              <AvatarFallback className="bg-primary-muted text-primary text-xs font-medium">
-                {emailInitial}
-              </AvatarFallback>
-            </Avatar>
+            <DefaultAvatar className="size-[34px]" />
             <div className="min-w-0 flex-1">
               <p className="truncate text-[0.82em] font-medium">{user?.email}</p>
             </div>

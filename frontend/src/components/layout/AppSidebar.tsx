@@ -10,8 +10,8 @@ import {
 import { NavLink } from "react-router-dom";
 
 import { ThreadList } from "@/components/assistant-ui/thread-list";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { DefaultAvatar } from "@/components/ui/default-avatar";
 import { useAuth } from "@/hooks/useAuth";
 import {
   SIDEBAR_COLLAPSED_WIDTH_PX,
@@ -43,7 +43,6 @@ export function AppSidebar({
   style,
 }: AppSidebarProps) {
   const { user, logout } = useAuth();
-  const emailInitial = user?.email?.charAt(0).toUpperCase() ?? "?";
 
   return (
     <aside
@@ -83,7 +82,7 @@ export function AppSidebar({
             onClick={onNavigate}
             className={({ isActive }) =>
               cn(
-                "relative flex items-center gap-2.5 rounded-[9px] px-2.5 py-2.5 text-[0.86em] transition-colors duration-[var(--duration-instant)] ease-[var(--ease-default)]",
+                "relative flex items-center gap-2.5 rounded-[9px] px-2.5 py-2.5 text-[0.86em] transition-colors duration-[var(--duration-instant)] ease-[var(--ease-default)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
                 isActive
                   ? "bg-primary-muted text-primary font-medium"
                   : "text-muted-foreground hover:bg-border-subtle hover:text-foreground",
@@ -120,11 +119,7 @@ export function AppSidebar({
       )}
 
       <div className="border-border-subtle mt-auto flex items-center gap-2 border-t pt-2">
-        <Avatar className="border-border-subtle bg-primary-muted text-primary size-[30px] border shadow-[var(--card-highlight)]">
-          <AvatarFallback className="bg-primary-muted text-primary text-xs font-medium">
-            {emailInitial}
-          </AvatarFallback>
-        </Avatar>
+        <DefaultAvatar />
         {!collapsed ? (
           <>
             <div className="min-w-0 flex-1">

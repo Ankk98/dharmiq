@@ -1,11 +1,13 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  AuthAltLink,
+  AuthField,
+  AuthForm,
+  AuthLayout,
+} from "@/components/auth/AuthLayout";
 import { useAuth } from "@/hooks/useAuth";
 
 export function LoginPage() {
@@ -35,51 +37,38 @@ export function LoginPage() {
   }
 
   return (
-    <div className="bg-muted/30 flex min-h-full items-center justify-center p-6">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Sign in to Dharmiq</CardTitle>
-          <CardDescription>
-            Indian legal information assistant. This is not legal advice.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form className="space-y-4" onSubmit={onSubmit}>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-              />
-            </div>
-            {error ? <p className="text-destructive text-sm">{error}</p> : null}
-            <Button type="submit" className="w-full" disabled={submitting}>
-              {submitting ? "Signing in..." : "Sign in"}
-            </Button>
-          </form>
-          <p className="text-muted-foreground mt-4 text-sm">
-            No account?{" "}
-            <Link className="text-primary underline" to="/signup">
-              Create one
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
-    </div>
+    <AuthLayout>
+      <AuthForm
+        onSubmit={onSubmit}
+        submitLabel="Log in"
+        submittingLabel="Logging in..."
+        submitting={submitting}
+        error={error}
+      >
+        <AuthField
+          id="email"
+          label="Email"
+          type="email"
+          autoComplete="email"
+          value={email}
+          onChange={setEmail}
+          required
+        />
+        <AuthField
+          id="password"
+          label="Password"
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={setPassword}
+          required
+        />
+      </AuthForm>
+      <AuthAltLink
+        prompt="New here?"
+        linkText="Create an account"
+        to="/signup"
+      />
+    </AuthLayout>
   );
 }

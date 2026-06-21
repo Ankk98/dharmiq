@@ -532,3 +532,81 @@ a {
     transition: none;
   }
 }
+
+/* Auth — login / signup */
+@keyframes auth-pop {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes auth-shake {
+  0% {
+    opacity: 0;
+    transform: translateX(0);
+  }
+
+  30% {
+    opacity: 1;
+  }
+
+  45% {
+    transform: translateX(-4px);
+  }
+
+  65% {
+    transform: translateX(3px);
+  }
+
+  100% {
+    transform: translateX(0);
+  }
+}
+
+.auth-card {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--card);
+  box-shadow: var(--shadow-elevated);
+  padding: 1.8rem 1.6rem;
+  animation: auth-pop var(--duration-slow) var(--ease-spring);
+}
+
+.auth-layout .aurora-bg {
+  background:
+    radial-gradient(
+      40% 36% at 20% 15%,
+      rgba(var(--wp-accent), 0.12) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      40% 34% at 82% 85%,
+      rgba(var(--wp-accent), 0.08) 0%,
+      transparent 70%
+    );
+}
+
+.auth-error {
+  animation: auth-shake var(--duration-slow) var(--ease-spring);
+}
+
+.auth-submit:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-card {
+    animation: none;
+  }
+
+  .auth-error {
+    animation: none;
+    opacity: 1;
+  }
+}

@@ -61,6 +61,14 @@ async def clarifier_node(state: AgentGraphState, config: RunnableConfig) -> dict
         "topic": clarifier.topic,
         "needs_clarification": clarifier.needs_more_info and bool(clarifier.followup_questions),
         "followup_questions": clarifier.followup_questions,
+        "followup_items": [
+            {
+                "question": item.question,
+                "why": item.why,
+                "options": item.options,
+            }
+            for item in clarifier.followup_items
+        ],
         "clarifier_reason": clarifier.reason,
         "total_tokens": state.get("total_tokens", 0) + clarifier.tokens_used,
     }

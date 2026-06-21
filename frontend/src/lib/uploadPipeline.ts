@@ -8,7 +8,7 @@ export const UPLOAD_PIPELINE_STAGES = [
 export type UploadPipelineStage = (typeof UPLOAD_PIPELINE_STAGES)[number];
 
 /** Cosmetic progress bar width per animation phase (demo uploadPipeline). */
-const PHASE_PROGRESS = [25, 60, 100, 10] as const;
+const PHASE_PROGRESS = [25, 60, 85, 100] as const;
 
 export function pipelineProgressPercent(phase: number): number {
   return PHASE_PROGRESS[phase % PHASE_PROGRESS.length] ?? 25;

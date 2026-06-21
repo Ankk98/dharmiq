@@ -7,7 +7,6 @@ import {
   ThreadListPrimitive,
 } from "@assistant-ui/react";
 import {
-  ArchiveIcon,
   MoreHorizontalIcon,
   PlusIcon,
   TrashIcon,
@@ -104,14 +103,6 @@ const ThreadListItemMore: FC = () => {
         align="start"
         className="aui-thread-list-item-more-content bg-popover text-popover-foreground z-50 min-w-32 overflow-hidden rounded-md border p-1 shadow-md"
       >
-        <ThreadListItemPrimitive.Archive
-          render={
-            <ThreadListItemMorePrimitive.Item className="aui-thread-list-item-more-item hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none" />
-          }
-        >
-          <ArchiveIcon className="size-4" />
-          Archive
-        </ThreadListItemPrimitive.Archive>
         <ThreadListItemPrimitive.Delete
           render={
             <ThreadListItemMorePrimitive.Item className="aui-thread-list-item-more-item text-destructive hover:bg-destructive/10 hover:text-destructive focus:bg-destructive/10 focus:text-destructive flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none" />

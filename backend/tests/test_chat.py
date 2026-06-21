@@ -73,6 +73,22 @@ async def test_session_not_found(client: AsyncClient, auth_headers: dict[str, st
 
 
 @pytest.mark.asyncio
+async def test_delete_session(client: AsyncClient, auth_headers: dict[str, str]) -> None:
+    create = await client.post("/api/chat/sessions", json={"title": "To delete"}, headers=auth_headers)
+    assert create.status_code == 201
+    session_id = create.json()["id"]
+
+    deleted = await client.delete(f"/api/chat/sessions/{session_id}", headers=auth_headers)
+    assert deleted.status_code == 204
+
+    listing = await client.get("/api/chat/sessions", headers=auth_headers)
+    assert all(item["id"] != session_id for item in listing.json())
+
+    missing = await client.get(f"/api/chat/sessions/{session_id}", headers=auth_headers)
+    assert missing.status_code == 404
+
+
+@pytest.mark.asyncio
 async def test_other_user_cannot_access_session(
     client: AsyncClient,
     auth_headers: dict[str, str],

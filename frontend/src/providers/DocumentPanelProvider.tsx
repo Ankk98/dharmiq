@@ -7,6 +7,7 @@ import {
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 import { documentViewerPath } from "@/lib/api";
+import { chatSessionPath, getStoredSessionId } from "@/lib/chatSession";
 import {
   DocumentPanelContext,
   type DocumentPanelParams,
@@ -65,8 +66,10 @@ export function DocumentPanelProvider({ children }: { children: ReactNode }) {
   );
 
   const closeDocument = useCallback(() => {
+    const stored = getStoredSessionId();
+    const fallback = stored ? chatSessionPath(stored) : "/";
     const returnTo =
-      (location.state as { returnTo?: string } | null)?.returnTo ?? "/";
+      (location.state as { returnTo?: string } | null)?.returnTo ?? fallback;
     setPanelWidthPxState(null);
     navigate(returnTo);
   }, [location.state, navigate]);

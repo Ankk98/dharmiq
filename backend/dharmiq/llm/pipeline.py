@@ -134,6 +134,14 @@ async def run_chat_pipeline(
                     "topic": clarifier.topic,
                     "reason": clarifier.reason,
                     "chat_request_id": str(chat_request.id),
+                    "followup_items": [
+                        {
+                            "question": item.question,
+                            "why": item.why,
+                            "options": item.options,
+                        }
+                        for item in clarifier.followup_items
+                    ],
                 },
             )
             db.add(clarifier_msg)

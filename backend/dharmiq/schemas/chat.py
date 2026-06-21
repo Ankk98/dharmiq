@@ -37,8 +37,13 @@ class SessionMessageCreate(BaseModel):
     metadata: dict[str, Any] | None = None
 
 
+class SessionMessageEdit(BaseModel):
+    content: str = Field(min_length=1)
+
+
 class ChatRequestPendingResponse(BaseModel):
     chat_request_id: uuid.UUID
+    user_message_id: uuid.UUID
     status: Literal["pending"] = "pending"
 
 

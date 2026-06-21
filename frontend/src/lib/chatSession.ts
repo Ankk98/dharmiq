@@ -11,3 +11,16 @@ export function setStoredSessionId(sessionId: string | null): void {
     localStorage.removeItem(ACTIVE_SESSION_KEY);
   }
 }
+
+export function chatSessionPath(sessionId: string): string {
+  return `/chat/${sessionId}`;
+}
+
+export function parseChatSessionId(pathname: string): string | null {
+  const match = pathname.match(/^\/chat\/([^/]+)$/);
+  return match?.[1] ?? null;
+}
+
+export function isChatRoute(pathname: string): boolean {
+  return pathname === "/" || pathname.startsWith("/chat/");
+}

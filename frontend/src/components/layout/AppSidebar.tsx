@@ -13,6 +13,8 @@ import { ThreadList } from "@/components/assistant-ui/thread-list";
 import { Button } from "@/components/ui/button";
 import { DefaultAvatar } from "@/components/ui/default-avatar";
 import { useAuth } from "@/hooks/useAuth";
+import { useChatRuntimeState } from "@/hooks/useChatRuntimeState";
+import { chatSessionPath } from "@/lib/chatSession";
 import {
   SIDEBAR_COLLAPSED_WIDTH_PX,
   SIDEBAR_WIDTH_PX,
@@ -30,9 +32,9 @@ type AppSidebarProps = {
 };
 
 const navItems = [
-  { to: "/", label: "Chat", icon: MessageSquareIcon, end: true },
-  { to: "/documents", label: "Documents", icon: FileTextIcon, end: false },
-  { to: "/settings", label: "Settings", icon: SettingsIcon, end: false },
+  { id: "chat", label: "Chat", icon: MessageSquareIcon },
+  { id: "documents", to: "/documents", label: "Documents", icon: FileTextIcon, end: false },
+  { id: "settings", to: "/settings", label: "Settings", icon: SettingsIcon, end: false },
 ] as const;
 
 export function AppSidebar({
@@ -43,6 +45,8 @@ export function AppSidebar({
   style,
 }: AppSidebarProps) {
   const { user, logout } = useAuth();
+  const { sessionId } = useChatRuntimeState();
+  const chatTo = sessionId ? chatSessionPath(sessionId) : "/";
 
   return (
     <aside
@@ -74,9 +78,13 @@ export function AppSidebar({
       </div>
 
       <nav className="flex flex-col gap-0.5">
-        {navItems.map(({ to, label, icon: Icon, end }) => (
+        {navItems.map((item) => {
+          const to = "to" in item ? item.to : chatTo;
+          const end = "end" in item ? item.end : false;
+          const { id, label, icon: Icon } = item;
+          return (
           <NavLink
-            key={to}
+            key={id}
             to={to}
             end={end}
             onClick={onNavigate}
@@ -102,7 +110,8 @@ export function AppSidebar({
               </>
             )}
           </NavLink>
-        ))}
+          );
+        })}
       </nav>
 
       <div className="bg-border-subtle my-2.5 h-px" />

@@ -7,6 +7,7 @@ import {
   type FC,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 import { useChatRuntimeState } from "@/hooks/useChatRuntimeState";
@@ -149,16 +150,18 @@ export const SessionAttachmentsProvider: FC<SessionAttachmentsProviderProps> = (
     };
   }, [sessionId]);
 
-  const openPicker = useCallback(async () => {
+  const openPicker = useCallback(() => {
     setPickerOpen(true);
     setSelected(new Set());
     setError(null);
-    try {
-      const uploads = await listUploads();
-      setLibrary(uploads.filter((row) => row.deleted_at == null && row.indexed));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load library");
-    }
+    void (async () => {
+      try {
+        const uploads = await listUploads();
+        setLibrary(uploads.filter((row) => row.deleted_at == null && row.indexed));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load library");
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -236,81 +239,91 @@ export const SessionAttachmentsProvider: FC<SessionAttachmentsProviderProps> = (
       }}
     >
       {children}
-      {pickerOpen ? (
-        <div className="bg-background fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="bg-background border-border w-full max-w-md rounded-lg border p-4 shadow-lg"
-            role="dialog"
-            aria-labelledby="attach-dialog-title"
-          >
-            <h2 id="attach-dialog-title" className="mb-3 text-sm font-semibold">
-              Attach documents to this chat
-            </h2>
-            {library.length === 0 ? (
-              <p className="text-muted-foreground mb-4 text-sm">
-                No ready documents in your library. Upload a file first.
-              </p>
-            ) : (
-              <ul className="mb-4 max-h-56 space-y-1 overflow-y-auto">
-                {library.map((upload) => {
-                  const isSelected = selected.has(upload.id);
-                  const alreadyAttached = attachments.some(
-                    (item) => item.upload_id === upload.id,
-                  );
-                  return (
-                    <li key={upload.id}>
-                      <label
-                        className={cn(
-                          "flex cursor-pointer items-center gap-2 rounded-md border px-2 py-1.5 text-sm",
-                          isSelected && "border-primary bg-primary/5",
-                          alreadyAttached && "opacity-50",
-                        )}
-                      >
-                        <input
-                          type="checkbox"
-                          className="size-3.5"
-                          checked={isSelected || alreadyAttached}
-                          disabled={alreadyAttached}
-                          onChange={() => {
-                            setSelected((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(upload.id)) {
-                                next.delete(upload.id);
-                              } else {
-                                next.add(upload.id);
-                              }
-                              return next;
-                            });
-                          }}
-                        />
-                        <span className="truncate">{upload.original_filename}</span>
-                      </label>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-            <div className="flex justify-end gap-2">
-              <Button
+      {pickerOpen
+        ? createPortal(
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
+              <button
                 type="button"
-                variant="ghost"
-                size="sm"
+                className="absolute inset-0 cursor-default"
+                aria-label="Close attach dialog"
                 onClick={() => setPickerOpen(false)}
+              />
+              <div
+                className="bg-background border-border relative w-full max-w-md rounded-lg border p-4 shadow-lg"
+                role="dialog"
+                aria-labelledby="attach-dialog-title"
               >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                disabled={selected.size === 0}
-                onClick={() => void confirmAttach()}
-              >
-                Attach selected
-              </Button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+                <h2 id="attach-dialog-title" className="mb-3 text-sm font-semibold">
+                  Attach documents to this chat
+                </h2>
+                {library.length === 0 ? (
+                  <p className="text-muted-foreground mb-4 text-sm">
+                    No ready documents in your library. Upload a file on the Documents page
+                    first.
+                  </p>
+                ) : (
+                  <ul className="mb-4 max-h-56 space-y-1 overflow-y-auto">
+                    {library.map((upload) => {
+                      const isSelected = selected.has(upload.id);
+                      const alreadyAttached = attachments.some(
+                        (item) => item.upload_id === upload.id,
+                      );
+                      return (
+                        <li key={upload.id}>
+                          <label
+                            className={cn(
+                              "flex cursor-pointer items-center gap-2 rounded-md border px-2 py-1.5 text-sm",
+                              isSelected && "border-primary bg-primary/5",
+                              alreadyAttached && "opacity-50",
+                            )}
+                          >
+                            <input
+                              type="checkbox"
+                              className="size-3.5"
+                              checked={isSelected || alreadyAttached}
+                              disabled={alreadyAttached}
+                              onChange={() => {
+                                setSelected((prev) => {
+                                  const next = new Set(prev);
+                                  if (next.has(upload.id)) {
+                                    next.delete(upload.id);
+                                  } else {
+                                    next.add(upload.id);
+                                  }
+                                  return next;
+                                });
+                              }}
+                            />
+                            <span className="truncate">{upload.original_filename}</span>
+                          </label>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+                <div className="flex justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setPickerOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={selected.size === 0}
+                    onClick={() => void confirmAttach()}
+                  >
+                    Attach selected
+                  </Button>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </SessionAttachmentsContext.Provider>
   );
 };
@@ -373,12 +386,11 @@ export const SessionAttachmentsPanel: FC<SessionAttachmentsPanelProps> = ({ clas
   );
 };
 
-/** Attachment chips rendered above the chat composer (demo `.attach` row). */
+/** Attached-document chips above the composer (attach via paperclip in input). */
 export const ComposerAttachmentChips: FC = () => {
-  const { sessionId, attachedUploads, openPicker, handleDetach } =
-    useSessionAttachmentsContext();
+  const { attachedUploads, handleDetach } = useSessionAttachmentsContext();
 
-  if (attachedUploads.length === 0 && !sessionId) {
+  if (attachedUploads.length === 0) {
     return null;
   }
 
@@ -391,14 +403,6 @@ export const ComposerAttachmentChips: FC = () => {
           onDetach={() => void handleDetach(upload.id)}
         />
       ))}
-      <button
-        type="button"
-        className="border-border bg-card text-muted-foreground hover:text-foreground hover:border-ring cursor-pointer rounded-lg border px-[0.7rem] py-[0.4rem] text-[0.72em] shadow-[var(--card-highlight)] transition-colors disabled:cursor-not-allowed disabled:opacity-40"
-        disabled={!sessionId}
-        onClick={() => void openPicker()}
-      >
-        + Attach document
-      </button>
     </div>
   );
 };

@@ -29,6 +29,7 @@ class AgentGraphState(TypedDict, total=False):
     topic: str
     needs_clarification: bool
     followup_questions: list[str]
+    followup_items: list[dict[str, Any]]
     clarifier_round: int
     force_answer: bool
     stated_assumptions: list[str]

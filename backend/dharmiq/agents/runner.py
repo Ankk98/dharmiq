@@ -89,6 +89,7 @@ async def _persist_clarifier_return(
     state: AgentGraphState,
 ) -> ChatMessage:
     followups = state.get("followup_questions") or []
+    followup_items = state.get("followup_items") or []
     clarifier_content = "\n".join(f"- {question}" for question in followups)
     clarifier_msg = ChatMessage(
         session_id=runtime.chat_session.id,
@@ -100,6 +101,7 @@ async def _persist_clarifier_return(
             "topic": state.get("topic"),
             "reason": state.get("clarifier_reason"),
             "chat_request_id": str(runtime.chat_request_id),
+            "followup_items": followup_items,
         },
     )
     runtime.db.add(clarifier_msg)
@@ -246,6 +248,35 @@ async def retry_agent_graph_request(
         user_msg=user_message,
         attached_upload_ids=attached_upload_ids,
         new_messages=[user_message],
+    )
+
+
+async def edit_user_message_request(
+    db: AsyncSession,
+    *,
+    chat_session: ChatSession,
+    user: User,
+    user_message: ChatMessage,
+    new_content: str,
+    settings: Settings | None = None,
+) -> GraphRuntime:
+    if user_message.role != MessageRole.USER:
+        raise ValueError("Only user messages can be edited")
+    if user_message.session_id != chat_session.id:
+        raise ValueError("Message does not belong to session")
+
+    cleaned = new_content.strip()
+    if not cleaned:
+        raise ValueError("Message cannot be empty")
+
+    user_message.content = cleaned
+    await db.flush()
+    return await retry_agent_graph_request(
+        db,
+        chat_session=chat_session,
+        user=user,
+        user_message=user_message,
+        settings=settings,
     )
 
 

@@ -33,6 +33,7 @@ export type Citation = {
 
 export type ChatRequestPendingResponse = {
   chat_request_id: string;
+  user_message_id: string;
   status: "pending";
 };
 
@@ -212,15 +213,31 @@ export async function createSession(title?: string): Promise<ChatSession> {
   });
 }
 
+export async function deleteSession(sessionId: string): Promise<void> {
+  await apiFetch<void>(`/api/chat/sessions/${sessionId}`, {
+    method: "DELETE",
+  });
+}
+
 export async function listMessages(sessionId: string): Promise<ChatMessage[]> {
   return apiFetch<ChatMessage[]>(`/api/chat/sessions/${sessionId}/messages`);
 }
 
 export type PostSessionMessageResult =
-  | { mode: "async"; chat_request_id: string }
+  | { mode: "async"; chat_request_id: string; user_message_id: string }
   | { mode: "sync"; message: ChatMessage };
 
-export type RetrySessionMessageResult = { mode: "async"; chat_request_id: string };
+export type RetrySessionMessageResult = {
+  mode: "async";
+  chat_request_id: string;
+  user_message_id: string;
+};
+
+export type EditSessionMessageResult = {
+  mode: "async";
+  chat_request_id: string;
+  user_message_id: string;
+};
 
 export async function postSessionMessage(
   sessionId: string,
@@ -258,7 +275,11 @@ export async function postSessionMessage(
 
   if (response.status === 202) {
     const body = (await response.json()) as ChatRequestPendingResponse;
-    return { mode: "async", chat_request_id: body.chat_request_id };
+    return {
+      mode: "async",
+      chat_request_id: body.chat_request_id,
+      user_message_id: body.user_message_id,
+    };
   }
 
   const message = (await response.json()) as ChatMessage;
@@ -299,7 +320,54 @@ export async function retrySessionMessage(
   }
 
   const body = (await response.json()) as ChatRequestPendingResponse;
-  return { mode: "async", chat_request_id: body.chat_request_id };
+  return {
+    mode: "async",
+    chat_request_id: body.chat_request_id,
+    user_message_id: body.user_message_id,
+  };
+}
+
+export async function editSessionMessage(
+  sessionId: string,
+  messageId: string,
+  content: string,
+  options?: { signal?: AbortSignal },
+): Promise<EditSessionMessageResult> {
+  const headers = new Headers({ "Content-Type": "application/json" });
+  const token = getToken();
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  const response = await fetch(
+    `/api/chat/sessions/${sessionId}/messages/${messageId}`,
+    {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({ content }),
+      signal: options?.signal,
+    },
+  );
+
+  if (!response.ok) {
+    let detail = response.statusText;
+    try {
+      const payload = (await response.json()) as { detail?: string };
+      if (typeof payload.detail === "string") {
+        detail = payload.detail;
+      }
+    } catch {
+      // ignore
+    }
+    throw new ApiError(response.status, detail);
+  }
+
+  const body = (await response.json()) as ChatRequestPendingResponse;
+  return {
+    mode: "async",
+    chat_request_id: body.chat_request_id,
+    user_message_id: body.user_message_id,
+  };
 }
 
 export async function sendChatMessage(

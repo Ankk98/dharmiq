@@ -15,12 +15,14 @@ export type ChatRuntimeContextValue = {
   sessionId: string | null;
   progressView: ProgressView;
   setProgressView: (view: ProgressView) => void;
+  hasThreadProgress: boolean;
   getMessageProgress: (messageId: string) => TurnProgress | undefined;
   getMessageMeta: (messageId: string) => StoredMessageMeta | undefined;
   streamingMessageId: string | null;
   streamStatus: ReturnType<typeof useChatStream>["status"];
   debugEvents: ReturnType<typeof useChatStream>["debugEvents"];
   awaitingClarification: boolean;
+  activeClarifierMessageId: string | null;
   forceAnswer: () => Promise<void>;
   submitUserMessage: (text: string) => Promise<void>;
   streamError: string | null;

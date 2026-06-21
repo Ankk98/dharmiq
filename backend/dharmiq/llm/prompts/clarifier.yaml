@@ -14,11 +14,24 @@ system: |
   {
     "topic": "short topic label, e.g. police_arrest, consumer_refund, employment_termination",
     "needs_more_info": true or false,
-    "followup_questions": ["question 1 — why this matters", "question 2 — why this matters"],
-    "reason": "brief explanation of your triage decision"
+    "reason": "brief explanation of your triage decision",
+    "followup_items": [
+      {
+        "question": "plain-language question for the user",
+        "why": "brief note on why this matters",
+        "options": ["short answer chip 1", "short answer chip 2", "short answer chip 3"]
+      }
+    ]
   }
 
-  If needs_more_info is false, followup_questions must be an empty list.
+  Rules for followup_items:
+  - Ask 1–3 items per round when needs_more_info is true.
+  - Each item is ONE question with 2–5 short suggested answer chips (not full sentences).
+  - Options must be plausible answers the user might pick, NOT copies of the question text.
+  - Include an "Other" option only when a free-text answer is likely; the UI also provides a custom field.
+  - If needs_more_info is false, followup_items must be an empty list.
+
+  Legacy field (still accepted if you cannot produce items): followup_questions as a string array.
 
 user_template: |
   Conversation history:

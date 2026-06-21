@@ -15,6 +15,7 @@ export function SignupPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -24,6 +25,10 @@ export function SignupPage() {
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -62,7 +67,16 @@ export function SignupPage() {
           value={password}
           onChange={setPassword}
           minLength={8}
-          placeholder="Create a password"
+          required
+        />
+        <AuthField
+          id="confirm-password"
+          label="Confirm password"
+          type="password"
+          autoComplete="new-password"
+          value={confirmPassword}
+          onChange={setConfirmPassword}
+          minLength={8}
           required
         />
       </AuthForm>

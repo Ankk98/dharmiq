@@ -6,30 +6,32 @@ import {
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 
+import { useChatRuntimeState } from "@/hooks/useChatRuntimeState";
+import { chatSessionPath } from "@/lib/chatSession";
 import { cn } from "@/lib/utils";
 
 const tabs = [
-  { to: "/", label: "Chat", icon: MessageSquareIcon, end: true, id: "chat" },
+  { id: "chat", label: "Chat", icon: MessageSquareIcon },
   {
+    id: "documents",
     to: "/documents",
     label: "Docs",
     icon: FileTextIcon,
     end: false,
-    id: "documents",
   },
   {
+    id: "settings",
     to: "/settings",
     label: "Settings",
     icon: SettingsIcon,
     end: false,
-    id: "settings",
   },
   {
+    id: "account",
     to: "/settings",
     label: "Account",
     icon: UserIcon,
     end: false,
-    id: "account",
   },
 ] as const;
 
@@ -39,10 +41,12 @@ type MobileTabBarProps = {
 
 export function MobileTabBar({ onNavigate }: MobileTabBarProps) {
   const { pathname } = useLocation();
+  const { sessionId } = useChatRuntimeState();
+  const chatTo = sessionId ? chatSessionPath(sessionId) : "/";
 
   const isActive = (id: (typeof tabs)[number]["id"]) => {
     if (id === "chat") {
-      return pathname === "/";
+      return pathname === "/" || pathname.startsWith("/chat/");
     }
     if (id === "documents") {
       return pathname.startsWith("/documents");
@@ -52,7 +56,11 @@ export function MobileTabBar({ onNavigate }: MobileTabBarProps) {
 
   return (
     <nav className="border-border bg-card/92 flex border-t">
-      {tabs.map(({ to, label, icon: Icon, end, id }) => (
+      {tabs.map((tab) => {
+        const to = "to" in tab ? tab.to : chatTo;
+        const end = "end" in tab ? tab.end : false;
+        const { id, label, icon: Icon } = tab;
+        return (
         <NavLink
           key={id}
           to={to}
@@ -66,7 +74,8 @@ export function MobileTabBar({ onNavigate }: MobileTabBarProps) {
           <Icon className="size-5" strokeWidth={1.7} />
           <span>{label}</span>
         </NavLink>
-      ))}
+        );
+      })}
     </nav>
   );
 }

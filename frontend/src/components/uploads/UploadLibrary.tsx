@@ -26,8 +26,6 @@ import {
 } from "@/lib/uploadPipeline";
 import { cn } from "@/lib/utils";
 
-import { useSessionAttachments } from "@/hooks/useSessionAttachments";
-
 const ACCEPTED_TYPES =
   ".pdf,.docx,.md,.markdown,.png,.jpg,.jpeg,.webp";
 const MAX_BYTES = 20 * 1024 * 1024;
@@ -60,8 +58,9 @@ function useCosmeticPipelinePhase(active: boolean): number {
     if (!active) {
       return;
     }
+    const maxPhase = UPLOAD_PIPELINE_STAGES.length - 1;
     const id = window.setInterval(() => {
-      setPhase((current) => (current + 1) % UPLOAD_PIPELINE_STAGES.length);
+      setPhase((current) => Math.min(current + 1, maxPhase));
     }, 1500);
     return () => window.clearInterval(id);
   }, [active]);
@@ -113,23 +112,10 @@ const UploadPipeline: FC<UploadPipelineProps> = ({ indexed }) => {
 
 type UploadFileCardProps = {
   upload: UserUpload;
-  isAttached: boolean;
-  canAttach: boolean;
-  attachBusy: boolean;
-  onAttach: () => void;
-  onDetach: () => void;
   onDelete: () => void;
 };
 
-const UploadFileCard: FC<UploadFileCardProps> = ({
-  upload,
-  isAttached,
-  canAttach,
-  attachBusy,
-  onAttach,
-  onDetach,
-  onDelete,
-}) => {
+const UploadFileCard: FC<UploadFileCardProps> = ({ upload, onDelete }) => {
   const ready = upload.indexed;
 
   return (
@@ -149,29 +135,11 @@ const UploadFileCard: FC<UploadFileCardProps> = ({
         <UploadPipeline indexed={ready} />
       </div>
 
-      {ready ? (
-        <button
-          type="button"
-          className={cn(
-            "upload-attach-btn shrink-0",
-            isAttached && "upload-attach-btn--attached",
-          )}
-          disabled={!canAttach || attachBusy}
-          onClick={() => (isAttached ? onDetach() : onAttach())}
-        >
-          {attachBusy ? (
-            <Loader2Icon className="size-3.5 animate-spin" />
-          ) : isAttached ? (
-            "Attached"
-          ) : (
-            "Attach to chat"
-          )}
-        </button>
-      ) : (
+      {!ready ? (
         <span className="text-primary shrink-0 text-[0.72em] font-medium">
           Processing
         </span>
-      )}
+      ) : null}
 
       <Button
         type="button"
@@ -264,19 +232,10 @@ type UploadLibraryProps = {
 };
 
 export const UploadLibrary: FC<UploadLibraryProps> = ({ className }) => {
-  const {
-    sessionId,
-    attachedUploadIds,
-    attachUpload,
-    handleDetach,
-    error: attachError,
-  } = useSessionAttachments();
-
   const [uploads, setUploads] = useState<UserUpload[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [attachBusyId, setAttachBusyId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setError(null);
@@ -353,26 +312,6 @@ export const UploadLibrary: FC<UploadLibraryProps> = ({ className }) => {
     }
   };
 
-  const handleAttach = async (uploadId: string) => {
-    setAttachBusyId(uploadId);
-    try {
-      await attachUpload(uploadId);
-    } finally {
-      setAttachBusyId(null);
-    }
-  };
-
-  const handleDetachUpload = async (uploadId: string) => {
-    setAttachBusyId(uploadId);
-    try {
-      await handleDetach(uploadId);
-    } finally {
-      setAttachBusyId(null);
-    }
-  };
-
-  const displayError = error ?? attachError;
-
   return (
     <div className={cn("flex flex-col", className)}>
       <UploadDropzone disabled={uploading} onFile={(file) => void handleUpload(file)} />
@@ -384,8 +323,8 @@ export const UploadLibrary: FC<UploadLibraryProps> = ({ className }) => {
         </p>
       ) : null}
 
-      {displayError ? (
-        <p className="text-destructive mb-3 text-[0.78em]">{displayError}</p>
+      {error ? (
+        <p className="text-destructive mb-3 text-[0.78em]">{error}</p>
       ) : null}
 
       {loading ? (
@@ -400,22 +339,11 @@ export const UploadLibrary: FC<UploadLibraryProps> = ({ className }) => {
             <UploadFileCard
               key={upload.id}
               upload={upload}
-              isAttached={attachedUploadIds.has(upload.id)}
-              canAttach={Boolean(sessionId) && upload.indexed}
-              attachBusy={attachBusyId === upload.id}
-              onAttach={() => void handleAttach(upload.id)}
-              onDetach={() => void handleDetachUpload(upload.id)}
               onDelete={() => void handleDelete(upload.id)}
             />
           ))}
         </ul>
       )}
-
-      {!sessionId ? (
-        <p className="text-faint mt-4 text-[0.72em]">
-          Open Chat to attach documents to a conversation.
-        </p>
-      ) : null}
     </div>
   );
 };

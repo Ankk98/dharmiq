@@ -1,14 +1,11 @@
-import {
-  SessionAttachmentsProvider,
-} from "@/components/uploads/SessionAttachments";
 import { Thread } from "@/components/assistant-ui/thread";
 import { useChatRuntimeState } from "@/hooks/useChatRuntimeState";
 
 export function ChatPage() {
-  const { slowNotice, isRunning, sessionId, streamError } = useChatRuntimeState();
+  const { slowNotice, isRunning, streamError } = useChatRuntimeState();
 
   return (
-    <SessionAttachmentsProvider sessionId={sessionId}>
+    <>
       {slowNotice && isRunning ? (
         <div className="bg-muted/50 border-border border-b px-4 py-2 text-sm">
           This answer is taking longer than usual. Please wait; we&apos;re still
@@ -23,6 +20,6 @@ export function ChatPage() {
       <div className="min-h-0 flex-1">
         <Thread />
       </div>
-    </SessionAttachmentsProvider>
+    </>
   );
 }

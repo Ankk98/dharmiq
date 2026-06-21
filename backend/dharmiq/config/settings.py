@@ -70,7 +70,7 @@ class RedisSettings(BaseModel):
 
 
 class AgentGraphSettings(BaseModel):
-    enabled: bool = False
+    enabled: bool = True
     debug_progress: bool = False
 
 
@@ -258,12 +258,8 @@ def _apply_env_overrides(settings_dict: dict) -> dict:
         auth["jwt_secret"] = jwt_secret
 
     agent_graph = settings_dict.setdefault("agent_graph", {})
-    if (flag := os.environ.get("DHARMIQ_AGENT_GRAPH_V2")) and flag.lower() in {
-        "1",
-        "true",
-        "yes",
-    }:
-        agent_graph["enabled"] = True
+    if flag := os.environ.get("DHARMIQ_AGENT_GRAPH_V2"):
+        agent_graph["enabled"] = flag.lower() in {"1", "true", "yes"}
     if (debug_flag := os.environ.get("DHARMIQ_DEBUG_PROGRESS")) and debug_flag.lower() in {
         "1",
         "true",

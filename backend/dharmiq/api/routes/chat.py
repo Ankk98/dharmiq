@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from dharmiq.auth.manager import current_active_user
 from dharmiq.agents.runner import (
     create_agent_graph_request,
+    edit_user_message_request,
     retry_agent_graph_request,
     run_agent_graph_sync,
 )
@@ -26,6 +27,7 @@ from dharmiq.schemas.chat import (
     ChatSessionCreate,
     ChatSessionRead,
     SessionMessageCreate,
+    SessionMessageEdit,
 )
 from dharmiq.llm.pipeline import run_chat_pipeline
 from dharmiq.tasks.chat_tasks import enqueue_agent_graph
@@ -108,6 +110,17 @@ async def get_session(
     return await _get_user_session(session_id, user, db)
 
 
+@router.delete("/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_session(
+    session_id: uuid.UUID,
+    user: User = Depends(current_active_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> None:
+    chat_session = await _get_user_session(session_id, user, db)
+    await db.delete(chat_session)
+    await db.commit()
+
+
 @router.post("/sessions/{session_id}/messages")
 async def post_session_message(
     session_id: uuid.UUID,
@@ -132,6 +145,7 @@ async def post_session_message(
         enqueue_agent_graph(runtime.chat_request.id)
         payload = ChatRequestPendingResponse(
             chat_request_id=runtime.chat_request.id,
+            user_message_id=runtime.user_msg.id,
             status="pending",
         )
         return JSONResponse(
@@ -203,6 +217,62 @@ async def retry_session_message(
     enqueue_agent_graph(runtime.chat_request.id)
     payload = ChatRequestPendingResponse(
         chat_request_id=runtime.chat_request.id,
+        user_message_id=runtime.user_msg.id,
+        status="pending",
+    )
+    return JSONResponse(
+        status_code=status.HTTP_202_ACCEPTED,
+        content=payload.model_dump(mode="json"),
+    )
+
+
+@router.patch("/sessions/{session_id}/messages/{message_id}")
+async def edit_session_message(
+    session_id: uuid.UUID,
+    message_id: uuid.UUID,
+    body: SessionMessageEdit,
+    user: User = Depends(current_active_user),
+    db: AsyncSession = Depends(get_db_session),
+):
+    chat_session = await _get_user_session(session_id, user, db)
+    settings = get_settings()
+
+    if not settings.agent_graph.enabled:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Message edit requires the agent graph pipeline",
+        )
+
+    result = await db.execute(
+        select(ChatMessage).where(
+            ChatMessage.id == message_id,
+            ChatMessage.session_id == chat_session.id,
+            ChatMessage.user_id == user.id,
+        )
+    )
+    user_message = result.scalar_one_or_none()
+    if user_message is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Message not found")
+    if user_message.role != MessageRole.USER:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only user messages can be edited",
+        )
+
+    await _assert_no_active_request(db, chat_session.id)
+
+    runtime = await edit_user_message_request(
+        db,
+        chat_session=chat_session,
+        user=user,
+        user_message=user_message,
+        new_content=body.content,
+        settings=settings,
+    )
+    enqueue_agent_graph(runtime.chat_request.id)
+    payload = ChatRequestPendingResponse(
+        chat_request_id=runtime.chat_request.id,
+        user_message_id=runtime.user_msg.id,
         status="pending",
     )
     return JSONResponse(

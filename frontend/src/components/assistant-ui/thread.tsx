@@ -19,6 +19,7 @@ import {
 import { ToolFallback } from "@/components/assistant-ui/tool-fallback";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { Button } from "@/components/ui/button";
+import type { ProgressView } from "@/lib/chatPreferences";
 import { ComposerAttachmentChips } from "@/components/uploads/SessionAttachments";
 import { useChatRuntimeState } from "@/hooks/useChatRuntimeState";
 import { READING_MEASURE } from "@/lib/design/constants";
@@ -44,7 +45,6 @@ import {
   ChevronRightIcon,
   CopyIcon,
   DownloadIcon,
-  MicIcon,
   MoreHorizontalIcon,
   PaperclipIcon,
   PencilIcon,
@@ -82,6 +82,7 @@ export const Thread: FC = () => {
 
           <ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer border-border bg-card/70 sticky bottom-0 mt-auto flex flex-col gap-3 overflow-visible border-t px-0 pt-4 pb-4 md:pb-6">
             <ThreadScrollToBottom />
+            <ProgressViewToggle />
             <Composer />
           </ThreadPrimitive.ViewportFooter>
         </div>
@@ -178,6 +179,34 @@ const ThreadSuggestionItem: FC = () => {
   );
 };
 
+const ProgressViewToggle: FC = () => {
+  const { progressView, setProgressView, hasThreadProgress } = useChatRuntimeState();
+
+  if (!hasThreadProgress) {
+    return null;
+  }
+
+  const toggle = () => {
+    const next: ProgressView =
+      progressView === "detailed" ? "concise" : "detailed";
+    setProgressView(next);
+  };
+
+  return (
+    <div className="mx-auto flex w-full max-w-(--thread-max-width) justify-end">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="text-muted-foreground border-border bg-card shadow-[var(--card-highlight)] h-auto px-2.5 py-1 text-[0.72em]"
+        onClick={toggle}
+      >
+        {progressView === "detailed" ? "Concise view" : "Detailed view"}
+      </Button>
+    </div>
+  );
+};
+
 const Composer: FC = () => {
   return (
     <ComposerPrimitive.Root className="aui-composer-root mx-auto flex w-full max-w-(--thread-max-width) flex-col gap-2.5">
@@ -195,13 +224,6 @@ const Composer: FC = () => {
             autoFocus
             aria-label="Message input"
           />
-          <span
-            className="text-muted-foreground grid size-9 shrink-0 place-items-center rounded-lg opacity-40"
-            title="Voice (coming soon)"
-            aria-hidden
-          >
-            <MicIcon className="size-[18px] stroke-[1.7]" />
-          </span>
         </div>
         <ComposerSendButton />
       </div>
@@ -281,6 +303,7 @@ const AssistantMessage: FC = () => {
     progressView,
     streamingMessageId,
     streamStatus,
+    activeClarifierMessageId,
   } = useChatRuntimeState();
   const progress = getMessageProgress(messageId);
   const presentation = messagePresentation(messageText, getMessageMeta(messageId));
@@ -291,14 +314,37 @@ const AssistantMessage: FC = () => {
   const ACTION_BAR_PT = "pt-1.5";
   const ACTION_BAR_HEIGHT = `-mb-7.5 min-h-7.5 ${ACTION_BAR_PT}`;
 
-  if (presentation.kind === "clarifier") {
+  if (presentation.kind === "progress") {
+    if (!progress || progress.steps.length === 0) {
+      return null;
+    }
+
     return (
       <MessagePrimitive.Root
         data-slot="aui_assistant-message-root"
         data-role="assistant"
-        className="thread-msg-enter relative px-2"
+        className="thread-msg-enter relative flex justify-start px-2"
       >
-        <ClarifyCard reason={presentation.reason} questions={presentation.questions} />
+        <MessageProgress progress={progress} view={progressView} />
+      </MessagePrimitive.Root>
+    );
+  }
+
+  if (presentation.kind === "clarifier") {
+    const interactive =
+      activeClarifierMessageId != null && messageId === activeClarifierMessageId;
+
+    return (
+      <MessagePrimitive.Root
+        data-slot="aui_assistant-message-root"
+        data-role="assistant"
+        className="thread-msg-enter relative flex justify-start px-2"
+      >
+        <ClarifyCard
+          reason={presentation.reason}
+          items={presentation.items}
+          interactive={interactive}
+        />
       </MessagePrimitive.Root>
     );
   }
@@ -321,9 +367,6 @@ const AssistantMessage: FC = () => {
         data-slot="aui_assistant-message-content"
         className="text-foreground px-2 leading-relaxed wrap-break-word [contain-intrinsic-size:auto_24px] [content-visibility:auto] [lang=hi]:leading-[1.9]"
       >
-        {progress && progress.steps.length > 0 ? (
-          <MessageProgress progress={progress} view={progressView} />
-        ) : null}
         {showRefusal ? (
           <RefusalCard content={messageText} />
         ) : (
@@ -394,7 +437,7 @@ const AssistantMessage: FC = () => {
           data-slot="aui_assistant-message-footer"
           className={cn("ms-2 flex items-center", ACTION_BAR_HEIGHT)}
         >
-          <BranchPicker />
+          <BranchPicker hideWhenSingleBranch />
           <AssistantActionBar />
         </div>
       ) : null}
@@ -483,6 +526,7 @@ const UserMessage: FC = () => {
       </div>
 
       <BranchPicker
+        hideWhenSingleBranch
         data-slot="aui_user-branch-picker"
         className="-me-1 justify-end"
       />
@@ -530,11 +574,12 @@ const EditComposer: FC = () => {
 
 const BranchPicker: FC<BranchPickerPrimitive.Root.Props> = ({
   className,
+  hideWhenSingleBranch = true,
   ...rest
 }) => {
   return (
     <BranchPickerPrimitive.Root
-      hideWhenSingleBranch
+      hideWhenSingleBranch={hideWhenSingleBranch}
       className={cn(
         "aui-branch-picker-root text-muted-foreground -ms-2 me-2 inline-flex items-center text-xs",
         className,

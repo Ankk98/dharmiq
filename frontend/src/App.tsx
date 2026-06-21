@@ -8,11 +8,13 @@ import { AuthProvider } from "@/lib/auth";
 import { useAuth } from "@/hooks/useAuth";
 import { ChatRuntimeProvider } from "@/providers/ChatRuntimeProvider";
 import { DocumentPanelProvider } from "@/providers/DocumentPanelProvider";
+import { SessionAttachmentsShell } from "@/components/uploads/SessionAttachmentsShell";
 import { ChatPage } from "@/pages/ChatPage";
 import { DocumentsPage } from "@/pages/DocumentsPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { SignupPage } from "@/pages/SignupPage";
+import { chatSessionPath, getStoredSessionId } from "@/lib/chatSession";
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -29,13 +31,23 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
   return children;
 }
 
+function ChatIndexRedirect() {
+  const stored = getStoredSessionId();
+  if (stored) {
+    return <Navigate to={chatSessionPath(stored)} replace />;
+  }
+  return <ChatPage />;
+}
+
 function AuthenticatedShell() {
   return (
     <ProtectedRoute>
       <ChatRuntimeProvider>
-        <DocumentPanelProvider>
-          <AppShell />
-        </DocumentPanelProvider>
+        <SessionAttachmentsShell>
+          <DocumentPanelProvider>
+            <AppShell />
+          </DocumentPanelProvider>
+        </SessionAttachmentsShell>
       </ChatRuntimeProvider>
     </ProtectedRoute>
   );
@@ -50,7 +62,8 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route element={<AuthenticatedShell />}>
-              <Route index element={<ChatPage />} />
+              <Route index element={<ChatIndexRedirect />} />
+              <Route path="chat/:sessionId" element={<ChatPage />} />
               <Route path="documents" element={<DocumentsPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="docs/:documentId" element={<ChatPage />} />

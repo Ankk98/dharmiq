@@ -1,16 +1,16 @@
 # Dharmiq
 
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-orange)](https://dharmiq.in)
-[![Version](https://img.shields.io/badge/version-0.2-blue)](https://github.com/Ankk98/dharmiq)
+[![Version](https://img.shields.io/badge/version-0.3-blue)](https://github.com/Ankk98/dharmiq)
 [![Landing](https://img.shields.io/badge/landing-dharmiq.in-2563eb)](https://dharmiq.in)
 [![App](https://img.shields.io/badge/app-app.dharmiq.in-2563eb)](https://app.dharmiq.in)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Open-source Indian legal information assistant for citizens. Dharmiq explains rights and obligations in plain language, grounded in statutory documents (IndiaCode corpus), with citations and clear disclaimers that it does not provide legal advice.
 
-**Alpha (v0.2)** — agentic pipeline with live progress, streamed answers, and session-scoped document attachments. [Landing page](https://dharmiq.in) · [App](https://app.dharmiq.in)
+**Alpha (v0.3)** — Ashoka design system on the v0.2 agentic chat stack: app shell, document panel, clarifier cards, and streamed answers with citations. [Landing page](https://dharmiq.in) · [App](https://app.dharmiq.in)
 
-![Dharmiq chat UI (v0.1 screenshot; v0.2 adds progress steps and streaming)](screenshots/ui-v0.1-without-dataset.png)
+![Dharmiq chat UI (v0.1 screenshot; v0.3 restyles the shell, progress, and answer surfaces)](screenshots/ui-v0.1-without-dataset.png)
 
 ## Design philosophy
 
@@ -26,7 +26,20 @@ direction for product and engineering decisions, not final doctrine.
 
 ## Features
 
-### v0.2 (current)
+### v0.3 (current)
+
+- **Ashoka design system** – calm navy + India-green accent; Inter, Fraunces, Geist Mono, and Noto Sans Devanagari; light/dark theme toggle; aurora wallpaper
+- **App shell** – sidebar navigation (Chat, Documents, Settings), mobile app bar + tab bar, resizable document panel beside chat
+- **Documents library** – `/documents` page with dropzone, upload pipeline UI, and attach-to-chat toggles
+- **Settings** – theme and progress-view preferences (concise ↔ detailed); debug progress gated to superusers
+- **Chat UX** – clarify card with structured follow-up chips, refusal/disclaimer states, streaming caret, Law vs Your document citation styling
+- **Auth screens** – aurora-backed login and signup matching the design demo
+- **Message editing** – edit a user message in-thread and re-run the agent pipeline from that point
+- **Session management** – delete chat sessions from the sidebar
+
+Visual authority: [`docs/design/dharmiq-design-demo.html`](docs/design/dharmiq-design-demo.html). Implementation plan: [`docs/plans/v0.3.md`](docs/plans/v0.3.md).
+
+### v0.2 foundation
 
 - **LangGraph agent pipeline** – async Celery jobs with clarifier, hybrid retrieval, answerer, citation enricher, and validator (correctness over latency)
 - **Live progress** – Perplexity-style step updates via SSE; concise and detailed view tiers (debug for superusers)
@@ -45,7 +58,7 @@ direction for product and engineering decisions, not final doctrine.
 - **Evaluation** – Ragas + LLM-judge scoring on curated Q&A datasets
 - **Observability** – Prometheus metrics and Grafana dashboards
 
-MVP scope covers fundamental rights, consumer issues, and employment (see [`docs/plans/prd.md`](docs/plans/prd.md)). v0.2 design and architecture are documented in [`docs/plans/v0.2-prd-trd.md`](docs/plans/v0.2-prd-trd.md).
+MVP scope covers fundamental rights, consumer issues, and employment (see [`docs/plans/prd.md`](docs/plans/prd.md)). v0.2 agent architecture is in [`docs/plans/v0.2-prd-trd.md`](docs/plans/v0.2-prd-trd.md); v0.3 design system in [`docs/plans/v0.3.md`](docs/plans/v0.3.md).
 
 ## Repository layout
 
@@ -54,7 +67,7 @@ dharmiq/
   backend/          # FastAPI app, Celery workers, LangGraph agents, RAG pipeline
   frontend/         # React + assistant-ui chat client (SSE streaming, progress UI)
   config/           # Environment YAML (dev, beta) + Grafana/Prometheus
-  docs/             # PRD, TRD, deployment, v0.2 plans
+  docs/             # PRD, TRD, deployment, design system, v0.2/v0.3 plans
   data/             # Local corpus, uploads, eval data (gitignored)
   docker-compose.yml
 ```
@@ -62,13 +75,15 @@ dharmiq/
 | Path | Description |
 |------|-------------|
 | [`docs/principles.md`](docs/principles.md) | Design principles — product taste, tradeoffs, anti-goals (work in progress) |
+| [`docs/design/README.md`](docs/design/README.md) | Ashoka design system — tokens, components, demo HTML |
 | [`backend/README.md`](backend/README.md) | API setup, endpoints, agents, ingestion, eval, metrics |
-| [`frontend/README.md`](frontend/README.md) | Vite dev server, streaming chat UI, attachments |
+| [`frontend/README.md`](frontend/README.md) | Vite dev server, Ashoka UI, streaming chat, attachments |
 | [`docs/plans/prd.md`](docs/plans/prd.md) | v0.1 product requirements |
 | [`docs/plans/trd.md`](docs/plans/trd.md) | v0.1 technical design |
 | [`docs/plans/plan.md`](docs/plans/plan.md) | v0.1 implementation milestones |
 | [`docs/plans/v0.2-prd-trd.md`](docs/plans/v0.2-prd-trd.md) | v0.2 PRD & TRD (implemented) |
 | [`docs/plans/v0.2-implementation-phases.md`](docs/plans/v0.2-implementation-phases.md) | v0.2 phase playbook (completed) |
+| [`docs/plans/v0.3.md`](docs/plans/v0.3.md) | v0.3 design system implementation plan (implemented) |
 | [`docs/deployment.md`](docs/deployment.md) | Production deployment on Ubuntu + Nginx |
 
 ## Prerequisites
@@ -85,8 +100,7 @@ dharmiq/
 ```bash
 cp .env.example .env
 # Set OPENROUTER_API_KEY in .env
-# Enable v0.2 agent pipeline (off by default in config.dev.yaml):
-echo "DHARMIQ_AGENT_GRAPH_V2=true" >> .env
+# Agent graph is enabled by default; set DHARMIQ_AGENT_GRAPH_V2=false to fall back to v0.1 sync chat
 
 docker compose up -d
 ```
@@ -120,7 +134,7 @@ In another terminal (from `backend/`):
 uv run celery -A celery_app worker --loglevel=info
 ```
 
-With `DHARMIQ_AGENT_GRAPH_V2=true`, chat messages are processed asynchronously by Celery. The API returns `202 Accepted` with a `chat_request_id`; the frontend subscribes to `GET /api/chat/requests/{id}/stream` for progress and the final answer.
+With the agent graph enabled (default), chat messages are processed asynchronously by Celery. The API returns `202 Accepted` with a `chat_request_id`; the frontend subscribes to `GET /api/chat/requests/{id}/stream` for progress and the final answer.
 
 ### 3. Frontend
 
@@ -178,7 +192,7 @@ Non-secret settings live in `config/config.dev.yaml` (local) and `config/config.
 | `DHARMIQ_DATABASE_PASSWORD` | Postgres password (default: `dharmiq`) |
 | `DHARMIQ_JWT_SECRET` | JWT signing secret |
 | `OPENROUTER_API_KEY` | Required for chat and eval |
-| `DHARMIQ_AGENT_GRAPH_V2` | Set `true` to enable v0.2 LangGraph pipeline (required locally; enabled by default in beta) |
+| `DHARMIQ_AGENT_GRAPH_V2` | Set `false` to disable the LangGraph pipeline and use v0.1 sync chat (enabled by default) |
 | `DHARMIQ_DEBUG_PROGRESS` | Set `true` with a superuser account to expose debug progress events |
 
 Local Postgres is exposed on **port 5433** via Docker Compose.

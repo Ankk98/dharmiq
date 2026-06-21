@@ -59,7 +59,9 @@ Compare against `docs/design/dharmiq-design-demo.html` in Light, Dark, and Mobil
 - **Async chat** – messages POST to `/api/chat/sessions/{id}/messages`; UI subscribes to SSE at `/api/chat/requests/{id}/stream`
 - **Live progress** – `MessageProgress` shows 5 user-facing steps (concise) or agent details (detailed)
 - **Streamed answers** – assistant text replays token-by-token after validation; citations render inline
-- **Clarifier flow** – clarify card with quick-reply chips and “Answer with what you have” (`force_answer`)
+- **Clarifier flow** – clarify card with structured follow-up chips and “Answer with what you have” (`force_answer`)
+- **Message editing** – edit a user message in-thread; backend re-runs the agent from that point
+- **Session deletion** – remove sessions from the sidebar thread list
 - **Documents library** – `/documents` page with dropzone, pipeline UI, and attach-to-chat toggles
 - **Session attachments** – chips above composer; attach/detach shows in-thread system pill
 - **Document panel** – side panel on desktop (50/50, drag resize); `/docs/:id` deep links still work

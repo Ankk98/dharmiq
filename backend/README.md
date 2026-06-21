@@ -18,7 +18,7 @@ docker compose up -d
 
 # Set up environment
 cp .env.example .env
-# Edit .env: set OPENROUTER_API_KEY; DHARMIQ_AGENT_GRAPH_V2=true for v0.2 pipeline
+# Edit .env: set OPENROUTER_API_KEY (agent graph is enabled by default)
 
 # Install dependencies and create venv
 cd backend
@@ -44,7 +44,7 @@ mkdir -p ../data/corpus/india_code/raw ../data/eval/datasets ../data/eval/runs
 uv run dharmiq-api
 # or: uv run uvicorn dharmiq.main:app --reload --host 0.0.0.0 --port 8000
 
-# Start Celery worker (required for v0.2 async chat)
+# Start Celery worker (required for async chat with the agent graph)
 uv run celery -A celery_app worker --loglevel=info
 
 # Optional: daily corpus sync scheduler
@@ -82,7 +82,7 @@ docker compose up -d prometheus grafana
 
 Environment-specific YAML files live in `config/` at the repo root:
 
-- `config.dev.yaml` – local development (`agent_graph.enabled: false`; override with `DHARMIQ_AGENT_GRAPH_V2=true`)
+- `config.dev.yaml` – local development (`agent_graph.enabled: true` by default; set `DHARMIQ_AGENT_GRAPH_V2=false` for v0.1 sync chat)
 - `config.beta.yaml` – beta deployment (`agent_graph.enabled: true` by default)
 
 Select the active config with `DHARMIQ_ENV` (default: `dev`).
@@ -96,7 +96,7 @@ Secrets can live in a repo-root `.env` file (auto-loaded) or be exported in your
 | `DHARMIQ_JWT_SECRET` | JWT signing secret (use a strong random value in production) |
 | `OPENROUTER_API_KEY` | OpenRouter API key (required for chat and eval) |
 | `DHARMIQ_ROOT` | Repo root path (auto-detected if unset) |
-| `DHARMIQ_AGENT_GRAPH_V2` | Enable v0.2 LangGraph pipeline |
+| `DHARMIQ_AGENT_GRAPH_V2` | Set `false` to disable the LangGraph pipeline (enabled by default) |
 | `DHARMIQ_DEBUG_PROGRESS` | Enable debug-tier progress events (with superuser) |
 
 ## API endpoints
@@ -125,8 +125,10 @@ Secrets can live in a repo-root `.env` file (auto-loaded) or be exported in your
 | POST | `/api/chat/sessions` | Create a chat session |
 | GET | `/api/chat/sessions` | List user's sessions |
 | GET | `/api/chat/sessions/{id}` | Get a session |
-| POST | `/api/chat/sessions/{id}/messages` | Send a message (v0.2: `202` + async `chat_request_id`; v0.1: sync append) |
-| POST | `/api/chat/sessions/{id}/messages/{message_id}/retry` | Retry a failed v0.2 request |
+| DELETE | `/api/chat/sessions/{id}` | Delete a session |
+| POST | `/api/chat/sessions/{id}/messages` | Send a message (agent graph: `202` + async `chat_request_id`; v0.1: sync append) |
+| PATCH | `/api/chat/sessions/{id}/messages/{message_id}` | Edit a user message and re-run the agent pipeline |
+| POST | `/api/chat/sessions/{id}/messages/{message_id}/retry` | Retry a failed request |
 | GET | `/api/chat/sessions/{id}/messages` | List messages in a session |
 | POST | `/api/chat` | Run pipeline synchronously (v0.1 or v0.2 depending on flag) |
 | GET | `/api/chat/requests/{id}` | Poll chat request status |
@@ -170,7 +172,7 @@ When enabled, `POST /api/chat/sessions/{id}/messages` enqueues a Celery task and
 Graph nodes (`dharmiq/agents/nodes/`):
 
 1. **Input guard** – rate limits, length caps, off-topic / injection heuristics
-2. **Clarifier** – up to 3 rounds of follow-up questions (END-and-return; new request per round)
+2. **Clarifier** – up to 3 rounds of follow-up questions with structured `followup_items` (why line + quick-reply chips); END-and-return; new request per round
 3. **Query rewriter** – statute-oriented search queries
 4. **Retrieval** – hybrid pgvector + BM25 (RRF) with cross-encoder reranking
 5. **Answerer** – comprehensive grounded draft with citations and blockquotes

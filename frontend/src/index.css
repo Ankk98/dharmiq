@@ -431,3 +431,104 @@ a {
     transition: none;
   }
 }
+
+/* Documents page — upload dropzone, pipeline chips, file cards */
+.upload-dropzone:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.upload-file-card {
+  border-color: var(--border);
+  background: var(--card);
+}
+
+.upload-pchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.18rem 0.5rem;
+  font-size: 0.64em;
+  color: var(--faint);
+}
+
+.upload-pchip--done {
+  color: var(--brand-accent);
+  border-color: color-mix(in srgb, var(--brand-accent) 40%, var(--border));
+}
+
+.upload-pchip--done::before {
+  content: "✓";
+  font-size: 0.9em;
+}
+
+.upload-pchip--running {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.upload-pchip--running::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--primary);
+  animation: progress-step-pulse 1.2s var(--ease-default) infinite;
+}
+
+.upload-pbar {
+  height: 5px;
+  border-radius: 3px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.upload-pbar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--primary);
+  transition: width 0.4s var(--ease-default);
+}
+
+.upload-attach-btn {
+  font: inherit;
+  font-size: 0.72em;
+  padding: 0.35rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid var(--primary);
+  color: var(--primary);
+  background: var(--primary-muted);
+  cursor: pointer;
+  transition:
+    background var(--duration-normal) var(--ease-default),
+    color var(--duration-normal) var(--ease-default),
+    border-color var(--duration-normal) var(--ease-default);
+}
+
+.upload-attach-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--primary-muted) 70%, var(--primary));
+}
+
+.upload-attach-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.upload-attach-btn--attached {
+  background: var(--brand-accent);
+  color: #fff;
+  border-color: var(--brand-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .upload-pchip--running::before {
+    animation: none;
+  }
+
+  .upload-pbar-fill {
+    transition: none;
+  }
+}

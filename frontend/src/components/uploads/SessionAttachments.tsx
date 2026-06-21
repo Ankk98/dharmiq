@@ -1,6 +1,5 @@
 import { PaperclipIcon, XIcon } from "lucide-react";
 import {
-  createContext,
   useCallback,
   useContext,
   useEffect,
@@ -20,17 +19,11 @@ import {
   type SessionAttachment,
   type UserUpload,
 } from "@/lib/api";
+import {
+  SessionAttachmentsContext,
+  type SessionAttachmentsContextValue,
+} from "@/providers/session-attachments-context";
 import { cn } from "@/lib/utils";
-
-type SessionAttachmentsContextValue = {
-  sessionId: string | null;
-  attachedUploads: UserUpload[];
-  error: string | null;
-  openPicker: () => void;
-  handleDetach: (uploadId: string) => Promise<void>;
-};
-
-const SessionAttachmentsContext = createContext<SessionAttachmentsContextValue | null>(null);
 
 function notifyAttached(toast: (options: { title: string; detail?: string }) => void, filenames: string[]) {
   if (filenames.length === 0) {
@@ -173,6 +166,24 @@ export const SessionAttachmentsProvider: FC<SessionAttachmentsProviderProps> = (
     return () => registerAttachPicker(null);
   }, [openPicker, registerAttachPicker]);
 
+  const attachUpload = async (uploadId: string) => {
+    if (!sessionId) {
+      return;
+    }
+    setError(null);
+    const upload = uploadsById.get(uploadId);
+    try {
+      await attachUploads(sessionId, [uploadId]);
+      await refresh();
+      await refreshMessages();
+      if (upload) {
+        notifyAttached(toast, [upload.original_filename]);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Attach failed");
+    }
+  };
+
   const confirmAttach = async () => {
     if (!sessionId || selected.size === 0) {
       return;
@@ -207,6 +218,7 @@ export const SessionAttachmentsProvider: FC<SessionAttachmentsProviderProps> = (
     }
   };
 
+  const attachedUploadIds = new Set(attachments.map((attachment) => attachment.upload_id));
   const attachedUploads = attachments
     .map((attachment) => uploadsById.get(attachment.upload_id))
     .filter((upload): upload is UserUpload => upload != null);
@@ -216,8 +228,10 @@ export const SessionAttachmentsProvider: FC<SessionAttachmentsProviderProps> = (
       value={{
         sessionId,
         attachedUploads,
+        attachedUploadIds,
         error,
         openPicker,
+        attachUpload,
         handleDetach,
       }}
     >

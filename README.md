@@ -12,6 +12,18 @@ Open-source Indian legal information assistant for citizens. Dharmiq explains ri
 
 ![Dharmiq chat UI (v0.1 screenshot; v0.2 adds progress steps and streaming)](screenshots/ui-v0.1-without-dataset.png)
 
+## Design philosophy
+
+Dharmiq is opinionated by design. We make deliberate tradeoffs that make it
+excellent at one thing — a grounded, trustworthy, Indian-citizen-first legal
+assistant — rather than mediocre at everything. These tradeoffs are our moat: by
+optimizing hard for trust over speed, breadth, and cost, Dharmiq aims to be a
+reliable source of information and be helpful where generic chatbots can't be.
+
+The working set of principles, rationale, anti-goals, and tie-breaker guidance
+lives in [`docs/principles.md`](docs/principles.md). It is an initial statement of
+direction for product and engineering decisions, not final doctrine.
+
 ## Features
 
 ### v0.2 (current)
@@ -49,6 +61,7 @@ dharmiq/
 
 | Path | Description |
 |------|-------------|
+| [`docs/principles.md`](docs/principles.md) | Design principles — product taste, tradeoffs, anti-goals (work in progress) |
 | [`backend/README.md`](backend/README.md) | API setup, endpoints, agents, ingestion, eval, metrics |
 | [`frontend/README.md`](frontend/README.md) | Vite dev server, streaming chat UI, attachments |
 | [`docs/plans/prd.md`](docs/plans/prd.md) | v0.1 product requirements |

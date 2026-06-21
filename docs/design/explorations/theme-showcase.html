@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dharmiq — Motion & Mood Showcase</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Hanken+Grotesk:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,400;6..72,500&family=Noto+Sans+Devanagari:wght@400;500;600&family=Noto+Serif+Devanagari:wght@400;600&family=Plus+Jakarta+Sans:wght@400;500;600&family=Schibsted+Grotesk:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Spectral:wght@400;500&family=Baloo+2:wght@400;500;600&family=Hind:wght@400;500;600&family=Mukta:wght@400;500;600&family=Tiro+Devanagari+Hindi&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+      --d1: 120ms; --d2: 220ms; --d3: 380ms; --d4: 600ms;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Geist', Inter, system-ui, sans-serif;
+      background: #08080a; color: #e4e4e7;
+      -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+    }
+
+    /* ───────────── Top control bar ───────────── */
+    .topbar {
+      position: sticky; top: 0; z-index: 200;
+      display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.85rem;
+      padding: 0.6rem 1.1rem;
+      background: rgba(8,8,10,0.86); backdrop-filter: blur(14px) saturate(140%);
+      border-bottom: 1px solid #1c1c20;
+    }
+    .topbar .brand { font-weight: 600; font-size: 0.85rem; letter-spacing: -0.02em; margin-right: auto; }
+    .topbar .brand span { color: #6b6b73; font-weight: 400; }
+
+    .seg { display: inline-flex; align-items: center; gap: 0.15rem; padding: 0.18rem; background: #121215; border: 1px solid #25252a; border-radius: 9px; }
+    .seg > label { font-size: 0.6rem; color: #6b6b73; text-transform: uppercase; letter-spacing: 0.07em; padding: 0 0.35rem; }
+    .seg button { font: inherit; font-size: 0.72rem; padding: 0.28rem 0.55rem; border-radius: 6px; border: 1px solid transparent; background: transparent; color: #a1a1aa; cursor: pointer; transition: all var(--d1) var(--ease); }
+    .seg button:hover { color: #fafafa; }
+    .seg button.on { background: #27272e; color: #fafafa; box-shadow: inset 0 0 0 1px #3a3a42; }
+    select.mini { font: inherit; font-size: 0.72rem; color: #e4e4e7; background: #121215; border: 1px solid #25252a; border-radius: 7px; padding: 0.32rem 0.45rem; cursor: pointer; }
+    .iconbtn { cursor: pointer; color: #a1a1aa; padding: 0.38rem 0.6rem; font-size: 0.72rem; }
+    .iconbtn:hover { color: #fafafa; }
+
+    .wrap { max-width: 1600px; margin: 0 auto; padding: 1.4rem 1.1rem 6rem; }
+
+    .lede { max-width: 740px; margin: 0.4rem 0 1.8rem; }
+    .lede h1 { font-size: clamp(1.35rem, 2.3vw, 1.95rem); font-weight: 600; letter-spacing: -0.03em; margin-bottom: 0.55rem; }
+    .lede p { color: #a1a1aa; font-size: 0.88rem; line-height: 1.65; }
+    .lede code { font-family: 'Geist Mono', monospace; font-size: 0.82em; background: #18181b; padding: 0.1em 0.35em; border-radius: 4px; color: #d4d4d8; }
+
+    .sec-title { display: flex; align-items: baseline; gap: 0.7rem; margin: 2.4rem 0 1rem; padding-bottom: 0.55rem; border-bottom: 1px solid #1c1c20; }
+    .sec-title h2 { font-size: 0.92rem; font-weight: 600; letter-spacing: -0.01em; }
+    .sec-title p { font-size: 0.76rem; color: #6b6b73; }
+    .sec-title .hint { margin-left: auto; font-size: 0.68rem; color: #4f4f57; }
+
+    /* ═════════════ THEME TOKENS ═════════════ */
+    /* LIGHT */
+    [data-theme="ashoka"][data-mode="light"] {
+      --bg:#F8FAFC; --bg2:#EEF2F7; --surface:#FFFFFF; --raised:#FFFFFF; --hover:#F1F5F9;
+      --text:#0F172A; --muted:#5B6678; --faint:#94A3B8;
+      --primary:#1E3A5F; --primary-fg:#FFFFFF; --primary-soft:#E8EEF4;
+      --accent:#0E8C3F; --citation:#1E3A5F; --cite-bg:#F1F5F9; --cite-text:#475569;
+      --border:#E4E8EF; --border-soft:#EEF2F7; --ring:#94A3B8; --card-hl:none;
+      --danger:#C0392B; --danger-bg:#FBEAE8; --warn:#B25A00;
+      --glow:none; --glow-color:30,58,95; --shimmer:rgba(15,23,42,0.06);
+      --wp-ink:15,23,42; --wp-accent:30,58,95;
+    }
+    [data-theme="archival"][data-mode="light"] {
+      --bg:#F4EFE0; --bg2:#EDE7D5; --surface:#FDFCF8; --raised:#FFFFFF; --hover:#EEE9DB;
+      --text:#1A1814; --muted:#5C5648; --faint:#8A8170;
+      --primary:#1B3A5C; --primary-fg:#FDFCF8; --primary-soft:#E6E2D6;
+      --accent:#2E7D4F; --citation:#1B3A5C; --cite-bg:#ECE7DA; --cite-text:#5C5648;
+      --border:#DDD6C7; --border-soft:#E8E2D4; --ring:#B8AE97; --card-hl:none;
+      --danger:#B23A2E; --danger-bg:#F6E6E1; --warn:#9A5B12;
+      --glow:none; --glow-color:27,58,92; --shimmer:rgba(26,24,20,0.06);
+      --wp-ink:26,24,20; --wp-accent:27,58,92;
+    }
+    [data-theme="gazette"][data-mode="light"] {
+      --bg:#F6F1E3; --bg2:#EFE8D5; --surface:#FDFBF5; --raised:#FFFFFF; --hover:#F0EBDC;
+      --text:#2C2416; --muted:#6B5E4A; --faint:#9A8B70;
+      --primary:#3D4F6F; --primary-fg:#FDFBF5; --primary-soft:#E8E4D8;
+      --accent:#456B3C; --citation:#5C4A32; --cite-bg:#F0EBDC; --cite-text:#6B5E4A;
+      --border:#DDD4C0; --border-soft:#E8E1CF; --ring:#B5A684; --card-hl:none;
+      --danger:#A93C2A; --danger-bg:#F4E6DF; --warn:#8A5A14;
+      --glow:none; --glow-color:61,79,111; --shimmer:rgba(44,36,22,0.06);
+      --wp-ink:44,36,22; --wp-accent:61,79,111;
+    }
+
+    /* DARK — premium: layered elevation, hairline highlights, calm single accent */
+    [data-theme="ashoka"][data-mode="dark"] {
+      --bg:#0A0B0D; --bg2:#0C0E11; --surface:#121419; --raised:#181B21; --hover:#1F232A;
+      --text:#E8EAEE; --muted:#969BA6; --faint:#5F636E;
+      --primary:#6FA3DE; --primary-fg:#0A0B0D; --primary-soft:#171B22;
+      --accent:#56C28C; --citation:#86AEDC; --cite-bg:#121519; --cite-text:#B7BCC6;
+      --border:rgba(255,255,255,0.07); --border-soft:rgba(255,255,255,0.045); --ring:rgba(111,163,222,0.55);
+      --card-hl:inset 0 1px 0 rgba(255,255,255,0.045);
+      --danger:#E8806E; --danger-bg:#20140F; --warn:#D6A84D;
+      --glow-color:111,163,222; --shimmer:rgba(255,255,255,0.05);
+      --wp-ink:170,185,215; --wp-accent:111,163,222;
+    }
+    [data-theme="archival"][data-mode="dark"] {
+      --bg:#0B0B09; --bg2:#0E0D0B; --surface:#141310; --raised:#1A1814; --hover:#211E18;
+      --text:#EAE7DE; --muted:#9C978B; --faint:#67635A;
+      --primary:#7DAAD2; --primary-fg:#0B0B09; --primary-soft:#181A1C;
+      --accent:#67BC90; --citation:#C7AC83; --cite-bg:#151310; --cite-text:#BBB4A6;
+      --border:rgba(255,250,238,0.07); --border-soft:rgba(255,250,238,0.045); --ring:rgba(125,170,210,0.5);
+      --card-hl:inset 0 1px 0 rgba(255,250,235,0.05);
+      --danger:#E5836F; --danger-bg:#211410; --warn:#D49E4C;
+      --glow-color:199,172,131; --shimmer:rgba(255,250,235,0.05);
+      --wp-ink:210,202,182; --wp-accent:199,172,131;
+    }
+    [data-theme="gazette"][data-mode="dark"] {
+      --bg:#0B0A08; --bg2:#0E0C0A; --surface:#13110E; --raised:#191712; --hover:#201C16;
+      --text:#EAE5D9; --muted:#9D978A; --faint:#665F54;
+      --primary:#97A9C5; --primary-fg:#0B0A08; --primary-soft:#17181C;
+      --accent:#7FAE7B; --citation:#C0A064; --cite-bg:#13110D; --cite-text:#B9B2A4;
+      --border:rgba(255,248,232,0.07); --border-soft:rgba(255,248,232,0.045); --ring:rgba(151,169,197,0.5);
+      --card-hl:inset 0 1px 0 rgba(255,248,230,0.05);
+      --danger:#E5846C; --danger-bg:#211410; --warn:#D29F46;
+      --glow-color:192,160,100; --shimmer:rgba(255,248,230,0.05);
+      --wp-ink:215,205,178; --wp-accent:192,160,100;
+    }
+
+    /* Glow levels (dark only) */
+    [data-mode="dark"] { --glow:0 0 12px rgba(var(--glow-color),0.18); }
+    [data-mode="dark"][data-glow="off"]  { --glow:0 0 0 0 transparent; }
+    [data-mode="dark"][data-glow="soft"] { --glow:0 0 11px rgba(var(--glow-color),0.16); }
+    [data-mode="dark"][data-glow="on"]   { --glow:0 0 22px rgba(var(--glow-color),0.36); }
+    [data-mode="light"] { --glow:0 0 0 0 transparent !important; }
+
+    /* ═════════════ FONT PRESETS ═════════════ */
+    [data-font="geist"]    { --ui:'Geist', sans-serif;            --display:'Geist', sans-serif; }
+    [data-font="inter"]    { --ui:'Inter', sans-serif;            --display:'Inter', sans-serif; }
+    [data-font="hanken"]   { --ui:'Hanken Grotesk', sans-serif;   --display:'Hanken Grotesk', sans-serif; }
+    [data-font="schibsted"]{ --ui:'Schibsted Grotesk', sans-serif;--display:'Schibsted Grotesk', sans-serif; }
+    [data-font="jakarta"]  { --ui:'Plus Jakarta Sans', sans-serif;--display:'Plus Jakarta Sans', sans-serif; }
+    [data-font="plex"]     { --ui:'IBM Plex Sans', sans-serif;    --display:'IBM Plex Sans', sans-serif; }
+    [data-font="fraunces"] { --ui:'Inter', sans-serif;            --display:'Fraunces', serif; }
+    [data-font="newsreader"]{--ui:'Inter', sans-serif;            --display:'Newsreader', serif; }
+    [data-mono="geist"]    { --mono:'Geist Mono', monospace; }
+    [data-mono="jetbrains"]{ --mono:'JetBrains Mono', monospace; }
+
+    /* Hindi / Devanagari font choices (drive --deva) */
+    [data-hifont="noto"]      { --deva:'Noto Sans Devanagari'; }
+    [data-hifont="notoserif"] { --deva:'Noto Serif Devanagari'; }
+    [data-hifont="tiro"]      { --deva:'Tiro Devanagari Hindi'; }
+    [data-hifont="mukta"]     { --deva:'Mukta'; }
+    [data-hifont="hind"]      { --deva:'Hind'; }
+    [data-hifont="baloo"]     { --deva:'Baloo 2'; }
+    /* When in Hindi, the chosen Devanagari face leads the stack (works even if the Latin UI font lacks Devanagari) */
+    [data-lang="hi"] .stage { --ui: var(--deva, 'Noto Sans Devanagari'), var(--ui-latin, 'Geist'), sans-serif; --display: var(--deva, 'Noto Serif Devanagari'), serif; }
+    .hindi { font-family: var(--deva, 'Noto Sans Devanagari'), sans-serif; }
+
+    /* Hindi readability: Devanagari needs a size bump + extra leading; never letter-space it */
+    [data-lang="hi"] .stage { --hi: 1.1; }
+    body[data-lang="hi"][data-hisize="s"] .stage { --hi: 1.04; }
+    body[data-lang="hi"][data-hisize="m"] .stage { --hi: 1.1; }
+    body[data-lang="hi"][data-hisize="l"] .stage { --hi: 1.2; }
+    [data-lang="hi"] .stage .answer p,
+    [data-lang="hi"] .stage .bubble-user,
+    [data-lang="hi"] .stage .cite { line-height: 1.9; }
+    [data-lang="hi"] .stage .cite-h,
+    .hindi .cite-h { letter-spacing: normal; text-transform: none; }
+    [data-lang="hi"] .stage .cite-ref { line-height: 1.7; }
+    .hindi p { line-height: 1.95; }
+    .hindi .cite { line-height: 1.85; }
+
+    /* Type scale (applies to stage) */
+    [data-ts="compact"] { --ts:0.92; }
+    [data-ts="default"] { --ts:1; }
+    [data-ts="large"]   { --ts:1.1; }
+    [data-ts="xl"]      { --ts:1.22; }
+
+    /* ═════════════ MOUSE CURSORS ═════════════ */
+    /* Scoped to the preview surfaces (stage + demos). System keeps native cursors. */
+    [data-cursor="pointer"] .stage, [data-cursor="pointer"] .demo,
+    [data-cursor="pointer"] .stage *, [data-cursor="pointer"] .demo * { cursor: pointer; }
+    [data-cursor="crosshair"] .stage, [data-cursor="crosshair"] .demo,
+    [data-cursor="crosshair"] .stage *, [data-cursor="crosshair"] .demo * { cursor: crosshair; }
+    [data-cursor="dot"] .stage, [data-cursor="dot"] .demo,
+    [data-cursor="dot"] .stage *, [data-cursor="dot"] .demo * {
+      cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18'%3E%3Ccircle cx='9' cy='9' r='4' fill='%23fff' stroke='%23111' stroke-width='1.5'/%3E%3C/svg%3E") 9 9, auto;
+    }
+    [data-cursor="ring"] .stage, [data-cursor="ring"] .demo,
+    [data-cursor="ring"] .stage *, [data-cursor="ring"] .demo * {
+      cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Ccircle cx='11' cy='11' r='7' fill='none' stroke='%23111' stroke-width='2'/%3E%3Ccircle cx='11' cy='11' r='7' fill='none' stroke='%23fff' stroke-width='1'/%3E%3C/svg%3E") 11 11, auto;
+    }
+    [data-cursor="pen"] .stage, [data-cursor="pen"] .demo,
+    [data-cursor="pen"] .stage *, [data-cursor="pen"] .demo * {
+      cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cpath d='M3 21l3-1L18 8l-2-2L4 18z' fill='%23fff' stroke='%23111' stroke-width='1.2' stroke-linejoin='round'/%3E%3Cpath d='M14 6l2 2' stroke='%23111' stroke-width='1.2'/%3E%3C/svg%3E") 3 21, auto;
+    }
+
+    /* ═════════════ WALLPAPERS ═════════════ */
+    .bg-layer { position: absolute; inset: 0; pointer-events: none; z-index: 0; transition: opacity var(--d3) var(--ease); }
+    [data-wp="none"] .bg-layer { opacity: 0; }
+    [data-wp="grain"] .bg-layer { background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 600 600' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E"); opacity: 0.04; }
+    [data-wp="grid"] .bg-layer { background-image: linear-gradient(to right, rgba(var(--wp-ink),0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(var(--wp-ink),0.06) 1px, transparent 1px); background-size: 32px 32px; mask-image: radial-gradient(ellipse 80% 70% at 50% 30%, #000 40%, transparent 100%); -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 30%, #000 40%, transparent 100%); }
+    [data-wp="dots"] .bg-layer { background-image: radial-gradient(rgba(var(--wp-ink),0.14) 1.1px, transparent 1.1px); background-size: 22px 22px; mask-image: radial-gradient(ellipse 75% 70% at 50% 35%, #000 35%, transparent 100%); -webkit-mask-image: radial-gradient(ellipse 75% 70% at 50% 35%, #000 35%, transparent 100%); }
+    [data-wp="aurora"] .bg-layer { background: radial-gradient(42% 36% at 18% 12%, rgba(var(--wp-accent),0.14) 0%, transparent 70%), radial-gradient(38% 33% at 85% 20%, rgba(var(--wp-accent),0.09) 0%, transparent 70%), radial-gradient(48% 42% at 70% 96%, rgba(var(--wp-accent),0.08) 0%, transparent 70%); animation: aurora 20s ease-in-out infinite alternate; }
+    @keyframes aurora { 0% { transform: translate3d(0,0,0) scale(1);} 100% { transform: translate3d(0,-2%,0) scale(1.07);} }
+    [data-wp="mesh"] .bg-layer { background: radial-gradient(36% 38% at 20% 25%, rgba(var(--wp-accent),0.12), transparent 60%), radial-gradient(32% 34% at 80% 30%, rgba(var(--wp-ink),0.08), transparent 60%), radial-gradient(38% 40% at 50% 100%, rgba(var(--wp-accent),0.10), transparent 60%); }
+    [data-wp="topo"] .bg-layer { background-image: url("data:image/svg+xml,%3Csvg width='800' height='800' viewBox='0 0 800 800' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23808080' stroke-width='1.2'%3E%3Cpath d='M0 200 Q200 120 400 200 T800 200'/%3E%3Cpath d='M0 280 Q200 200 400 280 T800 280'/%3E%3Cpath d='M0 360 Q200 280 400 360 T800 360'/%3E%3Cpath d='M0 440 Q200 360 400 440 T800 440'/%3E%3Cpath d='M0 520 Q200 440 400 520 T800 520'/%3E%3Cpath d='M0 600 Q200 520 400 600 T800 600'/%3E%3C/g%3E%3C/svg%3E"); background-size: 760px 760px; opacity: 0.05; mask-image: radial-gradient(ellipse 90% 80% at 50% 40%, #000 30%, transparent 95%); -webkit-mask-image: radial-gradient(ellipse 90% 80% at 50% 40%, #000 30%, transparent 95%); }
+    [data-wp="chakra"] .bg-layer { background-image: url("data:image/svg+xml,%3Csvg width='420' height='420' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23808080' stroke-width='0.6'%3E%3Ccircle cx='50' cy='50' r='30'/%3E%3Ccircle cx='50' cy='50' r='6'/%3E%3Cg%3E%3Cline x1='50' y1='20' x2='50' y2='80'/%3E%3Cline x1='20' y1='50' x2='80' y2='50'/%3E%3Cline x1='29' y1='29' x2='71' y2='71'/%3E%3Cline x1='71' y1='29' x2='29' y2='71'/%3E%3Cline x1='39' y1='22' x2='61' y2='78'/%3E%3Cline x1='61' y1='22' x2='39' y2='78'/%3E%3Cline x1='22' y1='39' x2='78' y2='61'/%3E%3Cline x1='78' y1='39' x2='22' y2='61'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: center 30%; background-size: 440px 440px; opacity: 0.05; animation: chakra-spin 140s linear infinite; transform-origin: 50% 30%; }
+    @keyframes chakra-spin { to { transform: rotate(360deg); } }
+
+    @media (prefers-reduced-motion: reduce) {
+      [data-wp="aurora"] .bg-layer, [data-wp="chakra"] .bg-layer { animation: none; }
+      .msg, .step { animation: none !important; opacity: 1 !important; }
+      .cursor, .live, .splash .mark { animation: none !important; }
+    }
+
+    /* ═════════════ LIVE STAGE ═════════════ */
+    .stage {
+      position: relative; border-radius: 16px; border: 1px solid var(--border);
+      background: var(--bg); color: var(--text); font-family: var(--ui);
+      overflow: hidden; min-height: 560px;
+      font-size: calc(15px * var(--ts, 1) * var(--hi, 1));
+      transition: max-width var(--d3) var(--ease), border-radius var(--d3) var(--ease);
+    }
+    .stage.mobile { max-width: 412px; margin: 0.5rem auto; border-radius: 30px; box-shadow: 0 30px 80px rgba(0,0,0,0.4); }
+    .stage:not(.mobile) .mobile-only { display: none !important; }
+    .stage.mobile .desktop-only { display: none !important; }
+
+    .app-grid { position: relative; z-index: 1; display: grid; grid-template-columns: var(--sb, 248px) 1fr; min-height: 560px; transition: grid-template-columns var(--d3) var(--ease); }
+    .stage.collapsed .app-grid { --sb: 68px; }
+    .stage.mobile .app-grid { grid-template-columns: 1fr; min-height: 600px; }
+
+    /* Sidebar (desktop) */
+    .sidebar { border-right: 1px solid var(--border); background: color-mix(in srgb, var(--surface) 92%, transparent); display: flex; flex-direction: column; padding: 0.9rem; gap: 0.15rem; }
+    .sb-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+    .logo { display: flex; align-items: center; gap: 0.5rem; font-family: var(--display); font-weight: 600; font-size: 1.05em; letter-spacing: -0.02em; color: var(--text); white-space: nowrap; }
+    .logo .mark { width: 26px; height: 26px; border-radius: 8px; flex-shrink: 0; background: var(--primary); color: var(--primary-fg); display: grid; place-items: center; font-size: 0.8em; font-weight: 700; box-shadow: var(--glow); }
+    .logo em { font-style: normal; color: var(--primary); }
+    .stage.collapsed .logo .label { opacity: 0; width: 0; overflow: hidden; }
+    .sb-toggle { width: 26px; height: 26px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; display: grid; place-items: center; flex-shrink: 0; transition: all var(--d1) var(--ease); box-shadow: var(--card-hl); }
+    .sb-toggle:hover { color: var(--text); border-color: var(--ring); }
+
+    .nav-link { position: relative; display: flex; align-items: center; gap: 0.65rem; padding: 0.55rem 0.65rem; border-radius: 8px; color: var(--muted); font-size: 0.85em; cursor: pointer; white-space: nowrap; transition: color var(--d1) var(--ease), background var(--d1) var(--ease); }
+    .nav-link svg { width: 17px; height: 17px; flex-shrink: 0; stroke: currentColor; fill: none; stroke-width: 1.7; }
+    .nav-link:hover { color: var(--text); background: var(--border-soft); }
+    .nav-link.active { color: var(--primary); background: var(--primary-soft); font-weight: 500; }
+    .nav-link.active::before { content: ''; position: absolute; left: -0.9rem; top: 50%; transform: translateY(-50%); width: 3px; height: 18px; border-radius: 0 3px 3px 0; background: var(--primary); box-shadow: var(--glow); }
+    .stage.collapsed .nav-link .label { opacity: 0; width: 0; overflow: hidden; }
+    .sb-foot { margin-top: auto; font-size: 0.7em; color: var(--faint); padding: 0.5rem 0.65rem; border-top: 1px solid var(--border-soft); }
+    .stage.collapsed .sb-foot { opacity: 0; }
+
+    /* Main */
+    .main { display: flex; flex-direction: column; min-width: 0; }
+    .navbar { display: flex; align-items: center; gap: 0.75rem; padding: 0.7rem 1.1rem; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--surface) 80%, transparent); backdrop-filter: blur(8px); }
+    .crumb { font-size: 0.82em; color: var(--muted); }
+    .crumb b { color: var(--text); font-weight: 500; }
+    .nav-actions { margin-left: auto; display: flex; align-items: center; gap: 0.5rem; }
+    .chip { font-size: 0.7em; padding: 0.25rem 0.55rem; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); display: inline-flex; align-items: center; gap: 0.35rem; box-shadow: var(--card-hl); }
+    .chip .live { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: ping 1.9s var(--ease) infinite; }
+    @keyframes ping { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 50%, transparent);} 70% { box-shadow: 0 0 0 7px transparent;} 100% { box-shadow: 0 0 0 0 transparent;} }
+    .avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--primary-soft); color: var(--primary); display: grid; place-items: center; font-size: 0.72em; font-weight: 600; overflow: hidden; border: 1px solid var(--border-soft); box-shadow: var(--card-hl); }
+    .avatar svg { width: 100%; height: 100%; display: block; }
+    .avatar .figure { fill: currentColor; opacity: 0.82; }
+    .avatar .attire { fill: var(--primary-soft); opacity: 0.6; }
+
+    /* Mobile chrome */
+    .m-statusbar { display: flex; align-items: center; justify-content: space-between; padding: 0.4rem 1.1rem 0; font-size: 0.66em; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .m-statusbar .dots { letter-spacing: 1px; }
+    .m-appbar { display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 1rem; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--surface) 85%, transparent); }
+    .m-appbar .ham { width: 26px; height: 26px; display: grid; place-items: center; color: var(--muted); }
+    .m-appbar .ham svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+    .m-appbar .ttl { font-family: var(--display); font-weight: 600; font-size: 1em; letter-spacing: -0.02em; }
+    .m-appbar .ttl em { font-style: normal; color: var(--primary); }
+    .m-tabbar { display: flex; border-top: 1px solid var(--border); background: color-mix(in srgb, var(--surface) 92%, transparent); }
+    .m-tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.2rem; padding: 0.55rem 0; color: var(--faint); font-size: 0.62em; cursor: pointer; }
+    .m-tab svg { width: 19px; height: 19px; stroke: currentColor; fill: none; stroke-width: 1.7; }
+    .m-tab.active { color: var(--primary); }
+
+    .conv { flex: 1; padding: 1.4rem; overflow: hidden; }
+    .stage.mobile .conv { padding: 1rem 0.9rem; }
+    .conv-inner { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 1rem; }
+
+    .bubble-user { align-self: flex-end; max-width: 84%; padding: 0.7rem 0.95rem; border-radius: 13px 13px 4px 13px; background: var(--primary); color: var(--primary-fg); font-size: 0.9em; box-shadow: var(--glow); }
+
+    .answer { padding: 1rem 1.1rem; border-radius: 4px 13px 13px 13px; background: var(--raised); border: 1px solid var(--border); box-shadow: var(--card-hl); }
+    .answer p { font-size: 0.92em; line-height: 1.66; color: var(--text); margin-bottom: 0.6rem; }
+    .cursor { display: inline-block; width: 2px; height: 1.05em; background: var(--primary); vertical-align: text-bottom; margin-left: 1px; animation: blink 1s steps(1) infinite; box-shadow: var(--glow); }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    .cite { border-left: 3px solid var(--citation); padding: 0.6rem 0.8rem; margin: 0.55rem 0; background: var(--cite-bg); border-radius: 0 8px 8px 0; font-size: 0.85em; color: var(--cite-text); position: relative; cursor: pointer; transition: all var(--d2) var(--ease); box-shadow: var(--card-hl); }
+    .cite:hover { background: color-mix(in srgb, var(--cite-bg) 65%, var(--primary-soft)); }
+    .cite.selected { box-shadow: 0 0 0 1px var(--primary), var(--glow); }
+    .cite-h { display: flex; align-items: center; gap: 0.4rem; font-size: 0.62em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--citation); margin-bottom: 0.3rem; }
+    .vdot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+    .cite-ref { font-family: var(--mono); font-size: 0.72em; color: var(--primary); margin-top: 0.45rem; display: inline-block; }
+
+    /* message action row */
+    .msg-acts { display: flex; gap: 0.35rem; margin-top: 0.7rem; }
+    .act { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 7px; border: 1px solid var(--border-soft); color: var(--faint); cursor: pointer; transition: all var(--d1) var(--ease); background: transparent; }
+    .act svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.7; }
+    .act:hover { color: var(--text); border-color: var(--border); background: var(--hover); }
+    .act.on { color: var(--accent); border-color: var(--accent); }
+
+    .composer { padding: 1rem 1.4rem; border-top: 1px solid var(--border); background: color-mix(in srgb, var(--surface) 70%, transparent); }
+    .stage.mobile .composer { padding: 0.8rem 0.9rem; }
+    .composer-inner { max-width: 720px; margin: 0 auto; display: flex; gap: 0.6rem; }
+    .field { flex: 1; min-height: 46px; display: flex; align-items: center; padding: 0 0.9rem; border-radius: 12px; border: 1px solid var(--border); background: var(--raised); color: var(--faint); font-size: 0.85em; transition: all var(--d2) var(--ease); box-shadow: var(--card-hl); }
+    .field.focus { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 16%, transparent); }
+    .send { min-width: 46px; min-height: 46px; padding: 0 1.1rem; border-radius: 12px; border: none; background: var(--primary); color: var(--primary-fg); font: inherit; font-size: 0.85em; font-weight: 500; cursor: pointer; box-shadow: var(--glow); transition: transform var(--d1) var(--ease); }
+    .send:active { transform: scale(0.96); }
+
+    @media (max-width: 760px) { .stage:not(.mobile) .app-grid { grid-template-columns: 1fr; } .stage:not(.mobile) .sidebar { display: none; } }
+
+    .msg { opacity: 0; animation: msg-in var(--d3) var(--ease-enter) forwards; }
+    .msg:nth-child(1){animation-delay:0ms;} .msg:nth-child(2){animation-delay:120ms;} .msg:nth-child(3){animation-delay:260ms;} .msg:nth-child(4){animation-delay:400ms;}
+    @keyframes msg-in { from { opacity:0; transform: translateY(6px);} to { opacity:1; transform: translateY(0);} }
+
+    /* ═════════════ FLOW GALLERY ═════════════ */
+    .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
+    .demo { position: relative; border-radius: 12px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-family: var(--ui); overflow: hidden; min-height: 220px; display: flex; flex-direction: column; }
+    .demo-head { display: flex; align-items: center; justify-content: space-between; padding: 0.6rem 0.85rem; border-bottom: 1px solid var(--border-soft); background: color-mix(in srgb, var(--surface) 85%, transparent); position: relative; z-index: 2; }
+    .demo-head h3 { font-size: 0.78rem; font-weight: 600; }
+    .demo-head .tag { font-size: 0.58rem; color: var(--faint); font-family: var(--mono); }
+    .demo-body { position: relative; z-index: 1; flex: 1; padding: 1rem; display: flex; flex-direction: column; gap: 0.6rem; }
+    .demo-bg { position: absolute; inset: 0; z-index: 0; }
+
+    .typing p { font-size: 0.85rem; line-height: 1.6; } .typing .label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--citation); font-weight: 600; }
+
+    .spin-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; place-items: center; flex: 1; }
+    .spin-cell { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; } .spin-cell small { font-size: 0.56rem; color: var(--faint); }
+    .orbit { width: 30px; height: 30px; border-radius: 50%; border: 2.5px solid var(--border); border-top-color: var(--primary); animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .ring { width: 30px; height: 30px; } .ring circle { fill: none; stroke-width: 3; } .ring .track { stroke: var(--border); } .ring .head { stroke: var(--primary); stroke-linecap: round; stroke-dasharray: 80; stroke-dashoffset: 60; transform-origin: center; animation: spin 1.1s var(--ease) infinite; }
+    .dots3 { display: flex; gap: 5px; } .dots3 span { width: 7px; height: 7px; border-radius: 50%; background: var(--primary); animation: bounce 1.2s var(--ease) infinite; } .dots3 span:nth-child(2){animation-delay:.15s;} .dots3 span:nth-child(3){animation-delay:.3s;}
+    @keyframes bounce { 0%,80%,100%{transform:translateY(0);opacity:.4;} 40%{transform:translateY(-7px);opacity:1;} }
+    .barload { width: 56px; height: 5px; border-radius: 3px; background: var(--border); overflow: hidden; position: relative; } .barload::after { content:''; position:absolute; inset:0; width:40%; border-radius:3px; background:var(--primary); animation: slide 1.1s var(--ease) infinite; }
+    @keyframes slide { 0%{left:-40%;} 100%{left:100%;} }
+
+    .skel { height: 12px; border-radius: 6px; background: linear-gradient(90deg, var(--border-soft) 25%, var(--shimmer) 37%, var(--border-soft) 63%); background-size: 400% 100%; animation: shimmer 1.4s ease infinite; }
+    @keyframes shimmer { 0%{background-position:100% 0;} 100%{background-position:-100% 0;} }
+
+    .errcard { border: 1px solid var(--danger); background: var(--danger-bg); border-radius: 10px; padding: 0.85rem; display: flex; gap: 0.7rem; align-items: flex-start; animation: shake-in var(--d4) var(--ease-spring); }
+    @keyframes shake-in { 0%{transform:translateX(0);opacity:0;} 30%{opacity:1;} 45%{transform:translateX(-5px);} 65%{transform:translateX(4px);} 82%{transform:translateX(-2px);} 100%{transform:translateX(0);} }
+    .errcard .ic { width: 26px; height: 26px; border-radius: 50%; background: var(--danger); color: #fff; display: grid; place-items: center; font-weight: 700; flex-shrink: 0; font-size: 0.85rem; }
+    .errcard h4 { font-size: 0.82rem; color: var(--danger); margin-bottom: 0.15rem; } .errcard p { font-size: 0.74rem; color: var(--muted); line-height: 1.5; }
+    .retry { margin-top: 0.5rem; font: inherit; font-size: 0.72rem; padding: 0.3rem 0.7rem; border-radius: 7px; border: 1px solid var(--danger); background: transparent; color: var(--danger); cursor: pointer; } .retry:hover { background: var(--danger); color: #fff; }
+
+    .seclist { display: flex; flex-direction: column; gap: 0.4rem; }
+    .secitem { padding: 0.55rem 0.7rem; border-radius: 8px; border: 1px solid var(--border); font-size: 0.78rem; color: var(--muted); cursor: pointer; transition: all var(--d2) var(--ease); display: flex; align-items: center; gap: 0.5rem; }
+    .secitem .num { font-family: var(--mono); font-size: 0.64rem; color: var(--faint); } .secitem.on { border-color: var(--primary); background: var(--primary-soft); color: var(--primary); box-shadow: var(--glow); transform: translateX(2px); } .secitem.on .num { color: var(--primary); }
+
+    .splash { flex: 1; display: grid; place-items: center; } .splash-inner { display: flex; flex-direction: column; align-items: center; gap: 0.8rem; }
+    .splash .mark { width: 44px; height: 44px; border-radius: 13px; background: var(--primary); color: var(--primary-fg); display: grid; place-items: center; font-weight: 700; font-size: 1.1rem; box-shadow: var(--glow); animation: breathe 2.4s var(--ease) infinite; }
+    @keyframes breathe { 0%,100%{transform:scale(1);opacity:1;} 50%{transform:scale(0.92);opacity:.8;} }
+    .splash .word { font-family: var(--display); font-weight: 600; letter-spacing: -0.01em; font-size: 1rem; } .splash .word em { font-style: normal; color: var(--primary); }
+    .splash .bar { width: 120px; height: 3px; border-radius: 3px; background: var(--border); overflow: hidden; } .splash .bar::after { content:''; display:block; height:100%; width:40%; background: var(--primary); border-radius: 3px; animation: slide 1.3s var(--ease) infinite; }
+
+    .toast { display: flex; align-items: center; gap: 0.6rem; padding: 0.65rem 0.8rem; border-radius: 10px; border: 1px solid var(--border); background: var(--raised); box-shadow: 0 8px 30px rgba(0,0,0,0.18), var(--card-hl); font-size: 0.78rem; animation: toast-in var(--d3) var(--ease-spring); }
+    @keyframes toast-in { from{transform:translateY(12px);opacity:0;} to{transform:translateY(0);opacity:1;} }
+    .toast.ok .tic { background: var(--accent); } .toast .tic { width: 18px; height: 18px; border-radius: 50%; color: #fff; display: grid; place-items: center; font-size: 0.7rem; background: var(--primary); flex-shrink: 0; } .toast b { font-weight: 600; } .toast span { color: var(--muted); }
+
+    .pstep { display: flex; align-items: center; gap: 0.5rem; font-size: 0.76rem; color: var(--muted); padding: 0.2rem 0; }
+    .pstep.done { color: var(--text); } .pstep.run { color: var(--primary); font-weight: 500; }
+    .pstep .d { width: 7px; height: 7px; border-radius: 50%; background: var(--border); flex-shrink: 0; } .pstep.done .d { background: var(--accent); } .pstep.run .d { background: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent), var(--glow); animation: pulse 1.3s var(--ease) infinite; }
+    @keyframes pulse { 0%,100%{transform:scale(1);} 50%{transform:scale(0.8);} }
+
+    /* welcome / empty */
+    .welcome { gap: 0.7rem; }
+    .welcome h4 { font-family: var(--display); font-size: 1rem; font-weight: 600; letter-spacing: -0.01em; }
+    .welcome p { font-size: 0.76rem; color: var(--muted); }
+    .qchips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.3rem; }
+    .qchip { font-size: 0.72rem; padding: 0.4rem 0.65rem; border-radius: 9px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; opacity: 0; animation: chip-in var(--d3) var(--ease-enter) forwards; transition: border-color var(--d1) var(--ease); }
+    .qchip:hover { border-color: var(--primary); }
+    .qchip:nth-child(1){animation-delay:.1s;} .qchip:nth-child(2){animation-delay:.22s;} .qchip:nth-child(3){animation-delay:.34s;} .qchip:nth-child(4){animation-delay:.46s;}
+    @keyframes chip-in { from{opacity:0; transform: translateY(5px);} to{opacity:1; transform: translateY(0);} }
+
+    /* clarify / quick replies */
+    .clarify .q { font-size: 0.82rem; color: var(--text); padding: 0.6rem 0.75rem; border:1px solid var(--border); border-radius: 4px 10px 10px 10px; background: var(--raised); box-shadow: var(--card-hl); }
+    .qr { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .qr button { font: inherit; font-size: 0.72rem; padding: 0.35rem 0.6rem; border-radius: 999px; border: 1px solid var(--primary); color: var(--primary); background: var(--primary-soft); cursor: pointer; }
+
+    /* document viewer */
+    .docview { font-family: var(--mono); font-size: 0.68rem; line-height: 1.7; color: var(--muted); }
+    .docline { padding: 0.05rem 0.4rem; border-radius: 4px; }
+    .docline.hot { background: color-mix(in srgb, var(--primary-soft) 80%, transparent); color: var(--text); box-shadow: inset 2px 0 0 var(--primary); animation: hot 2.6s var(--ease) infinite; }
+    @keyframes hot { 0%,100%{ background: color-mix(in srgb, var(--primary-soft) 50%, transparent);} 50%{ background: color-mix(in srgb, var(--primary-soft) 95%, transparent);} }
+
+    /* upload */
+    .upcard { display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.7rem; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow: var(--card-hl); }
+    .upic { width: 30px; height: 30px; border-radius: 8px; background: var(--primary-soft); color: var(--primary); display: grid; place-items: center; font-size: 0.7rem; font-weight: 600; flex-shrink: 0; }
+    .upmeta { flex: 1; min-width: 0; } .upmeta .nm { font-size: 0.74rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .upmeta .pb { height: 4px; border-radius: 3px; background: var(--border); margin-top: 0.4rem; overflow: hidden; } .upmeta .pb::after { content:''; display:block; height:100%; background: var(--primary); border-radius: 3px; animation: fill 2.4s var(--ease) infinite; }
+    @keyframes fill { 0%{ width: 0; } 70%{ width: 100%; } 100%{ width: 100%; } }
+
+    /* patient wait */
+    .patient { align-items: flex-start; gap: 0.5rem; }
+    .patient .pr { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: var(--primary); font-weight: 500; }
+    .patient .sub { font-size: 0.72rem; color: var(--muted); line-height: 1.5; }
+    .patient .timer { margin-left: auto; font-family: var(--mono); font-size: 0.72rem; color: var(--faint); font-variant-numeric: tabular-nums; }
+
+    /* disclaimer */
+    .disc { display: flex; gap: 0.55rem; align-items: flex-start; padding: 0.7rem 0.8rem; border: 1px solid var(--border); border-left: 3px solid var(--warn); border-radius: 0 9px 9px 0; background: var(--surface); }
+    .disc .di { color: var(--warn); font-weight: 700; font-size: 0.85rem; flex-shrink: 0; }
+    .disc p { font-size: 0.74rem; color: var(--muted); line-height: 1.55; }
+
+    /* hindi sample (font-family set above via --deva) */
+    .hindi .lbl { font-family: var(--ui); }
+
+    /* ═════════════ FONT SPECIMEN ═════════════ */
+    .specimens { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 1rem; }
+    .spec { border-radius: 12px; border: 1px solid #1c1c20; background: #0e0e11; padding: 1.1rem 1.2rem; transition: border-color var(--d2) var(--ease); }
+    .spec:hover { border-color: #34343a; }
+    .spec .meta { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 0.7rem; }
+    .spec .meta h4 { font-size: 0.85rem; font-weight: 600; } .spec .meta .use { font-size: 0.6rem; color: #6b6b73; }
+    .spec .big { font-size: clamp(1.5rem, 2.8vw, 2.3rem); font-weight: 600; letter-spacing: -0.02em; line-height: 1.05; margin-bottom: 0.4rem; color: #fafafa; }
+    .spec .deva { font-family: 'Noto Sans Devanagari', sans-serif; font-size: 1.15rem; color: #d4d4d8; margin-bottom: 0.45rem; }
+    .spec .nums { font-size: 1.05rem; color: #a1a1aa; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; margin-bottom: 0.5rem; }
+    .spec .para { font-size: 0.8rem; color: #a1a1aa; line-height: 1.6; }
+    .spec.rec { border-color: #365314; } .spec .pin { font-size: 0.54rem; text-transform: uppercase; letter-spacing: 0.05em; color: #86efac; background: #14532d; padding: 0.12rem 0.4rem; border-radius: 4px; }
+
+    .note { margin-top: 1rem; padding: 1.1rem 1.25rem; border-radius: 12px; border: 1px solid #1c1c20; background: #0e0e11; font-size: 0.82rem; color: #a1a1aa; line-height: 1.7; }
+    .note h3 { color: #fafafa; font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .note code { font-family: 'Geist Mono', monospace; font-size: 0.82em; background: #18181b; padding: 0.08em 0.35em; border-radius: 4px; color: #d4d4d8; }
+    .note ul { margin: 0.4rem 0 0 1.1rem; } .note li { margin-bottom: 0.25rem; }
+  </style>
+</head>
+<body data-theme="archival" data-mode="dark" data-glow="soft" data-font="geist" data-mono="geist" data-ts="default" data-wp="aurora" data-lang="en" data-hifont="noto" data-hisize="m" data-cursor="system">
+
+  <div class="topbar">
+    <div class="brand">Dharmiq <span>· motion & mood</span></div>
+    <div class="seg" id="seg-theme"><label>Theme</label>
+      <button data-theme-set="ashoka">Ashoka</button>
+      <button data-theme-set="archival" class="on">Archival</button>
+      <button data-theme-set="gazette">Gazette</button>
+    </div>
+    <div class="seg" id="seg-mode"><label>Mode</label>
+      <button data-mode-set="light">Light</button>
+      <button data-mode-set="dark" class="on">Dark</button>
+    </div>
+    <div class="seg" id="seg-glow"><label>Glow</label>
+      <button data-glow-set="off">Off</button>
+      <button data-glow-set="soft" class="on">Soft</button>
+      <button data-glow-set="on">Glow</button>
+    </div>
+    <div class="seg" id="seg-screen"><label>Screen</label>
+      <button data-screen-set="desktop" class="on">Desktop</button>
+      <button data-screen-set="mobile">Mobile</button>
+    </div>
+    <div class="seg" id="seg-lang"><label>Lang</label>
+      <button data-lang-set="en" class="on">EN</button>
+      <button data-lang-set="hi">हिं</button>
+    </div>
+    <div class="seg"><label>Font</label>
+      <select class="mini" id="font-pick">
+        <option value="geist">Geist</option><option value="inter">Inter</option>
+        <option value="hanken">Hanken Grotesk</option><option value="schibsted">Schibsted Grotesk</option>
+        <option value="jakarta">Plus Jakarta Sans</option><option value="plex">IBM Plex Sans</option>
+        <option value="fraunces">Inter + Fraunces</option><option value="newsreader">Inter + Newsreader</option>
+      </select>
+    </div>
+    <div class="seg"><label>Size</label>
+      <select class="mini" id="ts-pick">
+        <option value="compact">Compact</option><option value="default" selected>Default</option>
+        <option value="large">Large</option><option value="xl">XL (4K)</option>
+      </select>
+    </div>
+    <div class="seg"><label>Hindi font</label>
+      <select class="mini" id="hifont-pick">
+        <option value="noto">Noto Sans Devanagari</option>
+        <option value="tiro">Tiro Devanagari Hindi</option>
+        <option value="mukta">Mukta</option>
+        <option value="hind">Hind</option>
+        <option value="baloo">Baloo 2</option>
+        <option value="notoserif">Noto Serif Devanagari</option>
+      </select>
+    </div>
+    <div class="seg"><label>Hindi size</label>
+      <select class="mini" id="hisize-pick">
+        <option value="s">Compact</option>
+        <option value="m" selected>Comfortable</option>
+        <option value="l">Large</option>
+      </select>
+    </div>
+    <div class="seg"><label>Cursor</label>
+      <select class="mini" id="cursor-pick">
+        <option value="system">System</option>
+        <option value="pointer">Pointer</option>
+        <option value="dot">Dot</option>
+        <option value="ring">Ring</option>
+        <option value="pen">Pen (legal)</option>
+        <option value="crosshair">Crosshair</option>
+      </select>
+    </div>
+    <div class="seg"><label>Wallpaper</label>
+      <select class="mini" id="wp-pick">
+        <option value="aurora">Aurora glow</option><option value="mesh">Mesh</option>
+        <option value="grid">Grid fade</option><option value="dots">Dot field</option>
+        <option value="topo">Topographic</option><option value="chakra">Chakra watermark</option>
+        <option value="grain">Paper grain</option><option value="none">None</option>
+      </select>
+    </div>
+    <div class="seg iconbtn" id="replay">↻ Replay</div>
+  </div>
+
+  <div class="wrap">
+    <div class="lede">
+      <h1>Tasteful darks, in motion</h1>
+      <p>
+        Premium dark modes now use <strong style="color:#d4d4d8">layered elevation</strong> (bg → surface → raised), hairline top-edge highlights, and a single calm accent — not flat slate.
+        New controls: <strong style="color:#d4d4d8">Glow</strong>, <strong style="color:#d4d4d8">Type size</strong>, <strong style="color:#d4d4d8">Desktop/Mobile</strong>, and <strong style="color:#d4d4d8">EN/हिं</strong>. Everything maps to <code>tokens.json</code> → Flutter.
+      </p>
+    </div>
+
+    <div class="sec-title"><h2>Live application</h2><p>navbar · sidebar · streaming · selectable citations · message actions</p><span class="hint">try Mobile + हिं + Type size</span></div>
+    <div class="stage" id="stage" data-lang="en">
+      <div class="bg-layer"></div>
+
+      <!-- mobile status + appbar -->
+      <div class="m-statusbar mobile-only"><span>9:41</span><span class="dots">5G ▰▰▰</span></div>
+      <div class="m-appbar mobile-only">
+        <span class="ham"><svg viewBox="0 0 24 24"><path d="M3 12h18M3 6h18M3 18h18"/></svg></span>
+        <span class="ttl">Dhar<em>miq</em></span>
+        <span class="avatar" style="margin-left:auto"><svg viewBox="0 0 36 36" aria-label="User"><circle class="figure" cx="18" cy="13.4" r="5.6"/><path class="figure" d="M7.6 30.8c0-5.5 4.7-9 10.4-9s10.4 3.5 10.4 9v.4H7.6z"/><path class="attire" d="M18 21.6l-3 2.1 1.5 7.5h3l1.5-7.5z"/></svg></span>
+      </div>
+
+      <div class="app-grid">
+        <aside class="sidebar desktop-only">
+          <div class="sb-top">
+            <div class="logo"><span class="mark">D</span><span class="label">Dhar<em>miq</em></span></div>
+            <button class="sb-toggle" id="sbToggle" title="Collapse">‹</button>
+          </div>
+          <div class="nav-link active"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="label i18n" data-en="Chat" data-hi="चैट">Chat</span></div>
+          <div class="nav-link"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg><span class="label i18n" data-en="Documents" data-hi="दस्तावेज़">Documents</span></div>
+          <div class="nav-link"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg><span class="label i18n" data-en="Uploads" data-hi="अपलोड">Uploads</span></div>
+          <div class="nav-link"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9z"/></svg><span class="label i18n" data-en="Settings" data-hi="सेटिंग्स">Settings</span></div>
+          <div class="sb-foot i18n" data-en="General information — not legal advice." data-hi="सामान्य जानकारी — कानूनी सलाह नहीं।">General information — not legal advice.</div>
+        </aside>
+
+        <div class="main">
+          <div class="navbar desktop-only">
+            <div class="crumb i18n" data-en="Chat · <b>Consumer rights</b>" data-hi="चैट · <b>उपभोक्ता अधिकार</b>">Chat · <b>Consumer rights</b></div>
+            <div class="nav-actions">
+              <span class="chip"><span class="live"></span> <span class="i18n" data-en="grounded" data-hi="आधारित">grounded</span></span>
+              <span class="avatar"><svg viewBox="0 0 36 36" aria-label="User"><circle class="figure" cx="18" cy="13.4" r="5.6"/><path class="figure" d="M7.6 30.8c0-5.5 4.7-9 10.4-9s10.4 3.5 10.4 9v.4H7.6z"/><path class="attire" d="M18 21.6l-3 2.1 1.5 7.5h3l1.5-7.5z"/></svg></span>
+            </div>
+          </div>
+          <div class="conv">
+            <div class="conv-inner">
+              <div class="bubble-user i18n" data-en="A shop refused a refund on a defective phone. What can I do?" data-hi="दुकानदार ने खराब फ़ोन का रिफ़ंड देने से मना कर दिया। मैं क्या कर सकता हूँ?">A shop refused a refund on a defective phone. What can I do?</div>
+              <div class="answer">
+                <p id="streamText"></p>
+                <div class="cite" data-cite>
+                  <div class="cite-h"><span class="vdot"></span> <span class="i18n" data-en="Law says · verified" data-hi="कानून कहता है · सत्यापित">Law says · verified</span></div>
+                  <span class="i18n" data-en="&quot;Every consumer shall have the right to be protected against unfair trade practices…&quot;" data-hi="&quot;प्रत्येक उपभोक्ता को अनुचित व्यापार प्रथाओं से संरक्षण का अधिकार होगा…&quot;">"Every consumer shall have the right to be protected against unfair trade practices…"</span>
+                  <div class="cite-ref i18n" data-en="Consumer Protection Act, 2019 · § 2(9) →" data-hi="उपभोक्ता संरक्षण अधिनियम, 2019 · धारा 2(9) →">Consumer Protection Act, 2019 · § 2(9) →</div>
+                </div>
+                <div class="msg-acts">
+                  <button class="act" data-act="copy" title="Copy"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>
+                  <button class="act" data-act="up" title="Helpful"><svg viewBox="0 0 24 24"><path d="M7 10v11M2 14v6M7 10l3-7a2 2 0 0 1 3 2l-1 5h6a2 2 0 0 1 2 2l-2 6a2 2 0 0 1-2 1H7"/></svg></button>
+                  <button class="act" data-act="down" title="Not helpful"><svg viewBox="0 0 24 24"><path d="M17 14V3M22 10V4M17 14l-3 7a2 2 0 0 1-3-2l1-5H6a2 2 0 0 1-2-2l2-6a2 2 0 0 1 2-1h10"/></svg></button>
+                  <button class="act" data-act="regen" title="Regenerate"><svg viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.8-3.4L23 10M1 14l4.7 4.4A9 9 0 0 0 20.5 15"/></svg></button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="composer">
+            <div class="composer-inner">
+              <div class="field" id="field"><span class="i18n" data-en="Ask about your rights…" data-hi="अपने अधिकारों के बारे में पूछें…">Ask about your rights…</span></div>
+              <button class="send i18n" data-en="Send" data-hi="भेजें">Send</button>
+            </div>
+          </div>
+
+          <!-- mobile bottom tabs -->
+          <div class="m-tabbar mobile-only">
+            <div class="m-tab active"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="i18n" data-en="Chat" data-hi="चैट">Chat</span></div>
+            <div class="m-tab"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg><span class="i18n" data-en="Docs" data-hi="दस्तावेज़">Docs</span></div>
+            <div class="m-tab"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg><span class="i18n" data-en="Upload" data-hi="अपलोड">Upload</span></div>
+            <div class="m-tab"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a6 6 0 0 1 12 0v2"/></svg><span class="i18n" data-en="Account" data-hi="खाता">Account</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FLOW GALLERY -->
+    <div class="sec-title"><h2>Flows & micro-interactions</h2><p>each loops so you can feel the motion</p></div>
+    <div class="gallery">
+
+      <div class="demo" data-demo="welcome"><div class="bg-layer demo-bg"></div>
+        <div class="demo-head"><h3>Welcome / empty state</h3><span class="tag">first run</span></div>
+        <div class="demo-body welcome">
+          <h4>How can I help with your rights?</h4>
+          <p>Ask in plain language. I cite the law behind every answer.</p>
+          <div class="qchips">
+            <span class="qchip">Refund for a defective product</span>
+            <span class="qchip">Notice period for eviction</span>
+            <span class="qchip">Unpaid salary</span>
+            <span class="qchip">FIR not registered</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="demo" data-demo="stream"><div class="bg-layer demo-bg"></div>
+        <div class="demo-head"><h3>Answer streaming</h3><span class="tag">token replay</span></div>
+        <div class="demo-body typing"><span class="label">Law says</span><p id="streamMini"></p></div>
+      </div>
+
+      <div class="demo" data-demo="clarify"><div class="bg-layer demo-bg"></div>
+        <div class="demo-head"><h3>Clarifying question</h3><span class="tag">agent asks back</span></div>
+        <div class="demo-body clarify">
+          <div class="q msg">To answer precisely — which state are you in, and was this an online or in-store purchase?</div>
+          <div class="qr"><button>Maharashtra</button><button>Online</button><button>In-store</button></div>
+        </div>
+      </div>
+
+      <div class="demo" data-demo="progress"><div class="bg-layer demo-bg"></div>
+        <div class="demo-head"><h3>Pipeline progress</h3><span class="tag">SSE steps</span></div>
+        <div class="demo-body" id="progressBody">
+          <div class="pstep done"><span class="d"></span> Clarified the question</div>
+          <div class="pstep done"><span class="d"></span> Retrieved 11 sections</div>
+          <div class="pstep run"><span class="d"></span> Validating citations…</div>
+          <div class="pstep"><span class="d"></span> Streaming answer</div>
+        </div>
+      </div>
+
+      <div class="demo" data-demo="patient"><div class="bg-layer demo-bg"></div>
+        <div class="demo-head"><h3>Patient wait</h3><span class="tag">honest slow</span></div>
+        <div class="demo-body patient">
+          <div class="pr"><span class="dots3" style="transform:scale(.8)"><span></span><span></span><span></span></span> Taking longer than usual <span class="timer" id="ptimer">00:07</span></div>
+          <div class="sub">Cross-checking IPC → BNS mappings and recent amendments. A trustworthy answer is worth the wait.</div>
+        </div>
+      </div>
+
+      <div class="demo" data-demo="spinners"><div class="bg-layer demo-bg"></div>
+        <div class="demo-head"><h3>Spinners & loaders</h3><span class="tag">4 styles</span></div>
+        <div class="demo-body"><div class="spin-grid">
+          <div class="spin-cell"><div class="orbit"></div><small>orbit</small></div>
+          <div class="spin-cell"><svg class="ring" viewBox="0 0 36 36"><circle class="track" cx="18" cy="18" r="15"/><circle class="head" cx="18" cy="18" r="15"/></svg><small>ring</small></div>
+          <div class="spin-cell"><div class="dots3"><span></span><span></span><span></span></div><small>dots</small></div>
+          <div class="spin-cell"><div class="barload"></div><small>bar</small></div>
+        </div></div>
+      </div>
+
+      <div class="demo" data-demo="docview"><div class="bg-layer demo-bg"></div>
+        <div class="demo-head"><h3>Document viewer</h3><span class="tag">cited source</span></div>
+        <div class="demo-body docview">
+          <div class="docline">2(8) "defect" means any fault, imperfection or</div>
+          <div class="docline">shortcoming in the quality or standard…</div>
+          <div class="docline hot">2(9) "consumer rights" includes the right to be</div>
+          <div class="docline hot">protected against unfair trade practices…</div>
+          <div class="docline">2(10) "defect" in relation to any service…</div>
+        </div>
+      </div>
+
+      <div class="demo" data-demo="error"><div class="bg-layer demo-bg"></div>
+        <div class="demo-head"><h3>Error / refuse</h3><span class="tag">retry</span></div>
+        <div class="demo-body" id="errBody">
+          <div class="errcard"><div class="ic">!</div><div>
+            <h4>Couldn't ground this reliably</h4>
+            <p>Retrieval was too weak to answer with confidence. Try rephrasing or attach a document.</p>
+            <button class="retry">Try again</button>
+          </div></div>
+        </div>
+      </div>
+
+      <div class="demo" data-demo="section"><div class="bg-layer demo-bg"></div>
+        <div class="demo-head"><h3>Section selection</h3><span class="tag">source picker</span></div>
+        <div class="demo-body"><div class="seclist" id="secList">
+          <div class="secitem on"><span class="num">§ 2(9)</span> Right against unfair trade practices</div>
+          <div class="secitem"><span class="num">§ 17</span> Filing a consumer complaint</div>
+          <div class="secitem"><span class="num">§ 35</span> Jurisdiction of the District Commission</div>
+          <div class="secitem"><span class="num">§ 39</span> Remedies &amp; compensation</div>
+        </div></div>
+      </div>
+
+      <div class="demo" data-demo="upload"><div class="bg-layer demo-bg"></div>
+        <div class="demo-head"><h3>Attachment upload</h3><span class="tag">progress</span></div>
+        <div class="demo-body" style="justify-content:center">
+          <div class="upcard"><div class="upic">PDF</div><div class="upmeta"><div class="nm">eviction-notice.pdf · 240 KB</div><div class="pb"></div></div></div>
+        </div>
+      </div>
+
+      <div class="demo" data-demo="splash"><div class="bg-layer demo-bg"></div>
+        <div class="demo-head"><h3>Loading screen</h3><span class="tag">branded splash</span></div>
+        <div class="demo-body splash"><div class="splash-inner"><div class="mark">D</div><div class="word">Dhar<em>miq</em></div><div class="bar"></div></div></div>
+      </div>
+
+      <div class="demo" data-demo="skeleton"><div class="bg-layer demo-bg"></div>
+        <div class="demo-head"><h3>Skeleton loading</h3><span class="tag">shimmer</span></div>
+        <div class="demo-body">
+          <div class="skel" style="width:55%"></div><div class="skel" style="width:100%"></div>
+          <div class="skel" style="width:92%"></div><div class="skel" style="width:40%;margin-top:0.4rem"></div><div class="skel" style="width:78%"></div>
+        </div>
+      </div>
+
+      <div class="demo" data-demo="toast"><div class="bg-layer demo-bg"></div>
+        <div class="demo-head"><h3>Toasts</h3><span class="tag">notifications</span></div>
+        <div class="demo-body" id="toastBody" style="justify-content:center">
+          <div class="toast ok"><span class="tic">✓</span><div><b>Document attached</b> <span>· tenancy-notice.pdf</span></div></div>
+          <div class="toast"><span class="tic">i</span><div><b>Answer ready</b> <span>· 6 sources cited</span></div></div>
+        </div>
+      </div>
+
+      <div class="demo" data-demo="disc"><div class="bg-layer demo-bg"></div>
+        <div class="demo-head"><h3>Disclaimer</h3><span class="tag">persistent</span></div>
+        <div class="demo-body" style="justify-content:center">
+          <div class="disc"><span class="di">i</span><p>Dharmiq provides general legal <b>information</b>, not advice. For decisions that matter, consult a qualified advocate.</p></div>
+        </div>
+      </div>
+
+      <div class="demo" data-demo="hindi"><div class="bg-layer demo-bg"></div>
+        <div class="demo-head"><h3>Hindi answer</h3><span class="tag">वर्नाक्युलर</span></div>
+        <div class="demo-body hindi">
+          <p style="font-size:0.92rem;line-height:1.95;color:var(--text)">उपभोक्ता संरक्षण अधिनियम, 2019 के तहत आप खराब उत्पाद के लिए उपभोक्ता आयोग में शिकायत दर्ज कर सकते हैं।</p>
+          <div class="cite"><div class="cite-h"><span class="vdot"></span> <span class="lbl">कानून कहता है</span></div>"प्रत्येक उपभोक्ता को अनुचित व्यापार प्रथाओं से संरक्षण का अधिकार होगा…"<div class="cite-ref">उपभोक्ता संरक्षण अधिनियम, 2019 · धारा 2(9) →</div></div>
+        </div>
+      </div>
+
+      <div class="demo" data-demo="navtabs"><div class="bg-layer demo-bg"></div>
+        <div class="demo-head"><h3>Nav indicator</h3><span class="tag">sliding active</span></div>
+        <div class="demo-body" style="justify-content:center"><div style="display:flex;flex-direction:column;gap:0.15rem" id="navDemo">
+          <div class="nav-link active"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="label">Chat</span></div>
+          <div class="nav-link"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg><span class="label">Documents</span></div>
+          <div class="nav-link"><svg viewBox="0 0 24 24"><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg><span class="label">Uploads</span></div>
+        </div></div>
+      </div>
+
+    </div>
+
+    <!-- FONTS -->
+    <div class="sec-title"><h2>Fonts that stay crisp at 4K</h2><p>variable + optical sizing; Devanagari shown for vernacular</p></div>
+    <div class="specimens">
+      <div class="spec rec" style="font-family:'Geist',sans-serif"><div class="meta"><h4>Geist <span class="pin">recommended</span></h4><span class="use">UI · in app</span></div><div class="big">Know your rights</div><div class="nums">0123456789 · § 498A · ₹12,500</div><div class="para">Vercel's grotesk. Tight, neutral, razor-sharp on 4K and small sizes.</div></div>
+      <div class="spec rec" style="font-family:'Inter',sans-serif"><div class="meta"><h4>Inter <span class="pin">recommended</span></h4><span class="use">UI · body</span></div><div class="big">Know your rights</div><div class="nums">0123456789 · § 498A · ₹12,500</div><div class="para">The workhorse — huge coverage, tabular numerals, optical tuning.</div></div>
+      <div class="spec" style="font-family:'Hanken Grotesk',sans-serif"><div class="meta"><h4>Hanken Grotesk</h4><span class="use">UI · warmer</span></div><div class="big">Know your rights</div><div class="nums">0123456789 · § 498A · ₹12,500</div><div class="para">Humanist warmth without losing structure. Friendlier than Inter.</div></div>
+      <div class="spec" style="font-family:'Schibsted Grotesk',sans-serif"><div class="meta"><h4>Schibsted Grotesk</h4><span class="use">display</span></div><div class="big">Know your rights</div><div class="nums">0123456789 · § 498A · ₹12,500</div><div class="para">Confident news headlines — memorable on a landing page.</div></div>
+      <div class="spec" style="font-family:'Plus Jakarta Sans',sans-serif"><div class="meta"><h4>Plus Jakarta Sans</h4><span class="use">UI · modern</span></div><div class="big">Know your rights</div><div class="nums">0123456789 · § 498A · ₹12,500</div><div class="para">Geometric, modern, crisp. Contemporary SaaS feel.</div></div>
+      <div class="spec rec" style="font-family:'Inter',sans-serif"><div class="meta"><h4>Noto Sans Devanagari <span class="pin">हिंदी</span></h4><span class="use">vernacular</span></div><div class="deva">अपने अधिकार जानिए · धारा 498क</div><div class="nums">०१२३४५६७८९ · ₹१२,५०० </div><div class="para">Google's Devanagari face — pairs cleanly with Inter/Geist for mixed Hindi-English. Essential for Tier-2 reach.</div></div>
+      <div class="spec" style="font-family:'Fraunces',serif"><div class="meta"><h4>Fraunces <span class="pin">pairing</span></h4><span class="use">display serif</span></div><div class="big">Know your rights</div><div class="nums">0123456789 · § 498A · ₹12,500</div><div class="para">Optical serif with character. As headings + Inter body = "trusted publication."</div></div>
+      <div class="spec" style="font-family:'Newsreader',serif"><div class="meta"><h4>Newsreader</h4><span class="use">editorial serif</span></div><div class="big">Know your rights</div><div class="nums">0123456789 · § 498A · ₹12,500</div><div class="para">Built for on-screen long-form. Ideal for statutory blockquotes & document views.</div></div>
+    </div>
+
+    <div class="note">
+      <h3>What changed (and why dark feels better now)</h3>
+      <ul>
+        <li><strong>Elevation, not tint</strong> — each surface steps up in lightness (bg → surface → raised → hover) so cards read as <em>lifted</em>, not colored. Borders are white-alpha hairlines + a <code>inset 0 1px 0</code> top highlight.</li>
+        <li><strong>Calmer accent</strong> — one primary hue per theme; citations use neutral body text with only the label colored, so it never looks muddy.</li>
+        <li><strong>Glow control</strong> — Off / Soft / Glow. Soft is the tasteful default; Glow is for demos/marketing shots.</li>
+        <li><strong>Type size</strong> — stage text is <code>em</code>-based off a <code>--ts</code> multiplier; XL targets 4K. On mobile the same scale keeps ≥16px tap-friendly text.</li>
+        <li><strong>Hindi</strong> — toggle swaps UI strings and switches the stack to <code>Noto Sans/Serif Devanagari</code>. Core layout never hardcodes English.</li>
+      </ul>
+    </div>
+    <div class="note" style="margin-top:1rem">
+      <h3>More flows worth adding next</h3>
+      <ul>
+        <li>Auth / onboarding, conversation history list, multi-turn thread, voice input (roadmap), source comparison (conflicting law side-by-side), export/share answer, account & data controls (export / hard-delete), offline / low-bandwidth state, "law updated since you asked" banner.</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    const body = document.body;
+    const stage = document.getElementById('stage');
+
+    // ── Controls ──
+    function bindSeg(attr, apply) {
+      document.querySelectorAll('[data-'+attr+']').forEach(b => b.addEventListener('click', () => {
+        const grp = b.parentElement;
+        grp.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+        apply(b.dataset[attr.replace(/-([a-z])/g, (_,c)=>c.toUpperCase())]);
+      }));
+    }
+    bindSeg('theme-set', v => body.dataset.theme = v);
+    bindSeg('mode-set',  v => body.dataset.mode = v);
+    bindSeg('glow-set',  v => body.dataset.glow = v);
+    bindSeg('screen-set',v => stage.classList.toggle('mobile', v === 'mobile'));
+    bindSeg('lang-set',  v => setLang(v));
+    document.getElementById('font-pick').addEventListener('change', e => body.dataset.font = e.target.value);
+    document.getElementById('ts-pick').addEventListener('change', e => body.dataset.ts = e.target.value);
+    document.getElementById('wp-pick').addEventListener('change', e => body.dataset.wp = e.target.value);
+    document.getElementById('hifont-pick').addEventListener('change', e => body.dataset.hifont = e.target.value);
+    document.getElementById('hisize-pick').addEventListener('change', e => body.dataset.hisize = e.target.value);
+    document.getElementById('cursor-pick').addEventListener('change', e => body.dataset.cursor = e.target.value);
+
+    // ── i18n ──
+    const STREAM = {
+      en: "Under the Consumer Protection Act, 2019, you can file a complaint for a defective product or deficient service before the appropriate consumer commission, and seek a refund, replacement, or compensation.",
+      hi: "उपभोक्ता संरक्षण अधिनियम, 2019 के तहत आप खराब उत्पाद या सेवा में कमी के लिए उपयुक्त उपभोक्ता आयोग में शिकायत दर्ज कर सकते हैं और रिफ़ंड, बदली या मुआवज़े की माँग कर सकते हैं।"
+    };
+    const MINI = "You have the right to seek redressal against unfair or restrictive trade practices and unscrupulous exploitation.";
+    let LANG = 'en';
+    function setLang(v) {
+      LANG = v;
+      stage.dataset.lang = v;
+      body.dataset.lang = v;
+      document.querySelectorAll('.stage .i18n').forEach(el => { el.innerHTML = el.dataset[v]; });
+      loopType(document.getElementById('streamText'), STREAM[v], 24);
+    }
+
+    // ── Cancellable typer (no shared-state stacking) ──
+    const typers = new Map();
+    function loopType(el, text, speed) {
+      if (!el) return;
+      const prev = typers.get(el); if (prev) prev.cancelled = true;
+      const ctx = { cancelled: false }; typers.set(el, ctx);
+      const CUR = '<span class="cursor"></span>';
+      (function run(){
+        if (ctx.cancelled) return;
+        let i = 0; el.innerHTML = CUR;
+        (function tick(){
+          if (ctx.cancelled) return;
+          i = Math.min(text.length, i + (Math.random() < 0.5 ? 1 : 2));
+          el.innerHTML = text.slice(0, i) + CUR;
+          if (i < text.length) setTimeout(tick, speed + Math.random()*40);
+          else setTimeout(() => { if (!ctx.cancelled) run(); }, 2400);
+        })();
+      })();
+    }
+
+    // ── Looping flows (each interval created once) ──
+    function cycleSection() {
+      const items = [...document.querySelectorAll('#secList .secitem')];
+      let idx = items.findIndex(i => i.classList.contains('on'));
+      setInterval(() => { items[idx].classList.remove('on'); idx = (idx+1)%items.length; items[idx].classList.add('on'); }, 1700);
+    }
+    function cycleNav() {
+      const items = [...document.querySelectorAll('#navDemo .nav-link')]; let idx = 0;
+      setInterval(() => { items.forEach(i => i.classList.remove('active')); idx = (idx+1)%items.length; items[idx].classList.add('active'); }, 1500);
+    }
+    function autoSidebar() {
+      document.getElementById('sbToggle').addEventListener('click', () => stage.classList.toggle('collapsed'));
+      setInterval(() => { if (!stage.classList.contains('mobile')) stage.classList.toggle('collapsed'); }, 4600);
+    }
+    function advanceProgress() {
+      const steps = [...document.querySelectorAll('#progressBody .pstep')];
+      let run = steps.findIndex(s => s.classList.contains('run'));
+      setInterval(() => {
+        if (run < steps.length - 1) { steps[run].classList.replace('run','done'); run++; steps[run].classList.add('run'); }
+        else { steps.forEach((s,k)=>{ s.classList.remove('run','done'); if (k<2) s.classList.add('done'); }); run=2; steps[run].classList.add('run'); }
+      }, 1500);
+    }
+    function reinjectLoop(id, ms) {
+      const el = document.getElementById(id); const html = el.innerHTML;
+      setInterval(() => { el.innerHTML=''; void el.offsetWidth; el.innerHTML = html; if (id==='errBody') bindRetry(); }, ms);
+    }
+    function bindRetry() {
+      const r = document.querySelector('#errBody .retry');
+      if (r) r.addEventListener('click', () => { const b=document.getElementById('errBody'); const h=b.innerHTML; b.innerHTML=''; void b.offsetWidth; b.innerHTML=h; bindRetry(); });
+    }
+    function focusPulse() {
+      const f = document.getElementById('field');
+      setInterval(() => { f.classList.add('focus'); setTimeout(()=>f.classList.remove('focus'), 1400); }, 5200);
+    }
+    function stageCiteCycle() {
+      const cites = [...document.querySelectorAll('#stage [data-cite]')];
+      cites.forEach(c => c.addEventListener('click', () => { cites.forEach(x=>x.classList.remove('selected')); c.classList.add('selected'); }));
+      if (!cites.length) return; let idx = 0;
+      setInterval(() => { cites.forEach(x=>x.classList.remove('selected')); cites[idx].classList.add('selected'); idx=(idx+1)%cites.length; }, 2800);
+    }
+    function msgActionsCycle() {
+      const acts = [...document.querySelectorAll('.msg-acts .act')]; if (!acts.length) return; let idx = 0;
+      setInterval(() => { acts.forEach(a=>a.classList.remove('on')); acts[idx].classList.add('on'); setTimeout(()=>acts[idx].classList.remove('on'), 900); idx=(idx+1)%acts.length; }, 1600);
+    }
+    function patientTimer() {
+      const el = document.getElementById('ptimer'); if (!el) return; let s = 7;
+      setInterval(() => { s = (s+1) % 90; const m = String(Math.floor(s/60)).padStart(2,'0'); const ss = String(s%60).padStart(2,'0'); el.textContent = m+':'+ss; }, 1000);
+    }
+
+    function replayAll() {
+      loopType(document.getElementById('streamText'), STREAM[LANG], 24);
+      loopType(document.getElementById('streamMini'), MINI, 28);
+    }
+    document.getElementById('replay').addEventListener('click', replayAll);
+
+    // init (each loop once)
+    replayAll(); cycleSection(); cycleNav(); autoSidebar(); advanceProgress();
+    reinjectLoop('errBody', 4200); bindRetry(); reinjectLoop('toastBody', 3800);
+    focusPulse(); stageCiteCycle(); msgActionsCycle(); patientTimer();
+  </script>
+</body>
+</html>

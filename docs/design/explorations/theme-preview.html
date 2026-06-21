@@ -1,0 +1,1519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dharmiq — Theme Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:ital@0;1&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Literata:opsz,wght@7..72,400;7..72,600&family=Lora:ital,wght@0,400;0,600;1,400&family=Noto+Sans+Devanagari:wght@400;600&family=Noto+Serif+Devanagari:wght@400;600&family=Nunito+Sans:wght@400;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Inter, system-ui, sans-serif;
+      background: #0a0a0a;
+      color: #e5e5e5;
+      min-height: 100vh;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    .page-header {
+      max-width: 1400px;
+      margin: 0 auto 2.5rem;
+      text-align: center;
+    }
+
+    .page-header h1 {
+      font-size: 1.75rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.5rem;
+    }
+
+    .page-header p {
+      color: #888;
+      font-size: 0.95rem;
+      max-width: 640px;
+      margin: 0 auto;
+      line-height: 1.5;
+    }
+
+    /* ── Trust psychology guide ── */
+    .trust-guide {
+      max-width: 1400px;
+      margin: 0 auto 2.5rem;
+      padding: 1.5rem;
+      border-radius: 16px;
+      border: 1px solid #2a2a2a;
+      background: #141414;
+    }
+
+    .trust-guide h2 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+    }
+
+    .trust-guide > p {
+      color: #999;
+      font-size: 0.85rem;
+      line-height: 1.55;
+      margin-bottom: 1.25rem;
+      max-width: 900px;
+    }
+
+    .trust-ranking {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 0.5rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .trust-rank-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.45rem 0.65rem;
+      border-radius: 8px;
+      background: #1a1a1a;
+      border: 1px solid #252525;
+      font-size: 0.78rem;
+    }
+
+    .trust-rank-item.top { border-color: #3d5a3d; background: #1a221a; }
+    .trust-rank-num { color: #666; font-weight: 600; min-width: 1.2rem; }
+    .trust-rank-name { flex: 1; color: #ccc; }
+    .trust-rank-score { color: #7cb87c; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+    .trust-principles {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .trust-principle {
+      padding: 0.75rem;
+      border-radius: 10px;
+      background: #1a1a1a;
+      border: 1px solid #252525;
+    }
+
+    .trust-principle h3 {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #aaa;
+      margin-bottom: 0.35rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .trust-principle p {
+      font-size: 0.78rem;
+      color: #777;
+      line-height: 1.45;
+    }
+
+    .section-divider {
+      max-width: 1400px;
+      margin: 0 auto 1.5rem;
+      padding: 0 0.25rem;
+    }
+
+    .section-divider h2 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .section-divider p {
+      font-size: 0.8rem;
+      color: #555;
+      margin-top: 0.25rem;
+    }
+
+    /* ── Per-theme trust meta ── */
+    .trust-meta {
+      padding: 0.65rem 1.25rem 0.75rem;
+      border-bottom: 1px solid #222;
+      background: #0d0d0d;
+    }
+
+    .trust-meta-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.4rem;
+    }
+
+    .trust-score-label {
+      font-size: 0.7rem;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .trust-score-value {
+      font-size: 0.85rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .trust-score-value.high { color: #7cb87c; }
+    .trust-score-value.mid { color: #c4a84a; }
+    .trust-score-value.low { color: #b08060; }
+
+    .trust-badge {
+      font-size: 0.62rem;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .trust-badge.recommended { background: #1a2e1a; color: #7cb87c; border: 1px solid #2d4a2d; }
+    .trust-badge.strong { background: #1a221a; color: #8aac8a; border: 1px solid #2a3a2a; }
+    .trust-badge.moderate { background: #2a2418; color: #c4a84a; border: 1px solid #3d3520; }
+    .trust-badge.niche { background: #1a1a1a; color: #888; border: 1px solid #333; }
+
+    .trust-meter {
+      height: 4px;
+      background: #222;
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 0.45rem;
+    }
+
+    .trust-meter span {
+      display: block;
+      height: 100%;
+      border-radius: 2px;
+      background: linear-gradient(90deg, #5a8a5a, #7cb87c);
+    }
+
+    .trust-meter.mid span { background: linear-gradient(90deg, #8a7a40, #c4a84a); }
+    .trust-meter.low span { background: linear-gradient(90deg, #7a6050, #b08060); }
+
+    .trust-psych {
+      font-size: 0.72rem;
+      color: #777;
+      line-height: 1.45;
+    }
+
+    .trust-psych strong { color: #999; font-weight: 500; }
+
+    /* ── Paper texture utility ── */
+    .paper-bg {
+      background-color: var(--bg);
+      background-image:
+        url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E"),
+        repeating-linear-gradient(0deg, transparent, transparent 27px, var(--paper-line, rgba(0,0,0,0.025)) 28px);
+    }
+
+    .theme-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+      gap: 2rem;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .theme-card {
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid #222;
+      background: #111;
+    }
+
+    .theme-label {
+      padding: 1rem 1.25rem 0.75rem;
+      border-bottom: 1px solid #222;
+    }
+
+    .theme-label h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    .theme-label span {
+      font-size: 0.8rem;
+      color: #777;
+    }
+
+    .swatches {
+      display: flex;
+      gap: 0;
+      height: 6px;
+    }
+
+    .swatches div { flex: 1; }
+
+    .preview {
+      padding: 1.25rem;
+      min-height: 420px;
+      position: relative;
+    }
+
+    /* ── Shared mock UI ── */
+    .mock-app {
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .mock-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.65rem 1rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .mock-logo {
+      font-family: var(--font-heading);
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--text);
+    }
+
+    .mock-logo em {
+      font-style: normal;
+      color: var(--primary);
+    }
+
+    .mock-badge {
+      font-size: 0.65rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      background: var(--primary-muted);
+      color: var(--primary);
+      font-weight: 500;
+    }
+
+    .mock-chat {
+      padding: 1rem;
+      background: var(--bg);
+      min-height: 340px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .mock-user {
+      align-self: flex-end;
+      max-width: 78%;
+      padding: 0.55rem 0.85rem;
+      border-radius: 12px 12px 4px 12px;
+      background: var(--primary);
+      color: var(--primary-fg);
+      font-size: 0.82rem;
+    }
+
+    .mock-assistant {
+      align-self: flex-start;
+      max-width: 92%;
+      padding: 0.75rem 0.9rem;
+      border-radius: 4px 12px 12px 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font-body);
+    }
+
+    .mock-assistant p { margin-bottom: 0.5rem; font-size: 0.82rem; }
+
+    .mock-citation {
+      border-left: 3px solid var(--citation);
+      padding: 0.45rem 0.65rem;
+      margin: 0.5rem 0;
+      background: var(--citation-bg);
+      border-radius: 0 6px 6px 0;
+      font-family: var(--font-quote);
+      font-size: 0.75rem;
+      font-style: italic;
+      color: var(--text-muted);
+    }
+
+    .mock-citation-label {
+      font-style: normal;
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--citation);
+      display: block;
+      margin-bottom: 0.2rem;
+    }
+
+    .mock-cite-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.7rem;
+      color: var(--accent);
+      font-family: var(--font-mono);
+      margin-top: 0.35rem;
+    }
+
+    .mock-progress {
+      padding: 0.55rem 0.75rem;
+      border-radius: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      font-size: 0.72rem;
+    }
+
+    .mock-progress-title {
+      color: var(--text-muted);
+      margin-bottom: 0.4rem;
+      font-size: 0.68rem;
+    }
+
+    .mock-step {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.2rem 0;
+      color: var(--text-muted);
+    }
+
+    .mock-step.done { color: var(--text); }
+    .mock-step.active { color: var(--primary); font-weight: 500; }
+
+    .step-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--border);
+      flex-shrink: 0;
+    }
+
+    .mock-step.done .step-dot { background: var(--success); }
+    .mock-step.active .step-dot {
+      background: var(--primary);
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+
+    .mock-input-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: auto;
+      padding-top: 0.5rem;
+    }
+
+    .mock-input {
+      flex: 1;
+      padding: 0.5rem 0.75rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-muted);
+      font-size: 0.75rem;
+    }
+
+    .mock-send {
+      padding: 0.5rem 0.85rem;
+      border-radius: 8px;
+      background: var(--primary);
+      color: var(--primary-fg);
+      border: none;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .mock-disclaimer {
+      font-size: 0.62rem;
+      color: var(--text-muted);
+      text-align: center;
+      padding: 0.4rem;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    /* ── Theme 1: Saffron Ledger ── */
+    .theme-saffron .preview {
+      --bg: #FAF8F5;
+      --surface: #FFFFFF;
+      --text: #1C1917;
+      --text-muted: #78716C;
+      --primary: #E07A2F;
+      --primary-fg: #FFFFFF;
+      --primary-muted: #FEF3E8;
+      --accent: #1B6B6A;
+      --citation: #1B6B6A;
+      --citation-bg: #F0F7F7;
+      --border: #E7E5E4;
+      --success: #1B6B6A;
+      --font-heading: 'Source Serif 4', 'Noto Serif Devanagari', serif;
+      --font-body: Inter, 'Noto Sans Devanagari', sans-serif;
+      --font-quote: 'Source Serif 4', serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      background: #FAF8F5;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    }
+
+    /* ── Theme 2: Ashoka Clarity ── */
+    .theme-ashoka .preview {
+      --bg: #F8FAFC;
+      --surface: #FFFFFF;
+      --text: #0F172A;
+      --text-muted: #64748B;
+      --primary: #1E3A5F;
+      --primary-fg: #FFFFFF;
+      --primary-muted: #E8EEF4;
+      --accent: #138808;
+      --citation: #1E3A5F;
+      --citation-bg: #F1F5F9;
+      --border: #E2E8F0;
+      --success: #138808;
+      --font-heading: 'IBM Plex Sans', sans-serif;
+      --font-body: 'IBM Plex Sans', sans-serif;
+      --font-quote: 'IBM Plex Serif', serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      background: #F8FAFC;
+    }
+
+    .theme-ashoka .mock-citation-label::after {
+      content: ' ● verified';
+      color: var(--success);
+      font-size: 0.6rem;
+    }
+
+    /* ── Theme 3: Monsoon Slate ── */
+    .theme-monsoon .preview {
+      --bg: #F1F5F9;
+      --surface: #FFFFFF;
+      --text: #1E293B;
+      --text-muted: #64748B;
+      --primary: #475569;
+      --primary-fg: #FFFFFF;
+      --primary-muted: #E2E8F0;
+      --accent: #2563EB;
+      --citation: #4F46E5;
+      --citation-bg: #EEF2FF;
+      --border: #CBD5E1;
+      --success: #059669;
+      --font-heading: 'Geist', Inter, sans-serif;
+      --font-body: Inter, sans-serif;
+      --font-quote: Literata, serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      background: linear-gradient(135deg, #F1F5F9 0%, #E2E8F0 50%, #F1F5F9 100%);
+    }
+
+    /* ── Theme 4: Village Square ── */
+    .theme-village .preview {
+      --bg: #FFF9F0;
+      --surface: #FFFFFF;
+      --text: #292018;
+      --text-muted: #8B7355;
+      --primary: #C45C26;
+      --primary-fg: #FFFFFF;
+      --primary-muted: #FDEEE4;
+      --accent: #5C7A4A;
+      --citation: #5C7A4A;
+      --citation-bg: #F0F5EC;
+      --border: #E8DDD0;
+      --success: #5C7A4A;
+      --font-heading: 'Nunito Sans', 'Noto Sans Devanagari', sans-serif;
+      --font-body: 'Nunito Sans', 'Noto Sans Devanagari', sans-serif;
+      --font-quote: 'Nunito Sans', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      background: #FFF9F0;
+    }
+
+    .theme-village .mock-app { border-radius: 16px; }
+    .theme-village .mock-user { border-radius: 16px 16px 4px 16px; }
+    .theme-village .mock-assistant { border-radius: 4px 16px 16px 16px; }
+
+    /* ── Theme 5: Midnight Dharma ── */
+    .theme-midnight .preview {
+      --bg: #0D0D0F;
+      --surface: #161618;
+      --text: #E8E6E3;
+      --text-muted: #8A8884;
+      --primary: #C9A227;
+      --primary-fg: #0D0D0F;
+      --primary-muted: #2A2618;
+      --accent: #C9A227;
+      --citation: #C9A227;
+      --citation-bg: #1A1810;
+      --border: #2A2A2E;
+      --success: #C9A227;
+      --font-heading: 'Crimson Pro', serif;
+      --font-body: 'Crimson Pro', serif;
+      --font-quote: 'Crimson Pro', serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      background: #0D0D0F;
+      background-image: radial-gradient(circle at 20% 30%, rgba(201,162,39,0.03) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 70%, rgba(201,162,39,0.02) 0%, transparent 40%);
+    }
+
+    .theme-midnight .mock-citation {
+      border-left-color: var(--citation);
+      box-shadow: inset 0 0 20px rgba(201,162,39,0.05);
+    }
+
+    /* ── Theme 6: Gazette Parchment ── */
+    .theme-gazette .preview {
+      --bg: #F7F2E4;
+      --surface: #FDFBF5;
+      --text: #2C2416;
+      --text-muted: #6B5E4A;
+      --primary: #3D4F6F;
+      --primary-fg: #FDFBF5;
+      --primary-muted: #E8E4D8;
+      --accent: #3D4F6F;
+      --citation: #5C4A32;
+      --citation-bg: #F0EBDC;
+      --border: #D9D0BC;
+      --paper-line: rgba(44,36,22,0.04);
+      --success: #4A6741;
+      --font-heading: 'EB Garamond', 'Source Serif 4', serif;
+      --font-body: 'Lora', Georgia, serif;
+      --font-quote: 'EB Garamond', serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    .theme-gazette .preview { /* paper-bg applied via class on preview */ }
+    .theme-gazette .mock-app { box-shadow: 0 1px 3px rgba(44,36,22,0.08); }
+    .theme-gazette .mock-assistant { background: var(--surface); }
+
+    /* ── Theme 7: Manila File ── */
+    .theme-manila .preview {
+      --bg: #F2E8CF;
+      --surface: #FAF5E8;
+      --text: #3A3225;
+      --text-muted: #7A6F58;
+      --primary: #8B6914;
+      --primary-fg: #FAF5E8;
+      --primary-muted: #EDE4C8;
+      --accent: #5C6B4A;
+      --citation: #5C6B4A;
+      --citation-bg: #EAE3CF;
+      --border: #D4C9A8;
+      --paper-line: rgba(58,50,37,0.035);
+      --success: #5C6B4A;
+      --font-heading: 'IBM Plex Sans', sans-serif;
+      --font-body: 'IBM Plex Sans', sans-serif;
+      --font-quote: 'IBM Plex Serif', serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    .theme-manila .mock-header {
+      background: #E8DDB8;
+      border-bottom: 2px solid #C9BA8E;
+    }
+
+    /* ── Theme 8: Chandni Paper ── */
+    .theme-chandni .preview {
+      --bg: #FBF8EE;
+      --surface: #FFFDF7;
+      --text: #1E1B16;
+      --text-muted: #6E6658;
+      --primary: #6B5344;
+      --primary-fg: #FFFDF7;
+      --primary-muted: #F5F0E4;
+      --accent: #2E5E4E;
+      --citation: #2E5E4E;
+      --citation-bg: #F0EDE4;
+      --border: #E5DFD0;
+      --paper-line: rgba(30,27,22,0.03);
+      --success: #2E5E4E;
+      --font-heading: 'Literata', 'Noto Serif Devanagari', serif;
+      --font-body: Inter, 'Noto Sans Devanagari', sans-serif;
+      --font-quote: 'Literata', serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    .theme-chandni .preview {
+      background-image:
+        url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E"),
+        radial-gradient(ellipse at 50% 0%, rgba(255,248,220,0.4) 0%, transparent 70%);
+    }
+
+    /* ── Theme 9: Archival Bond ── */
+    .theme-archival .preview {
+      --bg: #F5F0E1;
+      --surface: #FDFCF8;
+      --text: #1A1814;
+      --text-muted: #5C5648;
+      --primary: #1B3A5C;
+      --primary-fg: #FDFCF8;
+      --primary-muted: #E6E2D6;
+      --accent: #1B3A5C;
+      --citation: #1B3A5C;
+      --citation-bg: #EBE8DE;
+      --border: #D8D2C4;
+      --paper-line: rgba(26,24,20,0.04);
+      --success: #2E5E4E;
+      --font-heading: 'Source Serif 4', serif;
+      --font-body: Inter, sans-serif;
+      --font-quote: 'Source Serif 4', serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    .theme-archival .mock-citation {
+      border-left-width: 4px;
+      border-left-color: var(--citation);
+    }
+
+    .theme-archival .mock-app {
+      border: 1px solid var(--border);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.5);
+    }
+
+    /* Dark variants for paper themes */
+    .theme-gazette.dark-variant .preview {
+      --bg: #1E1B14;
+      --surface: #28241C;
+      --text: #EDE8DC;
+      --text-muted: #A89F8C;
+      --primary: #8FA4C4;
+      --primary-fg: #1E1B14;
+      --primary-muted: #3A3530;
+      --citation-bg: #2A2620;
+      --border: #3D3830;
+      --paper-line: rgba(237,232,220,0.04);
+    }
+
+    .theme-manila.dark-variant .preview {
+      --bg: #2A2418;
+      --surface: #342E20;
+      --text: #F0E8D8;
+      --text-muted: #A89878;
+      --primary: #D4B060;
+      --primary-fg: #2A2418;
+      --primary-muted: #3D3528;
+      --citation-bg: #3A3428;
+      --border: #4A4030;
+      --paper-line: rgba(240,232,216,0.04);
+    }
+
+    .theme-manila.dark-variant .mock-header {
+      background: #3A3220;
+      border-bottom-color: #4A4030;
+    }
+
+    .theme-chandni.dark-variant .preview {
+      --bg: #1A1810;
+      --surface: #242018;
+      --text: #F5F0E4;
+      --text-muted: #9A9280;
+      --primary: #C4A882;
+      --primary-fg: #1A1810;
+      --primary-muted: #2E2A20;
+      --citation-bg: #2A2820;
+      --border: #3A3630;
+    }
+
+    .theme-archival.dark-variant .preview {
+      --bg: #161410;
+      --surface: #201E18;
+      --text: #E8E4DC;
+      --text-muted: #9A9488;
+      --primary: #6A9AC4;
+      --primary-fg: #161410;
+      --primary-muted: #2A2820;
+      --citation-bg: #252320;
+      --border: #353330;
+      --paper-line: rgba(232,228,220,0.04);
+    }
+
+    /* Dark mode toggle per theme */
+    .mode-toggle {
+      display: flex;
+      gap: 0.35rem;
+      padding: 0 1.25rem 0.75rem;
+    }
+
+    .mode-btn {
+      font-size: 0.7rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: 6px;
+      border: 1px solid #333;
+      background: transparent;
+      color: #888;
+      cursor: pointer;
+    }
+
+    .mode-btn.active {
+      background: #222;
+      color: #eee;
+      border-color: #444;
+    }
+
+    /* Dark variants */
+    .theme-saffron.dark-variant .preview {
+      --bg: #1A1814;
+      --surface: #242018;
+      --text: #F5F0EB;
+      --text-muted: #A8A29E;
+      --primary: #F0A060;
+      --primary-fg: #1A1814;
+      --primary-muted: #3D3020;
+      --citation-bg: #1E2A28;
+      --border: #3D3830;
+      background: #1A1814;
+    }
+
+    .theme-ashoka.dark-variant .preview {
+      --bg: #0F172A;
+      --surface: #1E293B;
+      --text: #F1F5F9;
+      --text-muted: #94A3B8;
+      --primary: #60A5FA;
+      --primary-fg: #0F172A;
+      --primary-muted: #1E3A5F;
+      --citation-bg: #1E293B;
+      --border: #334155;
+      --accent: #4ADE80;
+      --success: #4ADE80;
+      background: #0F172A;
+    }
+
+    .theme-monsoon.dark-variant .preview {
+      --bg: #0C1222;
+      --surface: #1E293B;
+      --text: #E2E8F0;
+      --text-muted: #94A3B8;
+      --primary: #94A3B8;
+      --primary-fg: #0C1222;
+      --primary-muted: #334155;
+      --citation-bg: #1E1B4B;
+      --border: #334155;
+      --accent: #60A5FA;
+      background: #0C1222;
+    }
+
+    .theme-village.dark-variant .preview {
+      --bg: #1F1A14;
+      --surface: #2A2318;
+      --text: #F5EDE0;
+      --text-muted: #A89880;
+      --primary: #E8925C;
+      --primary-fg: #1F1A14;
+      --primary-muted: #3D3020;
+      --citation-bg: #2A3520;
+      --border: #3D3528;
+      background: #1F1A14;
+    }
+
+    .theme-midnight.light-variant .preview {
+      --bg: #FAFAFA;
+      --surface: #FFFFFF;
+      --text: #111111;
+      --text-muted: #666666;
+      --primary: #9A7B0A;
+      --primary-fg: #FFFFFF;
+      --primary-muted: #F5F0D8;
+      --citation-bg: #FDF8E8;
+      --border: #E5E5E5;
+      background: #FAFAFA;
+    }
+
+    .palette-row {
+      display: flex;
+      gap: 0.35rem;
+      padding: 0.75rem 1.25rem;
+      flex-wrap: wrap;
+    }
+
+    .palette-chip {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.2rem;
+    }
+
+    .palette-chip div {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .palette-chip span {
+      font-size: 0.55rem;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+  </style>
+</head>
+<body>
+  <header class="page-header">
+    <h1>Dharmiq Theme Preview</h1>
+    <p>Nine visual directions with trust-psychology scores for a grounded legal information product. Toggle light/dark on each card.</p>
+  </header>
+
+  <section class="trust-guide">
+    <h2>Trust psychology — what works for legal tech</h2>
+    <p>
+      Trust in legal/financial interfaces is driven by <strong style="color:#aaa">competence cues</strong> (structure, navy/ink blue, serif document typography),
+      <strong style="color:#aaa">familiarity</strong> (paper-like surfaces evoke real statutes and filings), and
+      <strong style="color:#aaa">restraint</strong> (no neon, no gamification, no false urgency).
+      Research on color psychology consistently ranks blue highest for institutional trust; warm cream/yellow paper tones reduce anxiety and signal "document" rather than "marketing."
+      Green works only as a sparse "verified" signal — not as a primary brand color.
+    </p>
+    <div class="trust-ranking">
+      <div class="trust-rank-item top"><span class="trust-rank-num">1</span><span class="trust-rank-name">Ashoka Clarity</span><span class="trust-rank-score">94</span></div>
+      <div class="trust-rank-item top"><span class="trust-rank-num">2</span><span class="trust-rank-name">Archival Bond</span><span class="trust-rank-score">92</span></div>
+      <div class="trust-rank-item top"><span class="trust-rank-num">3</span><span class="trust-rank-name">Gazette Parchment</span><span class="trust-rank-score">91</span></div>
+      <div class="trust-rank-item"><span class="trust-rank-num">4</span><span class="trust-rank-name">Saffron Ledger</span><span class="trust-rank-score">87</span></div>
+      <div class="trust-rank-item"><span class="trust-rank-num">5</span><span class="trust-rank-name">Monsoon Slate</span><span class="trust-rank-score">85</span></div>
+      <div class="trust-rank-item"><span class="trust-rank-num">6</span><span class="trust-rank-name">Manila File</span><span class="trust-rank-score">84</span></div>
+      <div class="trust-rank-item"><span class="trust-rank-num">7</span><span class="trust-rank-name">Chandni Paper</span><span class="trust-rank-score">83</span></div>
+      <div class="trust-rank-item"><span class="trust-rank-num">8</span><span class="trust-rank-name">Village Square</span><span class="trust-rank-score">79</span></div>
+      <div class="trust-rank-item"><span class="trust-rank-num">9</span><span class="trust-rank-name">Midnight Dharma</span><span class="trust-rank-score">71</span></div>
+    </div>
+    <div class="trust-principles">
+      <div class="trust-principle">
+        <h3>Best overall for Dharmiq</h3>
+        <p><strong style="color:#9ab89a">Ashoka Clarity</strong> or <strong style="color:#9ab89a">Archival Bond</strong> — combine institutional competence (navy/ink) with paper warmth. Ashoka for civic authority; Archival for "this is a real legal document."</p>
+      </div>
+      <div class="trust-principle">
+        <h3>Paper + yellow family</h3>
+        <p>Cream and manila tones trigger <em>document authenticity</em> and lower cortisol vs stark white. Keep yellow muted (never bright #FFD700) — bright yellow reads as warning/caution in UI.</p>
+      </div>
+      <div class="trust-principle">
+        <h3>What to avoid</h3>
+        <p>Purple AI gradients, saturated primaries, dark-default for citizens, rounded-playful without structure, animation that fakes progress. All reduce perceived legal credibility.</p>
+      </div>
+      <div class="trust-principle">
+        <h3>Hybrid recommendation</h3>
+        <p>Archival Bond palette + Ashoka's verified-citation pattern + Village Square's vernacular typography fallback. Paper bg, ink blue citations, green only on "source verified."</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="section-divider">
+    <h2>Original directions</h2>
+    <p>Five broader themes — civic, warm, inclusive, scholarly.</p>
+  </div>
+
+  <div class="theme-grid">
+
+    <!-- 1. Saffron Ledger -->
+    <article class="theme-card theme-saffron" data-theme="saffron">
+      <div class="theme-label">
+        <h2>1 · Saffron Ledger</h2>
+        <span>Institutional warmth · serif headings · citizen helpline</span>
+      </div>
+      <div class="trust-meta">
+        <div class="trust-meta-header">
+          <span class="trust-score-label">Trust score</span>
+          <span class="trust-badge strong">Strong</span>
+        </div>
+        <div class="trust-meta-header">
+          <span class="trust-score-value high">87 / 100</span>
+        </div>
+        <div class="trust-meter"><span style="width:87%"></span></div>
+        <p class="trust-psych"><strong>Warm neutrals + serif</strong> reduce anxiety and signal care. Saffron adds cultural familiarity in India but can read political if overused — keep as accent only.</p>
+      </div>
+      <div class="swatches">
+        <div style="background:#FAF8F5"></div>
+        <div style="background:#E07A2F"></div>
+        <div style="background:#1B6B6A"></div>
+        <div style="background:#1C1917"></div>
+      </div>
+      <div class="palette-row">
+        <div class="palette-chip"><div style="background:#FAF8F5"></div><span>bg</span></div>
+        <div class="palette-chip"><div style="background:#E07A2F"></div><span>primary</span></div>
+        <div class="palette-chip"><div style="background:#1B6B6A"></div><span>citation</span></div>
+        <div class="palette-chip"><div style="background:#1C1917"></div><span>text</span></div>
+      </div>
+      <div class="mode-toggle">
+        <button class="mode-btn active" data-mode="light">Light</button>
+        <button class="mode-btn" data-mode="dark">Dark</button>
+      </div>
+      <div class="preview">
+        <div class="mock-app">
+          <div class="mock-header">
+            <div class="mock-logo">Dhar<em>miq</em></div>
+            <span class="mock-badge">Alpha</span>
+          </div>
+          <div class="mock-chat">
+            <div class="mock-user">Can my landlord increase rent without notice?</div>
+            <div class="mock-assistant">
+              <p>Under the Model Tenancy Act framework, landlords generally must provide written notice before increasing rent. The exact period depends on your state law.</p>
+              <div class="mock-citation">
+                <span class="mock-citation-label">Law says</span>
+                "No landlord shall enhance the rent... without giving notice in writing..."
+              </div>
+              <div class="mock-cite-link">§ Model Tenancy Act, 2021 · Art. 9 →</div>
+            </div>
+            <div class="mock-progress">
+              <div class="mock-progress-title">Researching your question…</div>
+              <div class="mock-step done"><span class="step-dot"></span> Retrieved 12 statutory sections</div>
+              <div class="mock-step done"><span class="step-dot"></span> Reranked sources</div>
+              <div class="mock-step active"><span class="step-dot"></span> Validating citations…</div>
+            </div>
+            <div class="mock-input-row">
+              <div class="mock-input">Ask about your rights…</div>
+              <button class="mock-send">Send</button>
+            </div>
+          </div>
+          <div class="mock-disclaimer">General information only — not legal advice</div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 2. Ashoka Clarity -->
+    <article class="theme-card theme-ashoka" data-theme="ashoka">
+      <div class="theme-label">
+        <h2>2 · Ashoka Clarity</h2>
+        <span>Civic modernism · navy + green verified · e-gov clarity</span>
+      </div>
+      <div class="trust-meta">
+        <div class="trust-meta-header">
+          <span class="trust-score-label">Trust score</span>
+          <span class="trust-badge recommended">Best for trust</span>
+        </div>
+        <div class="trust-meta-header">
+          <span class="trust-score-value high">94 / 100</span>
+        </div>
+        <div class="trust-meter"><span style="width:94%"></span></div>
+        <p class="trust-psych"><strong>Navy = competence & stability</strong> — highest-rated color for financial/legal trust. Green reserved for "verified" avoids false confidence. Structured layout mirrors e-gov portals citizens already trust.</p>
+      </div>
+      <div class="swatches">
+        <div style="background:#F8FAFC"></div>
+        <div style="background:#1E3A5F"></div>
+        <div style="background:#138808"></div>
+        <div style="background:#0F172A"></div>
+      </div>
+      <div class="palette-row">
+        <div class="palette-chip"><div style="background:#F8FAFC"></div><span>bg</span></div>
+        <div class="palette-chip"><div style="background:#1E3A5F"></div><span>primary</span></div>
+        <div class="palette-chip"><div style="background:#138808"></div><span>verified</span></div>
+        <div class="palette-chip"><div style="background:#0F172A"></div><span>text</span></div>
+      </div>
+      <div class="mode-toggle">
+        <button class="mode-btn active" data-mode="light">Light</button>
+        <button class="mode-btn" data-mode="dark">Dark</button>
+      </div>
+      <div class="preview">
+        <div class="mock-app">
+          <div class="mock-header">
+            <div class="mock-logo">Dhar<em>miq</em></div>
+            <span class="mock-badge">Alpha</span>
+          </div>
+          <div class="mock-chat">
+            <div class="mock-user">What are my rights if a shop refuses refund?</div>
+            <div class="mock-assistant">
+              <p>Under the Consumer Protection Act, 2019, you have the right to seek redressal for defective goods or deficient services.</p>
+              <div class="mock-citation">
+                <span class="mock-citation-label">Law says</span>
+                "Every consumer shall have the right to be protected against... unfair trade practices"
+              </div>
+              <div class="mock-cite-link">Consumer Protection Act, 2019 · § 2(9) →</div>
+            </div>
+            <div class="mock-progress">
+              <div class="mock-progress-title">Processing…</div>
+              <div class="mock-step done"><span class="step-dot"></span> Clarified query</div>
+              <div class="mock-step active"><span class="step-dot"></span> Hybrid retrieval (BM25 + vector)</div>
+              <div class="mock-step"><span class="step-dot"></span> Generate answer</div>
+            </div>
+            <div class="mock-input-row">
+              <div class="mock-input">Ask about your rights…</div>
+              <button class="mock-send">Send</button>
+            </div>
+          </div>
+          <div class="mock-disclaimer">General information only — not legal advice</div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 3. Monsoon Slate -->
+    <article class="theme-card theme-monsoon" data-theme="monsoon">
+      <div class="theme-label">
+        <h2>3 · Monsoon Slate</h2>
+        <span>Calm authority · patient progress · accuracy over speed</span>
+      </div>
+      <div class="trust-meta">
+        <div class="trust-meta-header">
+          <span class="trust-score-label">Trust score</span>
+          <span class="trust-badge strong">Strong</span>
+        </div>
+        <div class="trust-meta-header">
+          <span class="trust-score-value high">85 / 100</span>
+        </div>
+        <div class="trust-meter"><span style="width:85%"></span></div>
+        <p class="trust-psych"><strong>Muted blues/greys convey patience</strong> — good for long waits without faking speed. Slightly cooler emotionally; less "human warmth" than paper tones. Strong for accuracy-first positioning.</p>
+      </div>
+      <div class="swatches">
+        <div style="background:#F1F5F9"></div>
+        <div style="background:#475569"></div>
+        <div style="background:#2563EB"></div>
+        <div style="background:#4F46E5"></div>
+      </div>
+      <div class="palette-row">
+        <div class="palette-chip"><div style="background:#F1F5F9"></div><span>bg</span></div>
+        <div class="palette-chip"><div style="background:#475569"></div><span>primary</span></div>
+        <div class="palette-chip"><div style="background:#2563EB"></div><span>links</span></div>
+        <div class="palette-chip"><div style="background:#4F46E5"></div><span>citation</span></div>
+      </div>
+      <div class="mode-toggle">
+        <button class="mode-btn active" data-mode="light">Light</button>
+        <button class="mode-btn" data-mode="dark">Dark</button>
+      </div>
+      <div class="preview">
+        <div class="mock-app">
+          <div class="mock-header">
+            <div class="mock-logo">Dhar<em>miq</em></div>
+            <span class="mock-badge">Alpha</span>
+          </div>
+          <div class="mock-chat">
+            <div class="mock-user">Is workplace harassment a criminal offence?</div>
+            <div class="mock-assistant">
+              <p>This depends on the nature of the conduct. Sexual harassment at workplace is addressed under a specific Act; other forms may fall under IPC/BNS provisions.</p>
+              <div class="mock-citation">
+                <span class="mock-citation-label">Law says</span>
+                "No woman shall be subjected to sexual harassment at any workplace"
+              </div>
+              <div class="mock-cite-link">POSH Act, 2013 · § 3 →</div>
+            </div>
+            <div class="mock-progress">
+              <div class="mock-progress-title">Taking longer than usual — verifying sources</div>
+              <div class="mock-step done"><span class="step-dot"></span> Retrieved IPC + BNS + POSH</div>
+              <div class="mock-step done"><span class="step-dot"></span> Cross-referenced amendments</div>
+              <div class="mock-step active"><span class="step-dot"></span> Validator checking claims…</div>
+            </div>
+            <div class="mock-input-row">
+              <div class="mock-input">Ask about your rights…</div>
+              <button class="mock-send">Send</button>
+            </div>
+          </div>
+          <div class="mock-disclaimer">General information only — not legal advice</div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 4. Village Square -->
+    <article class="theme-card theme-village" data-theme="village">
+      <div class="theme-label">
+        <h2>4 · Village Square</h2>
+        <span>Inclusive & human · rounded · vernacular-ready</span>
+      </div>
+      <div class="trust-meta">
+        <div class="trust-meta-header">
+          <span class="trust-score-label">Trust score</span>
+          <span class="trust-badge moderate">Moderate</span>
+        </div>
+        <div class="trust-meta-header">
+          <span class="trust-score-value mid">79 / 100</span>
+        </div>
+        <div class="trust-meter mid"><span style="width:79%"></span></div>
+        <p class="trust-psych"><strong>Approachability ↑, authority ↓.</strong> Rounded shapes and warm terracotta feel friendly but less "legal institution." Excellent for Tier 2 inclusion — pair with stronger citation styling to recover trust.</p>
+      </div>
+      <div class="swatches">
+        <div style="background:#FFF9F0"></div>
+        <div style="background:#C45C26"></div>
+        <div style="background:#5C7A4A"></div>
+        <div style="background:#292018"></div>
+      </div>
+      <div class="palette-row">
+        <div class="palette-chip"><div style="background:#FFF9F0"></div><span>bg</span></div>
+        <div class="palette-chip"><div style="background:#C45C26"></div><span>primary</span></div>
+        <div class="palette-chip"><div style="background:#5C7A4A"></div><span>citation</span></div>
+        <div class="palette-chip"><div style="background:#292018"></div><span>text</span></div>
+      </div>
+      <div class="mode-toggle">
+        <button class="mode-btn active" data-mode="light">Light</button>
+        <button class="mode-btn" data-mode="dark">Dark</button>
+      </div>
+      <div class="preview">
+        <div class="mock-app">
+          <div class="mock-header">
+            <div class="mock-logo">Dhar<em>miq</em></div>
+            <span class="mock-badge">Alpha</span>
+          </div>
+          <div class="mock-chat">
+            <div class="mock-user" style="font-family:'Noto Sans Devanagari',sans-serif">क्या मुझे तलाक के बाद गुजारा भत्ता मिल सकता है?</div>
+            <div class="mock-assistant">
+              <p style="font-family:'Noto Sans Devanagari',sans-serif">हाँ, कुछ परिस्थितियों में पति से गुजारा भत्ता (maintenance) माँगा जा सकता है। यह धारा 125 CrPC/BNSS के तहत होता है।</p>
+              <div class="mock-citation">
+                <span class="mock-citation-label">Kanoon kehta hai</span>
+                "If any person having sufficient means neglects or refuses to maintain his wife..."
+              </div>
+              <div class="mock-cite-link">BNSS · § 144 →</div>
+            </div>
+            <div class="mock-progress">
+              <div class="mock-progress-title">Aapke sawaal par kaam ho raha hai…</div>
+              <div class="mock-step done"><span class="step-dot"></span> Query samjhi gayi</div>
+              <div class="mock-step active"><span class="step-dot"></span> Kanoon dhoondh rahe hain…</div>
+            </div>
+            <div class="mock-input-row">
+              <div class="mock-input">Apne haq ke baare mein poochhiye…</div>
+              <button class="mock-send">Bhejein</button>
+            </div>
+          </div>
+          <div class="mock-disclaimer">Sirf jaankari — yeh kanooni salah nahi hai</div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 5. Midnight Dharma -->
+    <article class="theme-card theme-midnight" data-theme="midnight">
+      <div class="theme-label">
+        <h2>5 · Midnight Dharma</h2>
+        <span>Scholarly depth · gold citations · transparency-first</span>
+      </div>
+      <div class="trust-meta">
+        <div class="trust-meta-header">
+          <span class="trust-score-label">Trust score</span>
+          <span class="trust-badge niche">Niche / power user</span>
+        </div>
+        <div class="trust-meta-header">
+          <span class="trust-score-value low">71 / 100</span>
+        </div>
+        <div class="trust-meter low"><span style="width:71%"></span></div>
+        <p class="trust-psych"><strong>Dark UI + gold reads premium/scholarly</strong> but reduces mass trust — associated with dev tools more than citizen services. Gold on dark can feel exclusive. Best as optional theme for self-hosters.</p>
+      </div>
+      <div class="swatches">
+        <div style="background:#0D0D0F"></div>
+        <div style="background:#C9A227"></div>
+        <div style="background:#161618"></div>
+        <div style="background:#E8E6E3"></div>
+      </div>
+      <div class="palette-row">
+        <div class="palette-chip"><div style="background:#0D0D0F"></div><span>bg</span></div>
+        <div class="palette-chip"><div style="background:#C9A227"></div><span>gold</span></div>
+        <div class="palette-chip"><div style="background:#161618"></div><span>surface</span></div>
+        <div class="palette-chip"><div style="background:#E8E6E3"></div><span>text</span></div>
+      </div>
+      <div class="mode-toggle">
+        <button class="mode-btn" data-mode="light">Light</button>
+        <button class="mode-btn active" data-mode="dark">Dark</button>
+      </div>
+      <div class="preview">
+        <div class="mock-app">
+          <div class="mock-header">
+            <div class="mock-logo">Dhar<em>miq</em></div>
+            <span class="mock-badge">Alpha · v0.2</span>
+          </div>
+          <div class="mock-chat">
+            <div class="mock-user">Explain Article 21 scope post-Maneka Gandhi</div>
+            <div class="mock-assistant">
+              <p>Article 21's "procedure established by law" was read expansively in <em>Maneka Gandhi v. Union of India</em> (1978) to require fairness and reasonableness.</p>
+              <div class="mock-citation">
+                <span class="mock-citation-label">Law says</span>
+                "No person shall be deprived of his life or personal liberty except according to procedure established by law"
+              </div>
+              <div class="mock-cite-link">Constitution of India · Art. 21 →</div>
+            </div>
+            <div class="mock-progress">
+              <div class="mock-progress-title">Pipeline · 3 of 5 steps</div>
+              <div class="mock-step done"><span class="step-dot"></span> clarifier ✓</div>
+              <div class="mock-step done"><span class="step-dot"></span> retrieval ✓ (14 chunks, RRF)</div>
+              <div class="mock-step active"><span class="step-dot"></span> validator running…</div>
+            </div>
+            <div class="mock-input-row">
+              <div class="mock-input">Query statutes…</div>
+              <button class="mock-send">Send</button>
+            </div>
+          </div>
+          <div class="mock-disclaimer">Information only — consult a qualified advocate</div>
+        </div>
+      </div>
+    </article>
+
+  </div>
+
+  <div class="section-divider">
+    <h2>Paper & parchment family</h2>
+    <p>Subtle yellow-cream aesthetics — document authenticity, lower anxiety, high trust for legal content.</p>
+  </div>
+
+  <div class="theme-grid">
+
+    <!-- 6. Gazette Parchment -->
+    <article class="theme-card theme-gazette" data-theme="gazette">
+      <div class="theme-label">
+        <h2>6 · Gazette Parchment</h2>
+        <span>Official gazette cream · ink brown citations · ledger lines</span>
+      </div>
+      <div class="trust-meta">
+        <div class="trust-meta-header">
+          <span class="trust-score-label">Trust score</span>
+          <span class="trust-badge recommended">Top paper pick</span>
+        </div>
+        <div class="trust-meta-header">
+          <span class="trust-score-value high">91 / 100</span>
+        </div>
+        <div class="trust-meter"><span style="width:91%"></span></div>
+        <p class="trust-psych"><strong>Parchment = "this is an official record."</strong> Serif + ledger lines trigger document schema in memory. Ink-brown citations feel like marginalia on a statute — highly authentic for legal content.</p>
+      </div>
+      <div class="swatches">
+        <div style="background:#F7F2E4"></div>
+        <div style="background:#3D4F6F"></div>
+        <div style="background:#5C4A32"></div>
+        <div style="background:#2C2416"></div>
+      </div>
+      <div class="palette-row">
+        <div class="palette-chip"><div style="background:#F7F2E4"></div><span>parchment</span></div>
+        <div class="palette-chip"><div style="background:#3D4F6F"></div><span>ink navy</span></div>
+        <div class="palette-chip"><div style="background:#5C4A32"></div><span>citation</span></div>
+        <div class="palette-chip"><div style="background:#2C2416"></div><span>text</span></div>
+      </div>
+      <div class="mode-toggle">
+        <button class="mode-btn active" data-mode="light">Light</button>
+        <button class="mode-btn" data-mode="dark">Dark</button>
+      </div>
+      <div class="preview paper-bg">
+        <div class="mock-app">
+          <div class="mock-header">
+            <div class="mock-logo">Dhar<em>miq</em></div>
+            <span class="mock-badge">Alpha</span>
+          </div>
+          <div class="mock-chat">
+            <div class="mock-user">Is verbal eviction notice valid under law?</div>
+            <div class="mock-assistant">
+              <p>Generally, tenancy termination requires notice in writing. Verbal notice alone is typically insufficient under most state rent control frameworks.</p>
+              <div class="mock-citation">
+                <span class="mock-citation-label">Law says</span>
+                "Notice of termination shall be in writing and served in the manner prescribed..."
+              </div>
+              <div class="mock-cite-link">Transfer of Property Act · § 106 →</div>
+            </div>
+            <div class="mock-progress">
+              <div class="mock-progress-title">Searching gazette &amp; central acts…</div>
+              <div class="mock-step done"><span class="step-dot"></span> Retrieved 8 sections</div>
+              <div class="mock-step active"><span class="step-dot"></span> Validating against corpus…</div>
+            </div>
+            <div class="mock-input-row">
+              <div class="mock-input">Ask about your rights…</div>
+              <button class="mock-send">Send</button>
+            </div>
+          </div>
+          <div class="mock-disclaimer">General information only — not legal advice</div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 7. Manila File -->
+    <article class="theme-card theme-manila" data-theme="manila">
+      <div class="theme-label">
+        <h2>7 · Manila File</h2>
+        <span>Folder yellow · bureaucratic familiarity · gov office feel</span>
+      </div>
+      <div class="trust-meta">
+        <div class="trust-meta-header">
+          <span class="trust-score-label">Trust score</span>
+          <span class="trust-badge strong">Strong</span>
+        </div>
+        <div class="trust-meta-header">
+          <span class="trust-score-value high">84 / 100</span>
+        </div>
+        <div class="trust-meter"><span style="width:84%"></span></div>
+        <p class="trust-psych"><strong>Manila = "real paperwork you've held."</strong> Strong familiarity heuristic — citizens have handled yellow file folders at tehsil/court offices. Risk: can feel dated if not paired with clean typography.</p>
+      </div>
+      <div class="swatches">
+        <div style="background:#F2E8CF"></div>
+        <div style="background:#8B6914"></div>
+        <div style="background:#5C6B4A"></div>
+        <div style="background:#3A3225"></div>
+      </div>
+      <div class="palette-row">
+        <div class="palette-chip"><div style="background:#F2E8CF"></div><span>manila</span></div>
+        <div class="palette-chip"><div style="background:#8B6914"></div><span>amber</span></div>
+        <div class="palette-chip"><div style="background:#5C6B4A"></div><span>citation</span></div>
+        <div class="palette-chip"><div style="background:#3A3225"></div><span>text</span></div>
+      </div>
+      <div class="mode-toggle">
+        <button class="mode-btn active" data-mode="light">Light</button>
+        <button class="mode-btn" data-mode="dark">Dark</button>
+      </div>
+      <div class="preview paper-bg">
+        <div class="mock-app">
+          <div class="mock-header">
+            <div class="mock-logo">Dhar<em>miq</em></div>
+            <span class="mock-badge">Case file</span>
+          </div>
+          <div class="mock-chat">
+            <div class="mock-user">My employer hasn't paid salary for 3 months</div>
+            <div class="mock-assistant">
+              <p>Non-payment of wages is addressed under labour laws. You may file a claim before the appropriate labour authority depending on your establishment type.</p>
+              <div class="mock-citation">
+                <span class="mock-citation-label">Law says</span>
+                "Every employer shall pay all wages... before the expiry of the prescribed period"
+              </div>
+              <div class="mock-cite-link">Payment of Wages Act · § 5 →</div>
+            </div>
+            <div class="mock-progress">
+              <div class="mock-progress-title">Reviewing labour statutes…</div>
+              <div class="mock-step done"><span class="step-dot"></span> Clarified employment type</div>
+              <div class="mock-step active"><span class="step-dot"></span> Retrieving wage provisions…</div>
+            </div>
+            <div class="mock-input-row">
+              <div class="mock-input">Describe your situation…</div>
+              <button class="mock-send">Send</button>
+            </div>
+          </div>
+          <div class="mock-disclaimer">General information only — not legal advice</div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 8. Chandni Paper -->
+    <article class="theme-card theme-chandni" data-theme="chandni">
+      <div class="theme-label">
+        <h2>8 · Chandni Paper</h2>
+        <span>Soft moonlight cream · gentle yellow wash · calm reading</span>
+      </div>
+      <div class="trust-meta">
+        <div class="trust-meta-header">
+          <span class="trust-score-label">Trust score</span>
+          <span class="trust-badge strong">Strong</span>
+        </div>
+        <div class="trust-meta-header">
+          <span class="trust-score-value high">83 / 100</span>
+        </div>
+        <div class="trust-meter"><span style="width:83%"></span></div>
+        <p class="trust-psych"><strong>Soft cream lowers reading stress</strong> — ideal for long statutory answers on mobile. Less institutional than navy; more calming than stark white. Good for anxious users facing legal problems.</p>
+      </div>
+      <div class="swatches">
+        <div style="background:#FBF8EE"></div>
+        <div style="background:#6B5344"></div>
+        <div style="background:#2E5E4E"></div>
+        <div style="background:#1E1B16"></div>
+      </div>
+      <div class="palette-row">
+        <div class="palette-chip"><div style="background:#FBF8EE"></div><span>cream</span></div>
+        <div class="palette-chip"><div style="background:#6B5344"></div><span>warm ink</span></div>
+        <div class="palette-chip"><div style="background:#2E5E4E"></div><span>citation</span></div>
+        <div class="palette-chip"><div style="background:#1E1B16"></div><span>text</span></div>
+      </div>
+      <div class="mode-toggle">
+        <button class="mode-btn active" data-mode="light">Light</button>
+        <button class="mode-btn" data-mode="dark">Dark</button>
+      </div>
+      <div class="preview">
+        <div class="mock-app">
+          <div class="mock-header">
+            <div class="mock-logo">Dhar<em>miq</em></div>
+            <span class="mock-badge">Alpha</span>
+          </div>
+          <div class="mock-chat">
+            <div class="mock-user">Can I be arrested without a warrant?</div>
+            <div class="mock-assistant">
+              <p>It depends on the offence. For cognizable offences, police may arrest without warrant under CrPC/BNSS procedures; for most non-cognizable offences, a warrant is required.</p>
+              <div class="mock-citation">
+                <span class="mock-citation-label">Law says</span>
+                "Any police officer may... arrest without warrant any person who has been concerned in any cognizable offence"
+              </div>
+              <div class="mock-cite-link">BNSS · § 35 →</div>
+            </div>
+            <div class="mock-progress">
+              <div class="mock-progress-title">Reading criminal procedure…</div>
+              <div class="mock-step done"><span class="step-dot"></span> IPC → BNS mapping done</div>
+              <div class="mock-step active"><span class="step-dot"></span> Cross-checking arrest powers…</div>
+            </div>
+            <div class="mock-input-row">
+              <div class="mock-input">Ask about your rights…</div>
+              <button class="mock-send">Send</button>
+            </div>
+          </div>
+          <div class="mock-disclaimer">General information only — not legal advice</div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 9. Archival Bond -->
+    <article class="theme-card theme-archival" data-theme="archival">
+      <div class="theme-label">
+        <h2>9 · Archival Bond</h2>
+        <span>Bond paper off-white · ink blue · highest document fidelity</span>
+      </div>
+      <div class="trust-meta">
+        <div class="trust-meta-header">
+          <span class="trust-score-label">Trust score</span>
+          <span class="trust-badge recommended">Best paper + trust</span>
+        </div>
+        <div class="trust-meta-header">
+          <span class="trust-score-value high">92 / 100</span>
+        </div>
+        <div class="trust-meter"><span style="width:92%"></span></div>
+        <p class="trust-psych"><strong>Combines paper warmth with ink-blue authority.</strong> Bond paper texture + navy citations = "certified copy of statute." Highest trust in the paper family. Recommended base for Dharmiq if you want yellow undertones.</p>
+      </div>
+      <div class="swatches">
+        <div style="background:#F5F0E1"></div>
+        <div style="background:#1B3A5C"></div>
+        <div style="background:#2E5E4E"></div>
+        <div style="background:#1A1814"></div>
+      </div>
+      <div class="palette-row">
+        <div class="palette-chip"><div style="background:#F5F0E1"></div><span>bond</span></div>
+        <div class="palette-chip"><div style="background:#1B3A5C"></div><span>ink blue</span></div>
+        <div class="palette-chip"><div style="background:#2E5E4E"></div><span>verified</span></div>
+        <div class="palette-chip"><div style="background:#1A1814"></div><span>text</span></div>
+      </div>
+      <div class="mode-toggle">
+        <button class="mode-btn active" data-mode="light">Light</button>
+        <button class="mode-btn" data-mode="dark">Dark</button>
+      </div>
+      <div class="preview paper-bg">
+        <div class="mock-app">
+          <div class="mock-header">
+            <div class="mock-logo">Dhar<em>miq</em></div>
+            <span class="mock-badge">Verified sources</span>
+          </div>
+          <div class="mock-chat">
+            <div class="mock-user">What does Article 14 guarantee?</div>
+            <div class="mock-assistant">
+              <p>Article 14 guarantees equality before the law and equal protection of the laws within the territory of India. The State shall not deny to any person equality before the law.</p>
+              <div class="mock-citation">
+                <span class="mock-citation-label">Law says</span>
+                "The State shall not deny to any person equality before the law or the equal protection of the laws within the territory of India"
+              </div>
+              <div class="mock-cite-link">Constitution of India · Art. 14 →</div>
+            </div>
+            <div class="mock-progress">
+              <div class="mock-progress-title">Validator passed · streaming answer</div>
+              <div class="mock-step done"><span class="step-dot"></span> 6 sources retrieved &amp; reranked</div>
+              <div class="mock-step done"><span class="step-dot"></span> Citations enriched</div>
+              <div class="mock-step done"><span class="step-dot"></span> All claims grounded</div>
+            </div>
+            <div class="mock-input-row">
+              <div class="mock-input">Ask about your rights…</div>
+              <button class="mock-send">Send</button>
+            </div>
+          </div>
+          <div class="mock-disclaimer">General information only — not legal advice</div>
+        </div>
+      </div>
+    </article>
+
+  </div>
+
+  <script>
+    document.querySelectorAll('.theme-card').forEach(card => {
+      const theme = card.dataset.theme;
+      card.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          card.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const mode = btn.dataset.mode;
+          card.classList.remove('dark-variant', 'light-variant');
+          if (theme === 'midnight') {
+            if (mode === 'light') card.classList.add('light-variant');
+          } else {
+            if (mode === 'dark') card.classList.add('dark-variant');
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>

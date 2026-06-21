@@ -384,8 +384,26 @@ export function documentFileUrl(documentId: string, sourceType: "corpus" | "uplo
   return `/api/docs/${documentId}/file?source_type=${sourceType}`;
 }
 
-export function documentViewerPath(documentId: string, sourceType: "corpus" | "upload"): string {
-  return `/docs/${documentId}?source_type=${sourceType}`;
+export function documentViewerPath(
+  documentId: string,
+  sourceType: "corpus" | "upload",
+  options?: {
+    chunkId?: string;
+    quote?: string;
+    sectionLabel?: string;
+  },
+): string {
+  const params = new URLSearchParams({ source_type: sourceType });
+  if (options?.chunkId) {
+    params.set("chunk", options.chunkId);
+  }
+  if (options?.quote) {
+    params.set("quote", options.quote);
+  }
+  if (options?.sectionLabel) {
+    params.set("section", options.sectionLabel);
+  }
+  return `/docs/${documentId}?${params.toString()}`;
 }
 
 export type ParsedSSEEvent =

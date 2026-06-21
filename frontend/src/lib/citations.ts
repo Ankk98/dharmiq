@@ -41,7 +41,11 @@ export function linkifyNumericCitations(
     if (!citation) {
       return match;
     }
-    return `[${marker}](${documentViewerPath(citation.document_id, citation.source_type)})`;
+    return `[${marker}](${documentViewerPath(citation.document_id, citation.source_type, {
+      chunkId: citation.chunk_id,
+      sectionLabel: citation.section_label ?? undefined,
+      quote: citation.quote_text ?? undefined,
+    })})`;
   });
 }
 
@@ -54,7 +58,7 @@ export function linkifyInlineCitations(
   return text.replace(INLINE_CITATION_RE, (_match, docId: string, chunkId: string) => {
     const sourceType = sourceByDoc.get(docId) ?? "corpus";
     const label = chunkId.slice(0, 8);
-    return `[${label}](${documentViewerPath(docId, sourceType)})`;
+    return `[${label}](${documentViewerPath(docId, sourceType, { chunkId })})`;
   });
 }
 
@@ -91,7 +95,11 @@ function formatCitationLine(citation: Citation): string {
     ? `${citation.document_title} — ${citation.section_label}`
     : citation.document_title;
   const marker = citation.marker != null ? `[${citation.marker}] ` : "";
-  return `- ${marker}[${label}${pages}](${documentViewerPath(citation.document_id, citation.source_type)})`;
+  return `- ${marker}[${label}${pages}](${documentViewerPath(citation.document_id, citation.source_type, {
+    chunkId: citation.chunk_id,
+    sectionLabel: citation.section_label ?? undefined,
+    quote: citation.quote_text ?? undefined,
+  })})`;
 }
 
 export function appendSourcesSection(text: string, citations: Citation[]): string {

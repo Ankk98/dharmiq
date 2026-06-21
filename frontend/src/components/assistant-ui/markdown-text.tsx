@@ -8,12 +8,12 @@ import {
   unstable_memoizeMarkdownComponents as memoizeMarkdownComponents,
   useIsMarkdownCodeBlock,
 } from "@assistant-ui/react-markdown";
-import { Link } from "react-router-dom";
 import remarkGfm from "remark-gfm";
 import { type FC, memo, useState } from "react";
 import { CheckIcon, CopyIcon } from "lucide-react";
 
 import { DisclaimerBlock } from "@/components/chat/DisclaimerBlock";
+import { DocumentCitationLink } from "@/components/documents/DocumentCitationLink";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import {
   detectBlockquoteSourceType,
@@ -166,13 +166,12 @@ const defaultComponents = memoizeMarkdownComponents({
 
     if (isCitationMarker && href) {
       return (
-        <Link
-          to={href}
+        <DocumentCitationLink
+          href={href}
           className="citation-marker bg-primary-muted text-primary hover:bg-primary hover:text-primary-foreground mx-px inline-flex min-h-[1.15em] min-w-[1.15em] items-center justify-center rounded-[5px] px-1 align-super font-mono text-[0.62em] font-semibold no-underline transition-colors"
-          {...props}
         >
           {markerText}
-        </Link>
+        </DocumentCitationLink>
       );
     }
 
@@ -181,7 +180,11 @@ const defaultComponents = memoizeMarkdownComponents({
       className,
     );
     if (isDocLink && href) {
-      return <Link to={href} className={classes} {...props} />;
+      return (
+        <DocumentCitationLink href={href} className={classes}>
+          {children}
+        </DocumentCitationLink>
+      );
     }
     return (
       <a

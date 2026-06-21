@@ -7,8 +7,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/lib/auth";
 import { useAuth } from "@/hooks/useAuth";
 import { ChatRuntimeProvider } from "@/providers/ChatRuntimeProvider";
+import { DocumentPanelProvider } from "@/providers/DocumentPanelProvider";
 import { ChatPage } from "@/pages/ChatPage";
-import { DocumentViewerPage } from "@/pages/DocumentViewerPage";
 import { DocumentsPage } from "@/pages/DocumentsPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { SettingsPage } from "@/pages/SettingsPage";
@@ -33,7 +33,9 @@ function AuthenticatedShell() {
   return (
     <ProtectedRoute>
       <ChatRuntimeProvider>
-        <AppShell />
+        <DocumentPanelProvider>
+          <AppShell />
+        </DocumentPanelProvider>
       </ChatRuntimeProvider>
     </ProtectedRoute>
   );
@@ -51,15 +53,8 @@ export default function App() {
               <Route index element={<ChatPage />} />
               <Route path="documents" element={<DocumentsPage />} />
               <Route path="settings" element={<SettingsPage />} />
+              <Route path="docs/:documentId" element={<ChatPage />} />
             </Route>
-            <Route
-              path="/docs/:documentId"
-              element={
-                <ProtectedRoute>
-                  <DocumentViewerPage />
-                </ProtectedRoute>
-              }
-            />
           </Routes>
         </TooltipProvider>
       </ToastProvider>

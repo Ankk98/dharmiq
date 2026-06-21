@@ -407,3 +407,27 @@ a {
 .message-action-btn:active {
   transform: scale(0.96);
 }
+
+.doc-panel-resizer::after {
+  content: "";
+  width: 2px;
+  height: 38px;
+  border-radius: 2px;
+  background: var(--border);
+  transition:
+    background var(--duration-fast) var(--ease-default),
+    height var(--duration-fast) var(--ease-default);
+}
+
+.doc-panel-resizer:hover::after,
+.doc-panel-resizer--drag::after {
+  height: 54px;
+  background: var(--primary);
+  box-shadow: var(--glow);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .doc-panel.max-md\:transition-transform {
+    transition: none;
+  }
+}

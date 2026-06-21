@@ -1,13 +1,17 @@
-import { useCallback, useState, type CSSProperties } from "react";
+import { useCallback, useRef, useState, type CSSProperties } from "react";
 import { Outlet } from "react-router-dom";
 
 import { DebugPanel } from "@/components/chat/DebugPanel";
+import { DocumentPanel } from "@/components/documents/DocumentPanel";
 import { useAuth } from "@/hooks/useAuth";
 import { useChatRuntimeState } from "@/hooks/useChatRuntimeState";
+import { useDocumentPanel } from "@/hooks/useDocumentPanel";
 import {
   SIDEBAR_COLLAPSED_WIDTH_PX,
   SIDEBAR_WIDTH_PX,
 } from "@/lib/design/constants";
+import { useDocumentPanelWidth } from "@/lib/documentPanelWidth";
+import { cn } from "@/lib/utils";
 
 import { AppSidebar } from "./AppSidebar";
 import { AuroraBackground } from "./AuroraBackground";
@@ -18,8 +22,10 @@ import { TopNav } from "./TopNav";
 export function AppShell() {
   const { user } = useAuth();
   const { debugEvents } = useChatRuntimeState();
+  const { isOpen, panelWidthPx, isResizing } = useDocumentPanel();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const shellRef = useRef<HTMLDivElement>(null);
 
   const toggleSidebar = useCallback(() => {
     setSidebarCollapsed((value) => !value);
@@ -33,8 +39,10 @@ export function AppShell() {
     ? SIDEBAR_COLLAPSED_WIDTH_PX
     : SIDEBAR_WIDTH_PX;
 
+  const docPanelWidth = useDocumentPanelWidth(isOpen, panelWidthPx, sidebarWidth);
+
   const gridStyle = {
-    gridTemplateColumns: `${sidebarWidth}px minmax(0, 1fr) 0px`,
+    gridTemplateColumns: `${sidebarWidth}px minmax(0, 1fr) ${docPanelWidth}`,
   } satisfies CSSProperties;
 
   return (
@@ -42,7 +50,11 @@ export function AppShell() {
       <AuroraBackground />
 
       <div
-        className="relative z-[1] hidden h-full min-h-0 w-full md:grid"
+        ref={shellRef}
+        className={cn(
+          "relative z-[1] hidden h-full min-h-0 w-full md:grid",
+          isResizing && "select-none",
+        )}
         style={gridStyle}
       >
         <AppSidebar collapsed={sidebarCollapsed} onToggleCollapse={toggleSidebar} />
@@ -50,6 +62,7 @@ export function AppShell() {
           debugEvents={debugEvents}
           isSuperuser={Boolean(user?.is_superuser)}
         />
+        <DocumentPanel sidebarWidthPx={sidebarWidth} shellRef={shellRef} />
       </div>
 
       <div className="relative z-[1] flex h-full min-h-0 w-full flex-col md:hidden">
@@ -76,6 +89,7 @@ export function AppShell() {
           onMobileMenuOpen={() => setMobileNavOpen(true)}
           onNavigate={closeMobileNav}
         />
+        <DocumentPanel sidebarWidthPx={sidebarWidth} shellRef={shellRef} />
       </div>
     </div>
   );

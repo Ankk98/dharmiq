@@ -1,18 +1,27 @@
 import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
 
-import { Button } from "@/components/ui/button";
 import { documentFileUrl, getToken } from "@/lib/api";
 
-export function DocumentViewerPage() {
-  const [params] = useSearchParams();
-  const documentId = window.location.pathname.split("/").pop() ?? "";
-  const sourceType = (params.get("source_type") ?? "corpus") as "corpus" | "upload";
-  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+type UseDocumentViewerOptions = {
+  documentId: string;
+  sourceType: "corpus" | "upload";
+};
+
+type DocumentViewerState = {
+  title: string;
+  objectUrl: string | null;
+  error: string | null;
+  isLoading: boolean;
+};
+
+export function useDocumentViewer({
+  documentId,
+  sourceType,
+}: UseDocumentViewerOptions): DocumentViewerState {
   const [title, setTitle] = useState("Document");
-  const [error, setError] = useState<string | null>(() =>
-    !getToken() || !documentId ? "Unable to load document." : null,
-  );
+  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const token = getToken();
@@ -24,6 +33,11 @@ export function DocumentViewerPage() {
     let blobUrl: string | null = null;
 
     void (async () => {
+      setIsLoading(true);
+      setError(null);
+      setObjectUrl(null);
+      setTitle("Document");
+
       try {
         const metaResponse = await fetch(
           `/api/docs/${documentId}?source_type=${sourceType}`,
@@ -53,6 +67,10 @@ export function DocumentViewerPage() {
         if (active) {
           setError(err instanceof Error ? err.message : "Failed to load document");
         }
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
       }
     })();
 
@@ -64,28 +82,5 @@ export function DocumentViewerPage() {
     };
   }, [documentId, sourceType]);
 
-  return (
-    <div className="flex h-full flex-col">
-      <header className="border-border flex items-center justify-between border-b px-4 py-3">
-        <div>
-          <p className="text-sm font-medium">{title}</p>
-          <p className="text-muted-foreground text-xs">Source: {sourceType}</p>
-        </div>
-        <Link to="/">
-          <Button variant="outline" size="sm">
-            Back to chat
-          </Button>
-        </Link>
-      </header>
-      <div className="flex-1 overflow-hidden">
-        {error ? <p className="text-destructive p-4 text-sm">{error}</p> : null}
-        {!error && !objectUrl ? (
-          <p className="text-muted-foreground p-4 text-sm">Loading document...</p>
-        ) : null}
-        {objectUrl ? (
-          <iframe title={title} src={objectUrl} className="h-full w-full border-0" />
-        ) : null}
-      </div>
-    </div>
-  );
+  return { title, objectUrl, error, isLoading };
 }

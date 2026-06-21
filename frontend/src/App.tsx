@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import { AppShell } from "@/components/layout/AppShell";
+import { ToastProvider } from "@/components/ui/toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/lib/auth";
 import { useAuth } from "@/hooks/useAuth";
@@ -41,25 +42,27 @@ function AuthenticatedShell() {
 export default function App() {
   return (
     <AuthProvider>
-      <TooltipProvider>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignupPage />} />
-          <Route element={<AuthenticatedShell />}>
-            <Route index element={<ChatPage />} />
-            <Route path="documents" element={<DocumentsPage />} />
-            <Route path="settings" element={<SettingsPage />} />
-          </Route>
-          <Route
-            path="/docs/:documentId"
-            element={
-              <ProtectedRoute>
-                <DocumentViewerPage />
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
-      </TooltipProvider>
+      <ToastProvider>
+        <TooltipProvider>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
+            <Route element={<AuthenticatedShell />}>
+              <Route index element={<ChatPage />} />
+              <Route path="documents" element={<DocumentsPage />} />
+              <Route path="settings" element={<SettingsPage />} />
+            </Route>
+            <Route
+              path="/docs/:documentId"
+              element={
+                <ProtectedRoute>
+                  <DocumentViewerPage />
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </TooltipProvider>
+      </ToastProvider>
     </AuthProvider>
   );
 }

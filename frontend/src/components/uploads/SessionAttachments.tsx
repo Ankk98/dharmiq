@@ -11,6 +11,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { useChatRuntimeState } from "@/hooks/useChatRuntimeState";
+import { useToast } from "@/hooks/useToast";
 import {
   attachUploads,
   detachUpload,
@@ -31,6 +32,40 @@ type SessionAttachmentsContextValue = {
 
 const SessionAttachmentsContext = createContext<SessionAttachmentsContextValue | null>(null);
 
+function notifyAttached(toast: (options: { title: string; detail?: string }) => void, filenames: string[]) {
+  if (filenames.length === 0) {
+    return;
+  }
+  if (filenames.length === 1) {
+    toast({ title: "Document attached", detail: filenames[0] });
+    return;
+  }
+  toast({
+    title: `${filenames.length} documents attached`,
+    detail: filenames.join(", "),
+  });
+}
+
+type AttachmentChipProps = {
+  filename: string;
+  onDetach: () => void;
+};
+
+const AttachmentChip: FC<AttachmentChipProps> = ({ filename, onDetach }) => (
+  <span className="composer-attach-chip border-border bg-card text-foreground inline-flex items-center gap-[0.45rem] rounded-full border px-[0.6rem] py-[0.35rem] text-[0.74em] shadow-[var(--card-highlight)]">
+    <span className="bg-brand-accent size-1.5 shrink-0 rounded-full" aria-hidden />
+    <span className="max-w-36 truncate">{filename}</span>
+    <button
+      type="button"
+      className="text-faint hover:text-destructive cursor-pointer leading-none transition-colors"
+      aria-label={`Remove ${filename}`}
+      onClick={onDetach}
+    >
+      ✕
+    </button>
+  </span>
+);
+
 function useSessionAttachmentsContext(): SessionAttachmentsContextValue {
   const context = useContext(SessionAttachmentsContext);
   if (!context) {
@@ -49,6 +84,7 @@ export const SessionAttachmentsProvider: FC<SessionAttachmentsProviderProps> = (
   children,
 }) => {
   const { registerAttachPicker, refreshMessages } = useChatRuntimeState();
+  const { toast } = useToast();
   const [attachments, setAttachments] = useState<SessionAttachment[]>([]);
   const [uploadsById, setUploadsById] = useState<Map<string, UserUpload>>(new Map());
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -142,11 +178,16 @@ export const SessionAttachmentsProvider: FC<SessionAttachmentsProviderProps> = (
       return;
     }
     setError(null);
+    const selectedIds = Array.from(selected);
+    const attachedNames = selectedIds
+      .map((id) => library.find((upload) => upload.id === id)?.original_filename)
+      .filter((name): name is string => name != null);
     try {
-      await attachUploads(sessionId, Array.from(selected));
+      await attachUploads(sessionId, selectedIds);
       setPickerOpen(false);
       await refresh();
       await refreshMessages();
+      notifyAttached(toast, attachedNames);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Attach failed");
     }
@@ -328,34 +369,22 @@ export const ComposerAttachmentChips: FC = () => {
   }
 
   return (
-    <div className="flex w-full flex-wrap gap-1.5">
+    <div className="composer-attach-row flex w-full flex-wrap gap-[0.45rem]">
       {attachedUploads.map((upload) => (
-        <span
+        <AttachmentChip
           key={upload.id}
-          className="composer-attach-chip bg-card text-foreground inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[0.74em] shadow-[var(--card-highlight)]"
-        >
-          <span className="bg-brand-accent size-1.5 shrink-0 rounded-full" aria-hidden />
-          <span className="max-w-36 truncate">{upload.original_filename}</span>
-          <button
-            type="button"
-            className="text-faint hover:text-destructive rounded-full p-0.5 transition-colors"
-            aria-label={`Remove ${upload.original_filename}`}
-            onClick={() => void handleDetach(upload.id)}
-          >
-            <XIcon className="size-3" />
-          </button>
-        </span>
+          filename={upload.original_filename}
+          onDetach={() => void handleDetach(upload.id)}
+        />
       ))}
-      <Button
+      <button
         type="button"
-        variant="ghost"
-        size="sm"
-        className="text-muted-foreground h-auto px-2 py-1 text-[0.72em] font-normal"
+        className="border-border bg-card text-muted-foreground hover:text-foreground hover:border-ring cursor-pointer rounded-lg border px-[0.7rem] py-[0.4rem] text-[0.72em] shadow-[var(--card-highlight)] transition-colors disabled:cursor-not-allowed disabled:opacity-40"
         disabled={!sessionId}
         onClick={() => void openPicker()}
       >
         + Attach document
-      </Button>
+      </button>
     </div>
   );
 };

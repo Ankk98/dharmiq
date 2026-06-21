@@ -337,9 +337,26 @@ a {
   animation: chip-in var(--duration-slow) var(--ease-spring);
 }
 
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.toast-item {
+  animation: toast-in var(--duration-slow) var(--ease-spring);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .thread-msg-enter,
-  .composer-attach-chip {
+  .composer-attach-chip,
+  .toast-item {
     opacity: 1;
     animation: none;
   }

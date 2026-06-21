@@ -1,12 +1,16 @@
 import type { ReactNode } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
+import { AppShell } from "@/components/layout/AppShell";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/lib/auth";
 import { useAuth } from "@/hooks/useAuth";
+import { ChatRuntimeProvider } from "@/providers/ChatRuntimeProvider";
 import { ChatPage } from "@/pages/ChatPage";
 import { DocumentViewerPage } from "@/pages/DocumentViewerPage";
+import { DocumentsPage } from "@/pages/DocumentsPage";
 import { LoginPage } from "@/pages/LoginPage";
+import { SettingsPage } from "@/pages/SettingsPage";
 import { SignupPage } from "@/pages/SignupPage";
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -24,6 +28,16 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
   return children;
 }
 
+function AuthenticatedShell() {
+  return (
+    <ProtectedRoute>
+      <ChatRuntimeProvider>
+        <AppShell />
+      </ChatRuntimeProvider>
+    </ProtectedRoute>
+  );
+}
+
 export default function App() {
   return (
     <AuthProvider>
@@ -31,14 +45,11 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <ChatPage />
-              </ProtectedRoute>
-            }
-          />
+          <Route element={<AuthenticatedShell />}>
+            <Route index element={<ChatPage />} />
+            <Route path="documents" element={<DocumentsPage />} />
+            <Route path="settings" element={<SettingsPage />} />
+          </Route>
           <Route
             path="/docs/:documentId"
             element={

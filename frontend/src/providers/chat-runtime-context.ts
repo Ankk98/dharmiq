@@ -9,6 +9,7 @@ export type ChatRuntimeContextValue = {
   slowNotice: boolean;
   isRunning: boolean;
   lastCitations: Citation[];
+  sessions: ChatSession[];
   refreshSessions: () => Promise<ChatSession[]>;
   sessionId: string | null;
   progressView: ProgressView;

@@ -182,6 +182,8 @@ html[lang="hi"] {
   --color-citation-doc-bg: var(--citation-doc-bg);
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --color-primary-muted: var(--primary-muted);
+  --color-border-subtle: var(--border-subtle);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -243,5 +245,41 @@ a {
   h5,
   h6 {
     font-family: var(--font-display);
+  }
+}
+
+@keyframes aurora {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+
+  100% {
+    transform: translateY(-2%) scale(1.06);
+  }
+}
+
+.aurora-bg {
+  background:
+    radial-gradient(
+      42% 36% at 16% 10%,
+      rgba(var(--wp-accent), 0.1) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      40% 34% at 88% 18%,
+      rgba(var(--wp-accent), 0.07) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      48% 42% at 72% 98%,
+      rgba(var(--wp-accent), 0.06) 0%,
+      transparent 70%
+    );
+  animation: aurora 22s ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora-bg {
+    animation: none;
   }
 }

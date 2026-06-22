@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from dharmiq.core.errors import UploadError
 from dharmiq.db.models.chats import ChatSession, ChatSessionUpload
-from dharmiq.db.models.uploads import UserUpload, UserUploadChunk
+from dharmiq.db.models.uploads import ProcessingStage, UserUpload
 from dharmiq.uploads.attachment_events import record_attachment_event
 
 
@@ -22,11 +22,8 @@ class AttachedUploadInfo:
     attached_at: datetime
 
 
-async def _upload_is_indexed(db: AsyncSession, upload_id: uuid.UUID) -> bool:
-    result = await db.execute(
-        select(UserUploadChunk.id).where(UserUploadChunk.upload_id == upload_id).limit(1)
-    )
-    return result.scalar_one_or_none() is not None
+def _upload_is_indexed(upload: UserUpload) -> bool:
+    return upload.processing_stage == ProcessingStage.READY.value
 
 
 async def list_attached_uploads(
@@ -50,13 +47,12 @@ async def list_attached_uploads(
     rows = result.all()
     attached: list[AttachedUploadInfo] = []
     for link, upload in rows:
-        indexed = await _upload_is_indexed(db, upload.id)
         attached.append(
             AttachedUploadInfo(
                 upload_id=upload.id,
                 original_filename=upload.original_filename,
                 mime_type=upload.mime_type,
-                indexed=indexed,
+                indexed=_upload_is_indexed(upload),
                 attached_at=link.attached_at,
             )
         )
@@ -91,7 +87,7 @@ async def attach_uploads_to_session(
                 "Cannot attach another user's upload",
                 details={"upload_id": str(upload_id)},
             )
-        if not await _upload_is_indexed(db, upload_id):
+        if not _upload_is_indexed(upload):
             raise UploadError(
                 "Upload is not indexed yet",
                 details={"upload_id": str(upload_id)},

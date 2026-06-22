@@ -44,6 +44,8 @@ async def test_upload_pdf(
     assert body["original_filename"] == "employment_contract.pdf"
     assert body["mime_type"] == "application/pdf"
     assert body["indexed"] is False
+    assert body["processing_stage"] == "uploaded"
+    assert body["chunk_count"] == 0
     assert body["processing_enqueued"] is True
 
 
@@ -79,6 +81,36 @@ async def test_upload_rejects_oversized_file(
         files={"file": ("large.pdf", _pdf_bytes(), "application/pdf")},
     )
     assert response.status_code == 413
+
+
+@pytest.mark.asyncio
+async def test_get_upload_returns_stage(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DHARMIQ_ROOT", str(tmp_path))
+    from dharmiq.config.settings import get_settings
+
+    get_settings.cache_clear()
+
+    created = await client.post(
+        "/api/uploads",
+        headers=auth_headers,
+        files={"file": ("contract.pdf", _pdf_bytes(), "application/pdf")},
+    )
+    assert created.status_code == 201
+    upload_id = created.json()["id"]
+
+    fetched = await client.get(f"/api/uploads/{upload_id}", headers=auth_headers)
+    assert fetched.status_code == 200
+    body = fetched.json()
+    assert body["id"] == upload_id
+    assert body["processing_stage"] == "uploaded"
+    assert body["chunk_count"] == 0
+    assert body["processing_error"] is None
+    assert body["indexed"] is False
 
 
 @pytest.mark.asyncio

@@ -53,6 +53,7 @@ class AgentGraphState(TypedDict, total=False):
     citations: list[dict[str, Any]]
 
     total_tokens: int
+    node_execution_count: int
     blocked: bool
     block_reason: str | None
     error_message: str | None

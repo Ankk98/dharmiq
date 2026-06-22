@@ -215,6 +215,16 @@ class AuthSettings(BaseModel):
     jwt_lifetime_seconds: int = 3600
 
 
+class CostLimitsSettings(BaseModel):
+    enforce: bool = True
+    per_session_usd: float = 1.0
+    per_account_monthly_usd: float = 10.0
+
+
+class BeatScheduleSettings(BaseModel):
+    enabled: bool = True
+
+
 class Settings(BaseModel):
     env: str = "dev"
     repo_root: Path = REPO_ROOT
@@ -233,6 +243,8 @@ class Settings(BaseModel):
     eval: EvalSettings = Field(default_factory=EvalSettings)
     logging: LoggingSettings = Field(default_factory=LoggingSettings)
     auth: AuthSettings = Field(default_factory=AuthSettings)
+    cost_limits: CostLimitsSettings = Field(default_factory=CostLimitsSettings)
+    beat_schedule: BeatScheduleSettings = Field(default_factory=BeatScheduleSettings)
 
 
 def _load_yaml_config(env: str) -> dict:
@@ -266,6 +278,13 @@ def _apply_env_overrides(settings_dict: dict) -> dict:
         "yes",
     }:
         agent_graph["debug_progress"] = True
+
+    if flag := os.environ.get("DHARMIQ_COST_LIMITS_ENFORCE"):
+        settings_dict.setdefault("cost_limits", {})["enforce"] = flag.lower() not in {
+            "0",
+            "false",
+            "no",
+        }
 
     return settings_dict
 

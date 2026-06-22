@@ -5,7 +5,7 @@ import re
 from typing import Any
 
 from dharmiq.db.models.chats import ChatMessage, MessageRole
-from dharmiq.llm.openrouter_client import OpenRouterClient, extract_assistant_content, extract_token_usage
+from dharmiq.llm.openrouter_client import OpenRouterClient, extract_assistant_content
 
 
 def format_chat_history(messages: list[ChatMessage], *, limit: int = 20) -> str:
@@ -46,7 +46,7 @@ async def call_json_agent(
     system: str,
     user_content: str,
     model: str | None = None,
-) -> tuple[dict[str, Any], int]:
+) -> tuple[dict[str, Any], dict[str, Any]]:
     response = await client.chat_completion(
         [
             {"role": "system", "content": system},
@@ -57,8 +57,7 @@ async def call_json_agent(
         response_format={"type": "json_object"},
     )
     content = extract_assistant_content(response)
-    tokens = extract_token_usage(response)
-    return parse_json_response(content), tokens
+    return parse_json_response(content), response
 
 
 async def call_text_agent(
@@ -68,7 +67,7 @@ async def call_text_agent(
     user_content: str,
     model: str | None = None,
     temperature: float = 0.2,
-) -> tuple[str, int]:
+) -> tuple[str, dict[str, Any]]:
     response = await client.chat_completion(
         [
             {"role": "system", "content": system},
@@ -77,4 +76,4 @@ async def call_text_agent(
         model=model,
         temperature=temperature,
     )
-    return extract_assistant_content(response), extract_token_usage(response)
+    return extract_assistant_content(response), response

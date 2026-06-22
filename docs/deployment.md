@@ -619,12 +619,146 @@ tar -czf /opt/dharmiq/backups/data-$(date +%Y%m%d).tar.gz -C /opt/dharmiq data/
 
 ---
 
+## 17. Recovery behavior
+
+Dharmiq persists durable state in **Postgres** (chat requests, LangGraph checkpoints, upload stages, idempotency keys). **Redis** holds ephemeral Celery queues and SSE sequence counters. On restart or Redis data loss, components recover as follows:
+
+| Component | On Redis flush | On worker crash | On API restart |
+|-----------|----------------|-----------------|----------------|
+| LangGraph state | Postgres checkpoint — resume | Resume from checkpoint | N/A |
+| SSE `seq` | Redis INCR lost — client uses `?after_seq=N` DB replay | Same | N/A |
+| Celery queue | In-flight lost — re-enqueue pending/running from DB | Same | N/A |
+| Upload mid-pipeline | Re-enqueue if stage ∉ {ready, failed} | Same | N/A |
+
+**Celery worker startup:** `worker_ready` re-enqueues pending/running `chat_requests` and stuck `user_uploads` (stage not `ready` or `failed`).
+
+**Chat idempotency:** Clients may send `Idempotency-Key: <uuid>` on message POST/retry/edit. Duplicate key + same body returns the original `chat_request_id` (24h TTL). Celery tasks use `task_id=chat_request_id` to avoid duplicate agent runs.
+
+**Redis persistence:** Enable AOF (and/or RDB) on the Redis service with a named volume for `/data` so queue loss is less likely across container restarts. See `docker-compose.yml` Redis service configuration.
+
+User-facing copy for unrecoverable failures: “Something went wrong. Please retry your message.”
+
+---
+
+## 18. Docker deployment
+
+Dharmiq v0.4 adds **full-stack Docker Compose** files alongside the existing host (`uv` + `npm`) workflow. Use them for self-hosting, production-like smoke tests, or contributors who prefer containers over local Python/Node installs.
+
+| File | Purpose |
+|------|---------|
+| `docker-compose.yml` | **Infra only** — Postgres, Redis, Flower, Prometheus, Grafana (API/Celery on host) |
+| `docker-compose.dev.yml` | **Dev stack** — API (reload), Celery worker + beat, Vite frontend, bind-mounted source and `./data/` |
+| `docker-compose.prod.yml` | **Prod-like stack** — built images, Nginx on port 80, named volumes, no source mounts |
+
+### 18.1 Prerequisites
+
+- Docker Engine 24+ and Compose plugin v2
+- 8+ GB RAM recommended (local sentence-transformers and reranker models load in API/Celery containers)
+- `.env` at repo root with `OPENROUTER_API_KEY`, `DHARMIQ_JWT_SECRET`, and `DHARMIQ_DATABASE_PASSWORD`
+
+```bash
+cp .env.example .env
+# Edit secrets before prod compose
+```
+
+### 18.2 Development stack
+
+```bash
+docker compose -f docker-compose.dev.yml up --build
+```
+
+| Service | URL |
+|---------|-----|
+| Frontend (Vite HMR) | http://localhost:5173 |
+| API | http://localhost:8000 |
+| Postgres | `localhost:5433` |
+| Redis | `localhost:6379` |
+
+Bind mounts:
+
+| Host path | Container path | Notes |
+|-----------|----------------|-------|
+| `./backend` | `/app/backend` | API `--reload` |
+| `./frontend` | `/app` (frontend service) | Vite HMR |
+| `./config` | `/app/config` | `DHARMIQ_ENV=docker` |
+| `./data/corpus` | `/app/data/corpus` | IndiaCode PDF ingestion |
+| `./data/uploads` | `/app/data/uploads` | User uploads |
+| `./data/eval` | `/app/data/eval` | Eval datasets (optional) |
+
+Optional observability (Flower, Redis Commander, Prometheus, Grafana):
+
+```bash
+docker compose -f docker-compose.dev.yml --profile observability up
+```
+
+### 18.3 Production-like stack
+
+```bash
+docker compose -f docker-compose.prod.yml build
+docker compose -f docker-compose.prod.yml up -d
+curl -s http://localhost/api/health
+```
+
+| Service | Notes |
+|---------|-------|
+| `nginx` | Serves `frontend/dist/`; proxies `/api` to `api:8000` |
+| `api` | Uvicorn with 2 workers; runs Alembic + LangGraph checkpoint init on start |
+| `celery-worker` / `celery-beat` | Same backend image; beat schedule disabled via `config.docker.yaml` |
+| `postgres` / `redis` | Named volumes only |
+
+Named volumes: `dharmiq_pgdata`, `dharmiq_redis`, `dharmiq_uploads`, `dharmiq_corpus`.
+
+**Seed corpus in prod:** copy PDFs into the corpus volume before ingestion:
+
+```bash
+docker compose -f docker-compose.prod.yml exec api \
+  mkdir -p /app/data/corpus/india_code/raw
+# docker cp local_pdfs/. $(docker compose -f docker-compose.prod.yml ps -q api):/app/data/corpus/india_code/raw/
+docker compose -f docker-compose.prod.yml exec celery-worker \
+  celery -A celery_app call dharmiq.ingestion.sync_india_code_pdfs
+```
+
+**TLS:** Terminate HTTPS on a host Nginx or cloud load balancer in front of port 80, or add a reverse-proxy container. The bundled Nginx config listens on port 80 only.
+
+### 18.4 Nginx / SSE
+
+`docker/nginx/default.conf` mirrors the host Nginx rules in §8:
+
+- `proxy_read_timeout 300s` on `/api/chat/requests/` (SSE stream)
+- `proxy_buffering off` for immediate event delivery
+- `client_max_body_size 100m` for uploads
+
+### 18.5 Smoke test checklist (prod compose)
+
+After `docker compose -f docker-compose.prod.yml up -d`:
+
+- [ ] `curl -s http://localhost/api/health` returns healthy
+- [ ] Signup / login
+- [ ] Chat message → streamed answer
+- [ ] Upload PDF → stages → ready → attach → cite in answer
+- [ ] Citation → document panel Parsed highlight
+- [ ] Settings → export JSON
+- [ ] Thumbs feedback on assistant message
+- [ ] `docker compose -f docker-compose.prod.yml down && up -d` → pending chat/upload recovers (see §17)
+
+### 18.6 VPS deployment options
+
+| Approach | When to use |
+|----------|-------------|
+| **Host path (§1–§16)** | Current `app.dharmiq.in` — systemd API/Celery, Docker for Postgres/Redis only |
+| **Prod compose** | Single-server self-host with everything in containers; put TLS in front of port 80 |
+| **Hybrid** | Prod compose on a staging host; promote to host path on beta when validated |
+
+---
+
 ## Related docs
 
-- [README](../README.md) — local development quick start (v0.2 agent pipeline)
+- [README](../README.md) — local development quick start (v0.4: host + Docker)
 - [backend/README.md](../backend/README.md) — API endpoints, LangGraph agents, ingestion, eval
 - [frontend/README.md](../frontend/README.md) — streaming chat UI, attachments
 - [config/config.beta.yaml](../config/config.beta.yaml) — beta deployment settings (`agent_graph.enabled: true`)
+- [v0.4/prd.md](./plans/v0.4/prd.md) — v0.4 product requirements (implemented)
+- [v0.4/trd.md](./plans/v0.4/trd.md) — v0.4 technical design (implemented)
 - [v0.2-prd-trd.md](./plans/v0.2-prd-trd.md) — v0.2 product & technical requirements (implemented)
 - [v0.2-implementation-phases.md](./plans/v0.2-implementation-phases.md) — phase playbook (completed)
 - [v02-eval-baseline.md](./plans/v02-eval-baseline.md) — v0.1 eval baseline and v0.2 nightly gate targets

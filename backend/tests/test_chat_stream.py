@@ -664,9 +664,34 @@ async def test_retry_message_reprocesses_turn(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     req_id, _, _ = await _collect_stream_events_for_request(client, auth_headers, monkeypatch)
-    _mock_full_pipeline_llm(monkeypatch)
+    clarifier = {
+        "topic": "police_arrest",
+        "needs_more_info": False,
+        "followup_questions": [],
+        "reason": "Enough detail",
+    }
+    rewriter = {"queries": ["Article 22 arrest rights", "police station questioning rights"]}
+    retry_answer = (
+        "You also have the right to consult a lawyer under Article 22 [1].\n\n"
+        "> Article 22 protects against arbitrary arrest and detention.\n\n"
+        "This is not legal advice."
+    )
+    validator = {
+        "must_regenerate": False,
+        "issues": [],
+        "regeneration_instructions": "",
+        "final_warning": "Consult a qualified lawyer for your situation.",
+    }
+    mock_litellm_acompletion(
+        monkeypatch,
+        [
+            json.dumps(clarifier),
+            json.dumps(rewriter),
+            retry_answer,
+            json.dumps(validator),
+        ],
+    )
     mock_rerank(monkeypatch)
-    tasks = _patch_inline_enqueue(monkeypatch)
 
     factory = get_session_factory()
     async with factory() as db:
@@ -686,23 +711,20 @@ async def test_retry_message_reprocesses_turn(
         )
         old_assistant = old_assistant_result.scalar_one()
 
-    retry = await client.post(
-        f"/api/chat/sessions/{session_id}/messages/{user_message.id}/retry",
-        headers=auth_headers,
-    )
+    with patch("dharmiq.llm.retrieval.get_embedding_backend", return_value=_StaticEmbeddingBackend()):
+        retry = await client.post(
+            f"/api/chat/sessions/{session_id}/messages/{user_message.id}/retry",
+            headers=auth_headers,
+        )
     assert retry.status_code == 202
     retry_req_id = uuid.UUID(retry.json()["chat_request_id"])
     assert retry_req_id != req_id
 
-    sse_task = asyncio.create_task(
-        _read_sse_events(
-            client,
-            f"/api/chat/requests/{retry_req_id}/stream",
-            auth_headers,
-        )
+    events = await _read_sse_events(
+        client,
+        f"/api/chat/requests/{retry_req_id}/stream",
+        auth_headers,
     )
-    await asyncio.gather(*tasks)
-    events = await sse_task
     done_events = [data for event_type, data in events if event_type == "done"]
     assert len(done_events) == 1
     assert done_events[0]["status"] == ChatRequestStatus.COMPLETED.value

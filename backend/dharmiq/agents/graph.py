@@ -18,6 +18,7 @@ from dharmiq.agents.nodes.retrieve import retrieve_node
 from dharmiq.agents.nodes.validator import validator_node
 from dharmiq.agents.runtime import GraphRuntime
 from dharmiq.agents.state import AgentGraphState
+from dharmiq.core.errors import GraphStepLimitExceeded
 from dharmiq.agents.progress import (
     NODE_PROGRESS_LABELS,
     default_step_details,
@@ -38,6 +39,8 @@ STEP_DETAIL_FNS: dict[str, StepDetailFn] = {
     "retrieve": retrieve_step_details,
     "validator": validator_step_details,
 }
+
+MAX_NODE_EXECUTIONS = 100
 
 
 def _resolve_detail_fn(step_id: str, detail_fn: StepDetailFn | None) -> StepDetailFn:
@@ -62,16 +65,23 @@ def with_progress(
 
     @wraps(node_fn)
     async def wrapped(state: AgentGraphState, config: RunnableConfig) -> dict[str, Any]:
+        count = state.get("node_execution_count", 0) + 1
+        if count > MAX_NODE_EXECUTIONS:
+            raise GraphStepLimitExceeded(
+                f"Agent graph exceeded {MAX_NODE_EXECUTIONS} node executions"
+            )
+
         runtime: GraphRuntime = config["configurable"]["runtime"]
         emitter = runtime.emitter
         if emitter is not None:
             await emitter.emit_step_start(step_id)
         try:
             result = await node_fn(state, config)
+            merged = {**result, "node_execution_count": count}
             if emitter is not None:
                 detailed, debug = resolved_detail_fn(state, result)
                 await emitter.emit_step_end_tiers(step_id, detailed=detailed, debug=debug)
-            return result
+            return merged
         except Exception:
             if emitter is not None:
                 await emitter.emit_step_failed(

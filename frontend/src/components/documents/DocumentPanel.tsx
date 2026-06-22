@@ -1,6 +1,7 @@
-import { useCallback, useRef, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { XIcon } from "lucide-react";
 
+import { ParsedDocumentView } from "@/components/documents/ParsedDocumentView";
 import { useDocumentPanel } from "@/hooks/useDocumentPanel";
 import { useDocumentViewer } from "@/hooks/useDocumentViewer";
 import {
@@ -8,6 +9,8 @@ import {
   DOC_PANEL_MIN_WIDTH_PX,
 } from "@/lib/design/constants";
 import { cn } from "@/lib/utils";
+
+type DocumentPanelTab = "original" | "parsed";
 
 type DocumentPanelProps = {
   sidebarWidthPx: number;
@@ -28,6 +31,17 @@ export function DocumentPanel({ sidebarWidthPx, shellRef }: DocumentPanelProps) 
 
   const documentId = params?.documentId ?? "";
   const sourceType = params?.sourceType ?? "corpus";
+  const [tabState, setTabState] = useState<{ docId: string; tab: DocumentPanelTab }>({
+    docId: "",
+    tab: "original",
+  });
+  const activeTab = tabState.docId === documentId ? tabState.tab : "original";
+  const setActiveTab = useCallback(
+    (tab: DocumentPanelTab) => {
+      setTabState({ docId: documentId, tab });
+    },
+    [documentId],
+  );
   const { title, objectUrl, error, isLoading } = useDocumentViewer({
     documentId,
     sourceType,
@@ -127,28 +141,64 @@ export function DocumentPanel({ sidebarWidthPx, shellRef }: DocumentPanelProps) 
           </button>
         </header>
 
-        <div className="bg-warning/8 text-warning border-warning/25 shrink-0 border-b px-3.5 py-2 text-[0.68em] leading-snug">
-          Source preview — quoted passage highlighting coming soon
+        <div
+          className="border-border flex shrink-0 gap-1 border-b px-3.5 py-2"
+          role="tablist"
+          aria-label="Document view"
+        >
+          {(["original", "parsed"] as const).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab}
+              className={cn(
+                "rounded-[7px] px-2.5 py-1 text-[0.72em] capitalize transition-colors",
+                activeTab === tab
+                  ? "bg-primary/10 text-foreground font-medium"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+              onClick={() => setActiveTab(tab)}
+            >
+              {tab}
+            </button>
+          ))}
         </div>
 
-        <div className="relative min-h-0 flex-1 overflow-hidden">
-          {isOpen && error ? (
-            <p className="text-destructive p-4 text-sm">{error}</p>
-          ) : null}
-          {isOpen && !error && isLoading ? (
-            <p className="text-muted-foreground p-4 text-sm">Loading document…</p>
-          ) : null}
-          {isOpen && objectUrl ? (
-            <iframe
-              title={title}
-              src={objectUrl}
-              className="absolute inset-0 h-full w-full border-0"
-            />
-          ) : null}
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+          {activeTab === "original" ? (
+            <>
+              {isOpen && error ? (
+                <p className="text-destructive p-4 text-sm">{error}</p>
+              ) : null}
+              {isOpen && !error && isLoading ? (
+                <p className="text-muted-foreground p-4 text-sm">Loading document…</p>
+              ) : null}
+              {isOpen && objectUrl ? (
+                <iframe
+                  title={title}
+                  src={objectUrl}
+                  className="absolute inset-0 h-full w-full border-0"
+                />
+              ) : null}
+            </>
+          ) : (
+            isOpen ? (
+              <ParsedDocumentView
+                documentId={documentId}
+                sourceType={sourceType}
+                chunkId={params?.chunkId}
+                quoteStart={params?.quoteStart}
+                quoteEnd={params?.quoteEnd}
+              />
+            ) : null
+          )}
         </div>
 
         <footer className="border-border text-faint shrink-0 border-t px-3.5 py-2.5 text-[0.7em]">
-          PDF preview of the cited source document.
+          {activeTab === "parsed"
+            ? "Indexed text used for retrieval — layout may differ from the original PDF."
+            : "PDF preview of the cited source document."}
         </footer>
       </aside>
     </>

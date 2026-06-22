@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from dharmiq.llm.agents.base import call_json_agent
-from dharmiq.llm.openrouter_client import OpenRouterClient
+from dharmiq.llm.openrouter_client import OpenRouterClient, extract_token_usage
 
 _JUDGE_SYSTEM = """You are a senior legal reviewer evaluating a RAG assistant's answer.
 Score the answer on semantic correctness against the reference answer and citation quality.
@@ -47,12 +47,13 @@ async def run_llm_judge(
             f"Generated answer: {generated_answer}",
         ]
     )
-    data, tokens = await call_json_agent(
+    data, response = await call_json_agent(
         client,
         system=_JUDGE_SYSTEM,
         user_content=user_content,
         model=model,
     )
+    tokens = extract_token_usage(response)
 
     answer_score = _clamp_score(data.get("answer_correctness"))
     citation_score = _clamp_score(data.get("citation_correctness"))

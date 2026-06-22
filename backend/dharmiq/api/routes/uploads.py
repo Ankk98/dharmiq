@@ -11,7 +11,7 @@ from dharmiq.auth.manager import current_active_user
 from dharmiq.api.dependencies import get_settings_dep
 from dharmiq.config.settings import Settings
 from dharmiq.core.errors import UploadError
-from dharmiq.db.models.uploads import UserUpload, UserUploadChunk
+from dharmiq.db.models.uploads import ProcessingStage, UserUpload
 from dharmiq.db.models.users import User
 from dharmiq.db.session import get_db_session
 from dharmiq.ingestion.upload_pipeline import create_user_upload
@@ -39,14 +39,12 @@ async def _get_user_upload(
     return upload
 
 
-async def _upload_is_indexed(db: AsyncSession, upload_id: uuid.UUID) -> bool:
-    result = await db.execute(
-        select(UserUploadChunk.id).where(UserUploadChunk.upload_id == upload_id).limit(1)
-    )
-    return result.scalar_one_or_none() is not None
+def _upload_is_indexed(upload: UserUpload) -> bool:
+    return upload.processing_stage == ProcessingStage.READY.value
 
 
-def _to_read(upload: UserUpload, *, indexed: bool) -> UserUploadRead:
+def _to_read(upload: UserUpload) -> UserUploadRead:
+    indexed = _upload_is_indexed(upload)
     return UserUploadRead(
         id=upload.id,
         user_id=upload.user_id,
@@ -56,6 +54,9 @@ def _to_read(upload: UserUpload, *, indexed: bool) -> UserUploadRead:
         content_hash=upload.content_hash,
         created_at=upload.created_at,
         deleted_at=upload.deleted_at,
+        processing_stage=upload.processing_stage,
+        chunk_count=upload.chunk_count,
+        processing_error=upload.processing_error,
         indexed=indexed,
     )
 
@@ -94,7 +95,7 @@ async def upload_file(
     celery_app.send_task("dharmiq.ingestion.process_user_upload", args=[str(upload.id)])
 
     return UserUploadCreateResponse(
-        **_to_read(upload, indexed=False).model_dump(),
+        **_to_read(upload).model_dump(),
         processing_enqueued=True,
     )
 
@@ -110,11 +111,7 @@ async def list_uploads(
         .order_by(UserUpload.created_at.desc())
     )
     uploads = list(result.scalars().all())
-    reads: list[UserUploadRead] = []
-    for upload in uploads:
-        indexed = await _upload_is_indexed(db, upload.id)
-        reads.append(_to_read(upload, indexed=indexed))
-    return reads
+    return [_to_read(upload) for upload in uploads]
 
 
 @router.get("/{upload_id}", response_model=UserUploadRead)
@@ -124,8 +121,7 @@ async def get_upload(
     db: AsyncSession = Depends(get_db_session),
 ) -> UserUploadRead:
     upload = await _get_user_upload(upload_id, user, db)
-    indexed = await _upload_is_indexed(db, upload.id)
-    return _to_read(upload, indexed=indexed)
+    return _to_read(upload)
 
 
 @router.delete("/{upload_id}", status_code=status.HTTP_204_NO_CONTENT)

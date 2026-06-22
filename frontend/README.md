@@ -1,15 +1,17 @@
 # Dharmiq Frontend
 
-React + assistant-ui chat client for the Dharmiq API. **v0.3** ships the Ashoka design system on top of the v0.2 async chat stack.
+React + assistant-ui chat client for the Dharmiq API. **v0.4** builds on the Ashoka design system (v0.3) with real upload stages, document panel tabs, privacy controls, and feedback.
 
-See the [repo README](../README.md) for full-stack setup. Visual authority lives in [`docs/design/`](../docs/design/README.md) (demo HTML wins on conflict).
+See the [repo README](../README.md) for full-stack setup (host or Docker). Visual authority lives in [`docs/design/`](../docs/design/README.md) (demo HTML wins on conflict).
 
 ## Prerequisites
 
-- [nvm](https://github.com/nvm-sh/nvm) for Node.js (version pinned in the repo-root `.nvmrc`)
-- Backend running with `DHARMIQ_AGENT_GRAPH_V2=true` and a Celery worker for async chat
+- [nvm](https://github.com/nvm-sh/nvm) for Node.js (version pinned in the repo-root `.nvmrc`), **or** Docker (`docker-compose.dev.yml` runs Vite in a container)
+- Backend running with the agent graph enabled and a Celery worker for async chat
 
 ## Setup
+
+### Host (default)
 
 ```bash
 # From repo root – use the pinned Node version
@@ -23,9 +25,29 @@ npm run dev
 
 The dev server runs at http://localhost:5173 and proxies `/api` to the backend on port 8000.
 
-Ensure the backend is running (`cd backend && uv run dharmiq-api`) and Celery is active (`uv run celery -A celery_app worker`) before using chat in v0.2+ mode.
+Ensure the backend is running (`cd backend && uv run dharmiq-api`) and Celery is active (`uv run celery -A celery_app worker`) before using chat.
 
-## v0.3 design system (Ashoka)
+### Docker dev stack
+
+```bash
+# From repo root
+docker compose -f docker-compose.dev.yml up frontend
+```
+
+Set `VITE_DEV_API_PROXY=http://api:8000` in compose so the Vite proxy reaches the API container. Edit files on the host for HMR.
+
+## v0.4 features
+
+| Area | Implementation |
+|------|----------------|
+| Upload stages | `UploadLibrary` polls `GET /api/uploads/{id}` every 2s until `ready` or `failed` |
+| Document panel | Original / Parsed tabs; span highlight via `qstart` / `qend` URL params |
+| Privacy | Settings → Privacy & data: export JSON, delete account |
+| Feedback | 👍/👎 on assistant messages; optional reason modal |
+| Idempotency | `Idempotency-Key` header on message POST / retry / edit |
+| Cost limits | Toast + disabled send on `usage_limit_reached` (429) |
+
+## Ashoka design system (v0.3)
 
 | Area | Implementation |
 |------|----------------|
@@ -47,22 +69,20 @@ Compare against `docs/design/dharmiq-design-demo.html` in Light, Dark, and Mobil
 | Progress view | `dharmiq_progress_view` | `concise`, `detailed` | Top nav + Settings → Answer progress |
 | Debug progress | N/A (not persisted) | — | `DebugPanel` below top nav; superusers only |
 
-**Deferred to a later release (v0.3 stubs only):**
+**Deferred to later releases:**
 
-- **Language / i18n** — Hindi typography rules are in `index.css` (`html[lang="hi"]` size ×1.08, line-height 1.9). No translation files; Settings language toggle is hidden.
-- **Privacy** — save history, export JSON, delete account are omitted from Settings until backend support exists.
-- **Upload pipeline stages** — Documents page shows cosmetic Uploaded → Ready chips; real per-stage API is v0.4.
-- **Doc quote highlight** — citation opens resizable panel with PDF iframe; mono line highlight needs chunk API (v0.4).
+- **Language / i18n** — Hindi typography rules in `index.css`; no translation files
+- **Save-history toggle** — export + delete shipped in v0.4; retention preference deferred
 
 ## v0.2 UI features (retained)
 
 - **Async chat** – messages POST to `/api/chat/sessions/{id}/messages`; UI subscribes to SSE at `/api/chat/requests/{id}/stream`
 - **Live progress** – `MessageProgress` shows 5 user-facing steps (concise) or agent details (detailed)
 - **Streamed answers** – assistant text replays token-by-token after validation; citations render inline
-- **Clarifier flow** – clarify card with structured follow-up chips and “Answer with what you have” (`force_answer`)
+- **Clarifier flow** – clarify card from `metadata.followup_items` only; “Answer with what you have” (`force_answer`)
 - **Message editing** – edit a user message in-thread; backend re-runs the agent from that point
 - **Session deletion** – remove sessions from the sidebar thread list
-- **Documents library** – `/documents` page with dropzone, pipeline UI, and attach-to-chat toggles
+- **Documents library** – `/documents` page with dropzone, real pipeline stages, attach-to-chat toggles
 - **Session attachments** – chips above composer; attach/detach shows in-thread system pill
 - **Document panel** – side panel on desktop (50/50, drag resize); `/docs/:id` deep links still work
 - **Debug panel** – visible to superusers; shows raw progress/debug events from the stream
@@ -82,10 +102,10 @@ Compare against `docs/design/dharmiq-design-demo.html` in Light, Dark, and Mobil
 ```
 frontend/src/
   components/
-    assistant-ui/     # Thread, markdown, citations
+    assistant-ui/     # Thread, markdown, citations, feedback
     auth/             # AuthLayout (aurora + auth card)
     chat/             # MessageProgress, ClarifyCard, RefusalCard, DebugPanel
-    documents/        # DocumentPanel, citation links
+    documents/        # DocumentPanel, ParsedDocumentView, citation links
     layout/           # AppShell, sidebar, top nav, mobile chrome
     uploads/          # UploadLibrary, SessionAttachments
     ui/               # shadcn primitives, DefaultAvatar
@@ -98,6 +118,7 @@ frontend/src/
     design/constants.ts
     progressDisplay.ts
     progress.ts
+    uploadPipeline.ts # processing_stage → UI chips
   providers/
     ChatRuntimeProvider.tsx
     ThemeProvider.tsx
@@ -117,4 +138,4 @@ npm ci
 npm run build
 ```
 
-Output goes to `frontend/dist/`. Nginx serves static files and proxies `/api` to the backend (see [`docs/deployment.md`](../docs/deployment.md)). SSE routes need `proxy_buffering off` on `/api/chat/requests/`.
+Output goes to `frontend/dist/`. For Docker prod, `frontend/Dockerfile` builds static assets into an Nginx image. Host deployment: Nginx serves `dist/` and proxies `/api` to the backend (see [`docs/deployment.md`](../docs/deployment.md)). SSE routes need `proxy_buffering off` on `/api/chat/requests/`.

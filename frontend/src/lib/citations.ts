@@ -30,6 +30,23 @@ function citationByMarker(citations: Citation[]): Map<number, Citation> {
   return map;
 }
 
+function citationViewerOptions(citation: Citation) {
+  const options: {
+    chunkId: string;
+    sectionLabel?: string;
+    quoteStart?: number;
+    quoteEnd?: number;
+  } = {
+    chunkId: citation.chunk_id,
+    sectionLabel: citation.section_label ?? undefined,
+  };
+  if (citation.quote_start_char != null && citation.quote_end_char != null) {
+    options.quoteStart = citation.quote_start_char;
+    options.quoteEnd = citation.quote_end_char;
+  }
+  return options;
+}
+
 export function linkifyNumericCitations(
   text: string,
   citations: Citation[] = [],
@@ -41,11 +58,7 @@ export function linkifyNumericCitations(
     if (!citation) {
       return match;
     }
-    return `[${marker}](${documentViewerPath(citation.document_id, citation.source_type, {
-      chunkId: citation.chunk_id,
-      sectionLabel: citation.section_label ?? undefined,
-      quote: citation.quote_text ?? undefined,
-    })})`;
+    return `[${marker}](${documentViewerPath(citation.document_id, citation.source_type, citationViewerOptions(citation))})`;
   });
 }
 
@@ -95,11 +108,7 @@ function formatCitationLine(citation: Citation): string {
     ? `${citation.document_title} — ${citation.section_label}`
     : citation.document_title;
   const marker = citation.marker != null ? `[${citation.marker}] ` : "";
-  return `- ${marker}[${label}${pages}](${documentViewerPath(citation.document_id, citation.source_type, {
-    chunkId: citation.chunk_id,
-    sectionLabel: citation.section_label ?? undefined,
-    quote: citation.quote_text ?? undefined,
-  })})`;
+  return `- ${marker}[${label}${pages}](${documentViewerPath(citation.document_id, citation.source_type, citationViewerOptions(citation))})`;
 }
 
 export function appendSourcesSection(text: string, citations: Citation[]): string {

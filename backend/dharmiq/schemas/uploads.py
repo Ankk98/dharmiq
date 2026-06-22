@@ -17,6 +17,9 @@ class UserUploadRead(BaseModel):
     content_hash: str
     created_at: datetime
     deleted_at: datetime | None = None
+    processing_stage: str = "uploaded"
+    chunk_count: int = 0
+    processing_error: str | None = None
     indexed: bool = Field(default=False)
 
 

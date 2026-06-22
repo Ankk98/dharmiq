@@ -1,5 +1,9 @@
 # Design system changelog
 
+## v0.4 — Product on Ashoka (2026-06-22)
+
+No design-system token changes. v0.4 ships product features on the existing Ashoka UI: real upload stages, document panel Parsed tab + quote highlight, privacy card, feedback thumbs. See [`docs/plans/v0.4/prd.md`](../plans/v0.4/prd.md).
+
 ## v0.3 — Ashoka (2026-06-21)
 
 **Shipped configuration:** Ashoka theme, light default, soft glow, aurora wallpaper, Inter + Fraunces + Geist Mono + Noto Sans Devanagari, XL type scale.

@@ -12,7 +12,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from dharmiq.db.models.chats import ChatMessage, ChatSessionUpload, MessageRole
-from dharmiq.db.models.uploads import UserUpload, UserUploadChunk
+from dharmiq.db.models.uploads import ProcessingStage, UserUpload, UserUploadChunk
 from dharmiq.db.session import get_session_factory
 from dharmiq.llm.retrieval import retrieve_user_upload_chunks
 from dharmiq.llm.agents.base import format_chat_history
@@ -81,6 +81,8 @@ async def _seed_indexed_upload(db: AsyncSession, user_id: uuid.UUID) -> UserUplo
         mime_type="application/pdf",
         size_bytes=1024,
         content_hash=f"hash-{uuid.uuid4()}",
+        processing_stage=ProcessingStage.READY.value,
+        chunk_count=1,
     )
     db.add(upload)
     await db.flush()

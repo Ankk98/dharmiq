@@ -18,6 +18,15 @@ export type ChatMessage = {
   created_at: string;
 };
 
+export type MessageFeedbackRead = {
+  id: string;
+  message_id: string;
+  rating: "up" | "down";
+  reason: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type Citation = {
   marker?: number;
   chunk_id: string;
@@ -29,6 +38,8 @@ export type Citation = {
   page_start?: number | null;
   page_end?: number | null;
   quote_text?: string | null;
+  quote_start_char?: number | null;
+  quote_end_char?: number | null;
 };
 
 export type ChatRequestPendingResponse = {
@@ -50,6 +61,14 @@ export type ChatPipelineResponse = {
   error_message: string | null;
 };
 
+export type ProcessingStage =
+  | "uploaded"
+  | "parsed"
+  | "chunking"
+  | "embedding"
+  | "ready"
+  | "failed";
+
 export type UserUpload = {
   id: string;
   user_id: string;
@@ -59,6 +78,9 @@ export type UserUpload = {
   content_hash: string;
   created_at: string;
   deleted_at: string | null;
+  processing_stage: ProcessingStage;
+  chunk_count: number;
+  processing_error: string | null;
   indexed: boolean;
 };
 
@@ -202,6 +224,40 @@ export async function fetchCurrentUser(): Promise<UserProfile> {
   return apiFetch<UserProfile>("/api/users/me");
 }
 
+export async function exportAccount(): Promise<{ blob: Blob; filename: string }> {
+  const headers = new Headers();
+  const token = getToken();
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  const response = await fetch("/api/account/export", { headers });
+  if (!response.ok) {
+    let detail = response.statusText;
+    try {
+      const payload = (await response.json()) as { detail?: string };
+      if (typeof payload.detail === "string") {
+        detail = payload.detail;
+      }
+    } catch {
+      // ignore parse errors
+    }
+    throw new ApiError(response.status, detail);
+  }
+
+  const disposition = response.headers.get("Content-Disposition") ?? "";
+  const filenameMatch = disposition.match(/filename="([^"]+)"/);
+  const filename = filenameMatch?.[1] ?? "dharmiq-export.json";
+  return { blob: await response.blob(), filename };
+}
+
+export async function deleteAccount(email: string, password: string): Promise<void> {
+  await apiFetch<void>("/api/account", {
+    method: "DELETE",
+    body: JSON.stringify({ email, password }),
+  });
+}
+
 export async function listSessions(): Promise<ChatSession[]> {
   return apiFetch<ChatSession[]>("/api/chat/sessions");
 }
@@ -245,6 +301,7 @@ export async function postSessionMessage(
   options?: { forceAnswer?: boolean; signal?: AbortSignal },
 ): Promise<PostSessionMessageResult> {
   const headers = new Headers({ "Content-Type": "application/json" });
+  headers.set("Idempotency-Key", crypto.randomUUID());
   const token = getToken();
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
@@ -292,6 +349,7 @@ export async function retrySessionMessage(
   options?: { signal?: AbortSignal },
 ): Promise<RetrySessionMessageResult> {
   const headers = new Headers({ "Content-Type": "application/json" });
+  headers.set("Idempotency-Key", crypto.randomUUID());
   const token = getToken();
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
@@ -334,6 +392,7 @@ export async function editSessionMessage(
   options?: { signal?: AbortSignal },
 ): Promise<EditSessionMessageResult> {
   const headers = new Headers({ "Content-Type": "application/json" });
+  headers.set("Idempotency-Key", crypto.randomUUID());
   const token = getToken();
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
@@ -368,6 +427,20 @@ export async function editSessionMessage(
     chat_request_id: body.chat_request_id,
     user_message_id: body.user_message_id,
   };
+}
+
+export async function submitFeedback(
+  messageId: string,
+  rating: "up" | "down",
+  reason?: string,
+): Promise<MessageFeedbackRead> {
+  return apiFetch<MessageFeedbackRead>(`/api/chat/messages/${messageId}/feedback`, {
+    method: "POST",
+    body: JSON.stringify({
+      rating,
+      reason: reason?.trim() ? reason.trim() : null,
+    }),
+  });
 }
 
 export async function sendChatMessage(
@@ -415,6 +488,10 @@ export async function listUploads(): Promise<UserUpload[]> {
   return apiFetch<UserUpload[]>("/api/uploads");
 }
 
+export async function getUpload(uploadId: string): Promise<UserUpload> {
+  return apiFetch<UserUpload>(`/api/uploads/${uploadId}`);
+}
+
 export async function uploadFile(file: File): Promise<UserUpload> {
   const form = new FormData();
   form.append("file", file);
@@ -448,8 +525,53 @@ export async function detachUpload(sessionId: string, uploadId: string): Promise
   });
 }
 
+export type DocumentChunkListItem = {
+  chunk_id: string;
+  chunk_index: number;
+  preview: string;
+  page_start?: number | null;
+  page_end?: number | null;
+  section_label?: string | null;
+};
+
+export type DocumentChunkListResponse = {
+  document_id: string;
+  source_type: "corpus" | "upload";
+  chunks: DocumentChunkListItem[];
+};
+
+export type DocumentChunkRead = {
+  chunk_id: string;
+  document_id: string;
+  source_type: "corpus" | "upload";
+  text: string;
+  context_text?: string | null;
+  page_start?: number | null;
+  page_end?: number | null;
+  section_label?: string | null;
+};
+
 export function documentFileUrl(documentId: string, sourceType: "corpus" | "upload"): string {
   return `/api/docs/${documentId}/file?source_type=${sourceType}`;
+}
+
+export async function fetchDocumentChunks(
+  documentId: string,
+  sourceType: "corpus" | "upload",
+): Promise<DocumentChunkListResponse> {
+  return apiFetch<DocumentChunkListResponse>(
+    `/api/docs/${documentId}/chunks?source_type=${sourceType}`,
+  );
+}
+
+export async function fetchDocumentChunk(
+  documentId: string,
+  chunkId: string,
+  sourceType: "corpus" | "upload",
+): Promise<DocumentChunkRead> {
+  return apiFetch<DocumentChunkRead>(
+    `/api/docs/${documentId}/chunks/${chunkId}?source_type=${sourceType}`,
+  );
 }
 
 export function documentViewerPath(
@@ -457,7 +579,8 @@ export function documentViewerPath(
   sourceType: "corpus" | "upload",
   options?: {
     chunkId?: string;
-    quote?: string;
+    quoteStart?: number;
+    quoteEnd?: number;
     sectionLabel?: string;
   },
 ): string {
@@ -465,8 +588,11 @@ export function documentViewerPath(
   if (options?.chunkId) {
     params.set("chunk", options.chunkId);
   }
-  if (options?.quote) {
-    params.set("quote", options.quote);
+  if (options?.quoteStart != null) {
+    params.set("qstart", String(options.quoteStart));
+  }
+  if (options?.quoteEnd != null) {
+    params.set("qend", String(options.quoteEnd));
   }
   if (options?.sectionLabel) {
     params.set("section", options.sectionLabel);

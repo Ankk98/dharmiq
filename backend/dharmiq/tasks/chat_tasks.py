@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,7 +17,13 @@ logger = get_logger(__name__)
 
 
 def _run_async(coro):
-    return asyncio.run(coro)
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(asyncio.run, coro).result()
 
 
 async def _with_db_session(coro_factory):
@@ -85,8 +92,40 @@ def recover_pending_agent_graph_requests() -> int:
     return _run_async(_with_db_session(_recover))
 
 
-def enqueue_agent_graph(chat_request_id: uuid.UUID) -> None:
-    run_agent_graph_task.delay(str(chat_request_id))
+def enqueue_agent_graph(chat_request_id: uuid.UUID) -> bool:
+    """Enqueue agent graph task. Returns False when skipped."""
+
+    async def _should_enqueue(db: AsyncSession) -> bool:
+        from sqlalchemy import select
+
+        from dharmiq.db.models.chats import ChatRequest, ChatRequestStatus
+
+        result = await db.execute(
+            select(ChatRequest.status).where(ChatRequest.id == chat_request_id)
+        )
+        status_value = result.scalar_one_or_none()
+        if status_value is None or status_value == ChatRequestStatus.COMPLETED:
+            return False
+        return True
+
+    if not _run_async(_with_db_session(_should_enqueue)):
+        logger.info("enqueue_agent_graph_skipped", chat_request_id=str(chat_request_id))
+        return False
+
+    try:
+        run_agent_graph_task.apply_async(
+            args=[str(chat_request_id)],
+            task_id=str(chat_request_id),
+        )
+    except Exception as exc:
+        logger.info(
+            "enqueue_agent_graph_duplicate",
+            chat_request_id=str(chat_request_id),
+            error=str(exc),
+        )
+        return False
+
+    return True
 
 
 @celery_app.task(name="dharmiq.chat.run_agent_graph", bind=True, max_retries=0)

@@ -24,7 +24,7 @@ cp .env.example .env
 cd backend
 uv sync --dev
 
-# Run database migrations (001–010)
+# Run database migrations (001–011)
 uv run alembic upgrade head
 
 # LangGraph checkpoint tables (not managed by Alembic; idempotent)
@@ -55,7 +55,11 @@ Local Postgres listens on **port 5433** (see `config/config.dev.yaml`).
 
 Pytest uses a separate database (`dharmiq_test`, see `config/config.test.yaml`) so running tests does not wipe dev chat history. The test database is created and migrated automatically on first `uv run pytest`.
 
+**Docker full stack:** see repo-root `docker-compose.dev.yml` / `docker-compose.prod.yml` and [`docs/deployment.md`](../docs/deployment.md#18-docker-deployment). Containers use `DHARMIQ_ENV=docker` and `config/config.docker.yaml`.
+
 ## Docker Compose services
+
+`docker-compose.yml` starts **infra only** (API/Celery on host). Full app stacks use `docker-compose.dev.yml` or `docker-compose.prod.yml`.
 
 | Service | Port | Purpose |
 |---------|------|---------|
@@ -84,6 +88,8 @@ Environment-specific YAML files live in `config/` at the repo root:
 
 - `config.dev.yaml` – local development (`agent_graph.enabled: true` by default; set `DHARMIQ_AGENT_GRAPH_V2=false` for v0.1 sync chat)
 - `config.beta.yaml` – beta deployment (`agent_graph.enabled: true` by default)
+- `config.docker.yaml` – Docker Compose stacks (`database.host: postgres`, `beat_schedule.enabled: false`)
+- `config.test.yaml` – pytest (`dharmiq_test` database)
 
 Select the active config with `DHARMIQ_ENV` (default: `dev`).
 
@@ -91,13 +97,14 @@ Secrets can live in a repo-root `.env` file (auto-loaded) or be exported in your
 
 | Variable | Description |
 |----------|-------------|
-| `DHARMIQ_ENV` | Config profile (`dev`, `beta`) |
+| `DHARMIQ_ENV` | Config profile (`dev`, `beta`, `docker`, `test`) |
 | `DHARMIQ_DATABASE_PASSWORD` | Postgres password |
 | `DHARMIQ_JWT_SECRET` | JWT signing secret (use a strong random value in production) |
 | `OPENROUTER_API_KEY` | OpenRouter API key (required for chat and eval) |
-| `DHARMIQ_ROOT` | Repo root path (auto-detected if unset) |
+| `DHARMIQ_ROOT` | Repo root path (auto-detected if unset; set to `/app` in containers) |
 | `DHARMIQ_AGENT_GRAPH_V2` | Set `false` to disable the LangGraph pipeline (enabled by default) |
 | `DHARMIQ_DEBUG_PROGRESS` | Enable debug-tier progress events (with superuser) |
+| `DHARMIQ_COST_LIMITS_ENFORCE` | Set `false` to disable session/monthly LLM spend caps (costs still logged) |
 
 ## API endpoints
 
@@ -126,14 +133,22 @@ Secrets can live in a repo-root `.env` file (auto-loaded) or be exported in your
 | GET | `/api/chat/sessions` | List user's sessions |
 | GET | `/api/chat/sessions/{id}` | Get a session |
 | DELETE | `/api/chat/sessions/{id}` | Delete a session |
-| POST | `/api/chat/sessions/{id}/messages` | Send a message (agent graph: `202` + async `chat_request_id`; v0.1: sync append) |
-| PATCH | `/api/chat/sessions/{id}/messages/{message_id}` | Edit a user message and re-run the agent pipeline |
-| POST | `/api/chat/sessions/{id}/messages/{message_id}/retry` | Retry a failed request |
+| POST | `/api/chat/sessions/{id}/messages` | Send a message (agent graph: `202` + async `chat_request_id`; optional `Idempotency-Key` header) |
+| PATCH | `/api/chat/sessions/{id}/messages/{message_id}` | Edit a user message and re-run the agent pipeline (optional `Idempotency-Key`) |
+| POST | `/api/chat/sessions/{id}/messages/{message_id}/retry` | Retry a failed request (optional `Idempotency-Key`) |
+| POST | `/api/chat/messages/{message_id}/feedback` | Upsert 👍/👎 feedback on an assistant message |
 | GET | `/api/chat/sessions/{id}/messages` | List messages in a session |
 | POST | `/api/chat` | Run pipeline synchronously (v0.1 or v0.2 depending on flag) |
 | GET | `/api/chat/requests/{id}` | Poll chat request status |
 | GET | `/api/chat/requests/{id}/stream` | SSE stream: progress steps, answer tokens, citations |
 | GET | `/api/chat/requests/{id}/events` | Poll progress events (reconnect fallback) |
+
+### Account (authenticated, v0.4)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/account/export` | Download JSON export (sessions, messages, uploads metadata) |
+| DELETE | `/api/account` | Hard-delete account (body: `{email, password}`) |
 
 ### Chat attachments (authenticated, v0.2)
 
@@ -149,6 +164,8 @@ Secrets can live in a repo-root `.env` file (auto-loaded) or be exported in your
 |--------|------|-------------|
 | GET | `/api/docs/{id}?source_type=corpus\|upload` | Document metadata for citations |
 | GET | `/api/docs/{id}/file?source_type=corpus\|upload` | Download/view source PDF or image |
+| GET | `/api/docs/{id}/chunks?source_type=corpus\|upload` | List leaf chunks (ordered by `chunk_index`) |
+| GET | `/api/docs/{id}/chunks/{chunk_id}?source_type=corpus\|upload` | Single chunk text for Parsed tab |
 
 ### Uploads (authenticated)
 
@@ -156,7 +173,7 @@ Secrets can live in a repo-root `.env` file (auto-loaded) or be exported in your
 |--------|------|-------------|
 | POST | `/api/uploads` | Upload PDF, DOCX, Markdown, or image (max 100 MB, 30 assets per user) |
 | GET | `/api/uploads` | List active uploads |
-| GET | `/api/uploads/{id}` | Get upload metadata |
+| GET | `/api/uploads/{id}` | Get upload metadata (`processing_stage`, `chunk_count`, `processing_error`) |
 | DELETE | `/api/uploads/{id}` | Soft-delete an upload |
 
 ## Chat pipeline
@@ -172,7 +189,7 @@ When enabled, `POST /api/chat/sessions/{id}/messages` enqueues a Celery task and
 Graph nodes (`dharmiq/agents/nodes/`):
 
 1. **Input guard** – rate limits, length caps, off-topic / injection heuristics
-2. **Clarifier** – up to 3 rounds of follow-up questions with structured `followup_items` (why line + quick-reply chips); END-and-return; new request per round
+2. **Clarifier** – up to 3 rounds of follow-up questions with structured `followup_items` (why line + quick-reply chips); fails if structure missing after retry; END-and-return; new request per round
 3. **Query rewriter** – statute-oriented search queries
 4. **Retrieval** – hybrid pgvector + BM25 (RRF) with cross-encoder reranking
 5. **Answerer** – comprehensive grounded draft with citations and blockquotes
@@ -181,7 +198,11 @@ Graph nodes (`dharmiq/agents/nodes/`):
 8. **Finalizer** – replays validated answer as SSE token stream
 9. **Refusal** – structured response when retrieval is insufficient
 
-State is checkpointed in Postgres (`langgraph` schema). Event `seq` values use Redis `INCR` for race-safe ordering.
+State is checkpointed in Postgres (`langgraph` schema). Event `seq` values use Redis `INCR` for race-safe ordering. Graph execution is capped at **100 node invocations** per request. Duplicate clarifier questions and identical answers trigger loop guards.
+
+**v0.4 reliability:** chat POST/retry/edit accept `Idempotency-Key` (24h TTL). Celery uses `task_id=chat_request_id` to dedupe enqueues. Worker startup re-enqueues pending chats and stuck uploads.
+
+**v0.4 cost tracking:** every `acompletion` in agent nodes records `llm_usage_events` and rolls up `chat_requests.cost_usd`. Caps: $1/session, $10/account/month UTC (configurable via `cost_limits` in YAML).
 
 ### v0.1 (linear pipeline, flag off)
 
@@ -197,7 +218,7 @@ Prompts live in `dharmiq/llm/prompts/*.yaml`. Request tracking uses the `chat_re
 
 ## User uploads
 
-Files are stored under `data/uploads/{user_uuid}/raw/`. Supported types: **PDF**, **DOCX**, **Markdown**, and images (JPEG, PNG, WebP, TIFF). Uploading enqueues `dharmiq.ingestion.process_user_upload`.
+Files are stored under `data/uploads/{user_uuid}/raw/`. Supported types: **PDF**, **DOCX**, **Markdown**, and images (JPEG, PNG, WebP, TIFF). Uploading enqueues `dharmiq.ingestion.process_user_upload`, which writes `processing_stage` through `uploaded` → `parsed` → `chunking` → `embedding` → `ready` (or `failed` with `processing_error`).
 
 Uploads land in the user's library. For v0.2 retrieval, files must be **explicitly attached** to the chat session via `/api/chat/sessions/{id}/attachments`.
 

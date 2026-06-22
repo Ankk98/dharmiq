@@ -7,6 +7,7 @@ from langchain_core.runnables import RunnableConfig
 from dharmiq.agents.runtime import GraphRuntime
 from dharmiq.agents.state import AgentGraphState, chunks_from_state
 from dharmiq.llm.agents.answerer import run_answerer
+from dharmiq.llm.usage import record_llm_usage
 from dharmiq.observability.metrics import record_llm_tokens
 
 
@@ -25,6 +26,15 @@ async def answerer_node(state: AgentGraphState, config: RunnableConfig) -> dict[
         facts=state.get("facts", ""),
         retrieved_chunks=retrieved,
         regeneration_instructions=regen or None,
+    )
+    await record_llm_usage(
+        runtime.db,
+        user_id=runtime.user.id,
+        chat_request_id=runtime.chat_request.id,
+        session_id=runtime.chat_session.id,
+        agent_role="answerer",
+        model=runtime.model_name,
+        response=draft.llm_response,
     )
     record_llm_tokens(
         model=runtime.model_name,

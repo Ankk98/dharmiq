@@ -47,6 +47,7 @@ async def _clean_agent_graph_tables() -> None:
     reset_checkpointer_cache()
     factory = get_session_factory()
     async with factory() as db:
+        await db.execute(text("DELETE FROM llm_usage_events"))
         await db.execute(text("DELETE FROM chat_request_events"))
         await db.execute(text("DELETE FROM chat_requests"))
         await db.execute(text("DELETE FROM chat_messages"))
@@ -169,7 +170,10 @@ async def test_graph_clarifier_branch(
     clarifier = {
         "topic": "police_arrest",
         "needs_more_info": True,
-        "followup_questions": ["Are you under arrest?", "Do you have a written notice?"],
+        "followup_items": [
+            {"question": "Are you under arrest?", "options": [], "why": None},
+            {"question": "Do you have a written notice?", "options": [], "why": None},
+        ],
         "reason": "Need more facts",
     }
     mock_litellm_acompletion(monkeypatch, [json.dumps(clarifier)])
@@ -417,7 +421,10 @@ async def test_agent_graph_clarifier_followups_api(
     clarifier = {
         "topic": "police_arrest",
         "needs_more_info": True,
-        "followup_questions": ["Are you under arrest?", "Do you have a written notice?"],
+        "followup_items": [
+            {"question": "Are you under arrest?", "options": [], "why": None},
+            {"question": "Do you have a written notice?", "options": [], "why": None},
+        ],
         "reason": "Need more facts",
     }
     mock_litellm_acompletion(monkeypatch, [json.dumps(clarifier)])

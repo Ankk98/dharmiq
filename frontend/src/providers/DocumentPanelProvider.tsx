@@ -18,6 +18,22 @@ function parseDocumentIdFromPath(pathname: string): string | undefined {
   return match?.[1];
 }
 
+function parseQuoteSpan(
+  searchParams: URLSearchParams,
+): { quoteStart?: number; quoteEnd?: number } {
+  const startRaw = searchParams.get("qstart");
+  const endRaw = searchParams.get("qend");
+  if (startRaw == null || endRaw == null) {
+    return {};
+  }
+  const quoteStart = Number(startRaw);
+  const quoteEnd = Number(endRaw);
+  if (!Number.isInteger(quoteStart) || !Number.isInteger(quoteEnd) || quoteStart < 0 || quoteEnd <= quoteStart) {
+    return {};
+  }
+  return { quoteStart, quoteEnd };
+}
+
 function parsePanelParams(
   documentId: string | undefined,
   searchParams: URLSearchParams,
@@ -29,12 +45,14 @@ function parsePanelParams(
   const sourceType = searchParams.get("source_type");
   const resolvedSource: "corpus" | "upload" =
     sourceType === "upload" ? "upload" : "corpus";
+  const { quoteStart, quoteEnd } = parseQuoteSpan(searchParams);
 
   return {
     documentId,
     sourceType: resolvedSource,
     chunkId: searchParams.get("chunk") ?? undefined,
-    quote: searchParams.get("quote") ?? undefined,
+    quoteStart,
+    quoteEnd,
     sectionLabel: searchParams.get("section") ?? undefined,
   };
 }
@@ -54,7 +72,8 @@ export function DocumentPanelProvider({ children }: { children: ReactNode }) {
     (next: DocumentPanelParams, options?: { returnTo?: string }) => {
       const path = documentViewerPath(next.documentId, next.sourceType, {
         chunkId: next.chunkId,
-        quote: next.quote,
+        quoteStart: next.quoteStart,
+        quoteEnd: next.quoteEnd,
         sectionLabel: next.sectionLabel,
       });
       const returnTo =

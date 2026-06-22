@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from dharmiq.llm.agents.base import call_json_agent
-from dharmiq.llm.openrouter_client import OpenRouterClient
+from dharmiq.llm.openrouter_client import OpenRouterClient, extract_token_usage
 from dharmiq.llm.prompts.loader import load_prompt
 
 
@@ -11,6 +12,7 @@ from dharmiq.llm.prompts.loader import load_prompt
 class QueryRewriterResult:
     queries: list[str]
     tokens_used: int
+    llm_response: dict[str, Any]
 
 
 async def run_query_rewriter(
@@ -26,7 +28,7 @@ async def run_query_rewriter(
         topic=topic,
         facts=facts,
     )
-    data, tokens = await call_json_agent(
+    data, response = await call_json_agent(
         client,
         system=prompt.system,
         user_content=user_content,
@@ -40,4 +42,8 @@ async def run_query_rewriter(
     if not cleaned:
         cleaned = [user_question]
 
-    return QueryRewriterResult(queries=cleaned[:4], tokens_used=tokens)
+    return QueryRewriterResult(
+        queries=cleaned[:4],
+        tokens_used=extract_token_usage(response),
+        llm_response=response,
+    )

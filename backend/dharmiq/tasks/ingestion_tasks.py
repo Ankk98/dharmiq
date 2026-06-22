@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import uuid
+from concurrent.futures import ThreadPoolExecutor
+
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from dharmiq.config.settings import get_settings
 from dharmiq.core.logging import get_logger, setup_logging
@@ -17,7 +20,13 @@ logger = get_logger(__name__)
 
 
 def _run_async(coro):
-    return asyncio.run(coro)
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(asyncio.run, coro).result()
 
 
 async def _with_db_session(coro_factory):
@@ -102,6 +111,39 @@ def process_user_upload(self, upload_id: str) -> dict[str, int | str]:
         raise self.retry(exc=exc, countdown=30 * (self.request.retries + 1)) from exc
 
     return {"upload_id": upload_id, "chunks": chunk_count}
+
+
+def recover_stale_uploads() -> int:
+    """Re-enqueue uploads left mid-pipeline after Redis/worker restarts."""
+
+    async def _recover(db: AsyncSession) -> int:
+        from sqlalchemy import select
+
+        from dharmiq.db.models.uploads import ProcessingStage, UserUpload
+
+        terminal = {ProcessingStage.READY.value, ProcessingStage.FAILED.value}
+        result = await db.execute(
+            select(UserUpload.id).where(
+                UserUpload.deleted_at.is_(None),
+                UserUpload.processing_stage.notin_(terminal),
+            )
+        )
+        upload_ids = list(result.scalars().all())
+        for upload_id in upload_ids:
+            try:
+                process_user_upload.apply_async(
+                    args=[str(upload_id)],
+                    task_id=str(upload_id),
+                )
+            except Exception as exc:
+                logger.info(
+                    "recover_stale_upload_duplicate",
+                    upload_id=str(upload_id),
+                    error=str(exc),
+                )
+        return len(upload_ids)
+
+    return _run_async(_with_db_session(_recover))
 
 
 @celery_app.task(name="dharmiq.ingestion.reindex_corpus_v02", bind=True, max_retries=1)

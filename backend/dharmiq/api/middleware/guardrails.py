@@ -12,7 +12,7 @@ from starlette.responses import JSONResponse, Response
 from starlette.types import ASGIApp
 
 from dharmiq.config.settings import Settings, get_settings
-from dharmiq.core.errors import InputValidationError, RateLimitExceededError
+from dharmiq.core.errors import InputValidationError, RateLimitExceededError, UsageLimitExceededError
 from dharmiq.guardrails.input_validator import validate_message
 from dharmiq.guardrails.rate_limiter import check_rate_limit
 from dharmiq.redis_client import get_redis
@@ -86,6 +86,16 @@ def rate_limit_response(exc: RateLimitExceededError) -> JSONResponse:
             "details": exc.details,
         },
         headers=headers,
+    )
+
+
+def usage_limit_response(exc: UsageLimitExceededError) -> JSONResponse:
+    return JSONResponse(
+        status_code=429,
+        content={
+            "detail": "usage_limit_reached",
+            "limit": exc.limit,
+        },
     )
 
 

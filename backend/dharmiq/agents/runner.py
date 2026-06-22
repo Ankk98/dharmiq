@@ -23,6 +23,7 @@ from dharmiq.core.errors import (
     OpenRouterError,
 )
 from dharmiq.core.logging import get_logger
+from dharmiq.services.idempotency import store_idempotency_key
 from dharmiq.db.models.chats import (
     ChatMessage,
     ChatRequest,
@@ -162,6 +163,8 @@ async def create_agent_graph_request(
     user: User,
     user_message: str,
     force_answer: bool = False,
+    idempotency_key: str | None = None,
+    idempotency_body_hash: str | None = None,
     settings: Settings | None = None,
 ) -> GraphRuntime:
     cfg = settings or get_settings()
@@ -191,6 +194,15 @@ async def create_agent_graph_request(
 
     if chat_session.title is None:
         chat_session.title = user_message.strip().replace("\n", " ")[:80]
+
+    if idempotency_key is not None and idempotency_body_hash is not None:
+        await store_idempotency_key(
+            db,
+            user_id=user.id,
+            key=idempotency_key,
+            body_hash=idempotency_body_hash,
+            chat_request=chat_request,
+        )
 
     history = await _load_history(db, chat_session.id, limit=cfg.chat.history_limit)
     attached_upload_ids = await _load_attached_upload_ids(
@@ -222,6 +234,8 @@ async def retry_agent_graph_request(
     chat_session: ChatSession,
     user: User,
     user_message: ChatMessage,
+    idempotency_key: str | None = None,
+    idempotency_body_hash: str | None = None,
     settings: Settings | None = None,
 ) -> GraphRuntime:
     if user_message.role != MessageRole.USER:
@@ -264,6 +278,15 @@ async def retry_agent_graph_request(
     if prior_assistant_answer is not None:
         user_message.message_metadata["prior_assistant_answer"] = prior_assistant_answer
 
+    if idempotency_key is not None and idempotency_body_hash is not None:
+        await store_idempotency_key(
+            db,
+            user_id=user.id,
+            key=idempotency_key,
+            body_hash=idempotency_body_hash,
+            chat_request=chat_request,
+        )
+
     history = await _load_history(db, chat_session.id, limit=cfg.chat.history_limit)
     attached_upload_ids = await _load_attached_upload_ids(
         db,
@@ -296,6 +319,8 @@ async def edit_user_message_request(
     user: User,
     user_message: ChatMessage,
     new_content: str,
+    idempotency_key: str | None = None,
+    idempotency_body_hash: str | None = None,
     settings: Settings | None = None,
 ) -> GraphRuntime:
     if user_message.role != MessageRole.USER:
@@ -314,6 +339,8 @@ async def edit_user_message_request(
         chat_session=chat_session,
         user=user,
         user_message=user_message,
+        idempotency_key=idempotency_key,
+        idempotency_body_hash=idempotency_body_hash,
         settings=settings,
     )
 

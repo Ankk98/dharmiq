@@ -619,6 +619,27 @@ tar -czf /opt/dharmiq/backups/data-$(date +%Y%m%d).tar.gz -C /opt/dharmiq data/
 
 ---
 
+## 17. Recovery behavior
+
+Dharmiq persists durable state in **Postgres** (chat requests, LangGraph checkpoints, upload stages, idempotency keys). **Redis** holds ephemeral Celery queues and SSE sequence counters. On restart or Redis data loss, components recover as follows:
+
+| Component | On Redis flush | On worker crash | On API restart |
+|-----------|----------------|-----------------|----------------|
+| LangGraph state | Postgres checkpoint — resume | Resume from checkpoint | N/A |
+| SSE `seq` | Redis INCR lost — client uses `?after_seq=N` DB replay | Same | N/A |
+| Celery queue | In-flight lost — re-enqueue pending/running from DB | Same | N/A |
+| Upload mid-pipeline | Re-enqueue if stage ∉ {ready, failed} | Same | N/A |
+
+**Celery worker startup:** `worker_ready` re-enqueues pending/running `chat_requests` and stuck `user_uploads` (stage not `ready` or `failed`).
+
+**Chat idempotency:** Clients may send `Idempotency-Key: <uuid>` on message POST/retry/edit. Duplicate key + same body returns the original `chat_request_id` (24h TTL). Celery tasks use `task_id=chat_request_id` to avoid duplicate agent runs.
+
+**Redis persistence:** Enable AOF (and/or RDB) on the Redis service with a named volume for `/data` so queue loss is less likely across container restarts. See `docker-compose.yml` Redis service configuration.
+
+User-facing copy for unrecoverable failures: “Something went wrong. Please retry your message.”
+
+---
+
 ## Related docs
 
 - [README](../README.md) — local development quick start (v0.2 agent pipeline)

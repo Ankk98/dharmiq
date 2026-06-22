@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,6 +34,14 @@ from dharmiq.schemas.chat import (
 )
 from dharmiq.schemas.feedback import MessageFeedbackCreate, MessageFeedbackRead
 from dharmiq.llm.pipeline import run_chat_pipeline
+from dharmiq.services.idempotency import (
+    IdempotencyOutcome,
+    compute_body_hash,
+    parse_idempotency_key,
+    resolve_idempotency,
+    user_message_id_for_request,
+)
+
 from dharmiq.tasks.chat_tasks import enqueue_agent_graph
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -77,6 +85,75 @@ async def _get_user_session(
     if chat_session is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat session not found")
     return chat_session
+
+
+async def _resolve_idempotency_or_raise(
+    db: AsyncSession,
+    *,
+    user: User,
+    session_id: uuid.UUID,
+    idempotency_key: str | None,
+    body_hash: str,
+) -> ChatRequestPendingResponse | None:
+    parsed_key = parse_idempotency_key(idempotency_key)
+    if parsed_key is None:
+        return None
+
+    resolution = await resolve_idempotency(
+        db,
+        user_id=user.id,
+        key=parsed_key,
+        body_hash=body_hash,
+    )
+    if resolution.outcome == IdempotencyOutcome.CONFLICT:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="idempotency_key_conflict",
+        )
+    if resolution.outcome != IdempotencyOutcome.REPLAY or resolution.chat_request_id is None:
+        return None
+
+    request_result = await db.execute(
+        select(ChatRequest).where(
+            ChatRequest.id == resolution.chat_request_id,
+            ChatRequest.user_id == user.id,
+            ChatRequest.session_id == session_id,
+        )
+    )
+    chat_request = request_result.scalar_one_or_none()
+    if chat_request is None:
+        return None
+
+    user_message_id = await user_message_id_for_request(
+        db,
+        session_id=session_id,
+        chat_request_id=chat_request.id,
+    )
+    if user_message_id is None:
+        return None
+
+    status_value = (
+        "completed"
+        if chat_request.status == ChatRequestStatus.COMPLETED
+        else "failed"
+        if chat_request.status == ChatRequestStatus.FAILED
+        else "pending"
+    )
+    return ChatRequestPendingResponse(
+        chat_request_id=chat_request.id,
+        user_message_id=user_message_id,
+        status=status_value,
+    )
+
+
+def _idempotency_params(
+    idempotency_key: str | None,
+    body_hash: str,
+) -> tuple[str | None, str | None]:
+    parsed_key = parse_idempotency_key(idempotency_key)
+    if parsed_key is None:
+        return None, None
+    return parsed_key, body_hash
 
 
 @router.post("/sessions", response_model=ChatSessionRead, status_code=status.HTTP_201_CREATED)
@@ -131,19 +208,40 @@ async def post_session_message(
     body: SessionMessageCreate,
     user: User = Depends(current_active_user),
     db: AsyncSession = Depends(get_db_session),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
     chat_session = await _get_user_session(session_id, user, db)
     settings = get_settings()
 
     if settings.agent_graph.enabled:
+        body_hash = compute_body_hash(
+            content=body.content,
+            force_answer=body.force_answer,
+        )
+        replay = await _resolve_idempotency_or_raise(
+            db,
+            user=user,
+            session_id=chat_session.id,
+            idempotency_key=idempotency_key,
+            body_hash=body_hash,
+        )
+        if replay is not None:
+            return JSONResponse(
+                status_code=status.HTTP_202_ACCEPTED,
+                content=replay.model_dump(mode="json"),
+            )
+
         await _assert_no_active_request(db, chat_session.id)
 
+        key, hash_value = _idempotency_params(idempotency_key, body_hash)
         runtime = await create_agent_graph_request(
             db,
             chat_session=chat_session,
             user=user,
             user_message=body.content,
             force_answer=body.force_answer,
+            idempotency_key=key,
+            idempotency_body_hash=hash_value,
             settings=settings,
         )
         enqueue_agent_graph(runtime.chat_request.id)
@@ -183,6 +281,7 @@ async def retry_session_message(
     message_id: uuid.UUID,
     user: User = Depends(current_active_user),
     db: AsyncSession = Depends(get_db_session),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
     chat_session = await _get_user_session(session_id, user, db)
     settings = get_settings()
@@ -209,13 +308,43 @@ async def retry_session_message(
             detail="Only user messages can be retried",
         )
 
+    force_answer = False
+    old_request_id = (user_message.message_metadata or {}).get("chat_request_id")
+    if old_request_id:
+        old_result = await db.execute(
+            select(ChatRequest).where(ChatRequest.id == uuid.UUID(str(old_request_id)))
+        )
+        old_request = old_result.scalar_one_or_none()
+        if old_request is not None:
+            force_answer = old_request.force_answer
+
+    body_hash = compute_body_hash(
+        content=user_message.content,
+        force_answer=force_answer,
+    )
+    replay = await _resolve_idempotency_or_raise(
+        db,
+        user=user,
+        session_id=chat_session.id,
+        idempotency_key=idempotency_key,
+        body_hash=body_hash,
+    )
+    if replay is not None:
+        return JSONResponse(
+            status_code=status.HTTP_202_ACCEPTED,
+            content=replay.model_dump(mode="json"),
+        )
+
     await _assert_no_active_request(db, chat_session.id)
 
+    key, hash_value = _idempotency_params(idempotency_key, body_hash)
     runtime = await retry_agent_graph_request(
         db,
         chat_session=chat_session,
         user=user,
         user_message=user_message,
+        idempotency_key=key,
+        idempotency_body_hash=hash_value,
         settings=settings,
     )
     try:
@@ -240,6 +369,7 @@ async def edit_session_message(
     body: SessionMessageEdit,
     user: User = Depends(current_active_user),
     db: AsyncSession = Depends(get_db_session),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
     chat_session = await _get_user_session(session_id, user, db)
     settings = get_settings()
@@ -266,14 +396,31 @@ async def edit_session_message(
             detail="Only user messages can be edited",
         )
 
+    body_hash = compute_body_hash(content=body.content, force_answer=False)
+    replay = await _resolve_idempotency_or_raise(
+        db,
+        user=user,
+        session_id=chat_session.id,
+        idempotency_key=idempotency_key,
+        body_hash=body_hash,
+    )
+    if replay is not None:
+        return JSONResponse(
+            status_code=status.HTTP_202_ACCEPTED,
+            content=replay.model_dump(mode="json"),
+        )
+
     await _assert_no_active_request(db, chat_session.id)
 
+    key, hash_value = _idempotency_params(idempotency_key, body_hash)
     runtime = await edit_user_message_request(
         db,
         chat_session=chat_session,
         user=user,
         user_message=user_message,
         new_content=body.content,
+        idempotency_key=key,
+        idempotency_body_hash=hash_value,
         settings=settings,
     )
     try:

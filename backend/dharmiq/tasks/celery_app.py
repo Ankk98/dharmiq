@@ -42,6 +42,7 @@ def _init_worker_logging(**_kwargs) -> None:
 @worker_ready.connect
 def _recover_pending_chat_requests(**_kwargs) -> None:
     from dharmiq.tasks.chat_tasks import recover_pending_agent_graph_requests
+    from dharmiq.tasks.ingestion_tasks import recover_stale_uploads
 
     try:
         recovered = recover_pending_agent_graph_requests()
@@ -49,3 +50,10 @@ def _recover_pending_chat_requests(**_kwargs) -> None:
             logger.info("recovered_pending_chat_requests", count=recovered)
     except Exception:
         logger.exception("recover_pending_chat_requests_failed")
+
+    try:
+        recovered_uploads = recover_stale_uploads()
+        if recovered_uploads:
+            logger.info("recovered_stale_uploads", count=recovered_uploads)
+    except Exception:
+        logger.exception("recover_stale_uploads_failed")

@@ -301,6 +301,7 @@ export async function postSessionMessage(
   options?: { forceAnswer?: boolean; signal?: AbortSignal },
 ): Promise<PostSessionMessageResult> {
   const headers = new Headers({ "Content-Type": "application/json" });
+  headers.set("Idempotency-Key", crypto.randomUUID());
   const token = getToken();
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
@@ -348,6 +349,7 @@ export async function retrySessionMessage(
   options?: { signal?: AbortSignal },
 ): Promise<RetrySessionMessageResult> {
   const headers = new Headers({ "Content-Type": "application/json" });
+  headers.set("Idempotency-Key", crypto.randomUUID());
   const token = getToken();
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
@@ -390,6 +392,7 @@ export async function editSessionMessage(
   options?: { signal?: AbortSignal },
 ): Promise<EditSessionMessageResult> {
   const headers = new Headers({ "Content-Type": "application/json" });
+  headers.set("Idempotency-Key", crypto.randomUUID());
   const token = getToken();
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);

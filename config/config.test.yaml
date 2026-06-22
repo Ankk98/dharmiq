@@ -21,12 +21,12 @@ agent_graph:
 
 llm:
   roles:
-    primary: openrouter/deepseek/deepseek-v4-pro
+    primary: openrouter/deepseek/deepseek-v4-flash
     fast: openrouter/deepseek/deepseek-v4-flash
     embedding: local
   agents:
     validator:
-      model: openrouter/deepseek/deepseek-v4-pro
+      model: openrouter/deepseek/deepseek-v4-flash
       reasoning:
         enabled: true
   rerank:
@@ -36,7 +36,7 @@ llm:
 
 openrouter:
   base_url: https://openrouter.ai/api/v1
-  default_model: deepseek/deepseek-v4-pro
+  default_model: deepseek/deepseek-v4-flash
   timeout_seconds: 60
   max_retries: 3
 

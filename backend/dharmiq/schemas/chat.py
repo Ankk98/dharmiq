@@ -44,7 +44,7 @@ class SessionMessageEdit(BaseModel):
 class ChatRequestPendingResponse(BaseModel):
     chat_request_id: uuid.UUID
     user_message_id: uuid.UUID
-    status: Literal["pending"] = "pending"
+    status: Literal["pending", "completed", "failed"] = "pending"
 
 
 class ChatMessageRead(BaseModel):

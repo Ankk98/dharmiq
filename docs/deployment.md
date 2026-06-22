@@ -753,10 +753,12 @@ After `docker compose -f docker-compose.prod.yml up -d`:
 
 ## Related docs
 
-- [README](../README.md) — local development quick start (v0.4: host + Docker)
+- [README](../README.md) — local development quick start (v0.5: host + Docker)
 - [backend/README.md](../backend/README.md) — API endpoints, LangGraph agents, ingestion, eval
 - [frontend/README.md](../frontend/README.md) — streaming chat UI, attachments
 - [config/config.beta.yaml](../config/config.beta.yaml) — beta deployment settings (`agent_graph.enabled: true`)
+- [v0.5/prd.md](./plans/v0.5/prd.md) — v0.5 product requirements (implemented)
+- [v0.5/trd.md](./plans/v0.5/trd.md) — v0.5 technical design (implemented)
 - [v0.4/prd.md](./plans/v0.4/prd.md) — v0.4 product requirements (implemented)
 - [v0.4/trd.md](./plans/v0.4/trd.md) — v0.4 technical design (implemented)
 - [v0.2-prd-trd.md](./plans/v0.2-prd-trd.md) — v0.2 product & technical requirements (implemented)

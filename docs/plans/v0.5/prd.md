@@ -1,6 +1,6 @@
 # Dharmiq v0.5 — Quality gate & smoke tests PRD
 
-**Status:** Draft  
+**Status:** Implemented (code complete; operational exit criteria pending)  
 **Version:** 0.5  
 **Baseline:** v0.4 (Docker, upload truth, privacy, feedback, internal cost caps)  
 **Last updated:** 2026-06-22
@@ -87,12 +87,12 @@ Principles §1.6: *measured quality > asserted quality*. Before we index more Ac
 
 ### 2.3 Exit criteria
 
-- [ ] **MVP allowlist** in [`mvp-corpus-allowlist.yaml`](./mvp-corpus-allowlist.yaml) indexed in dev; chunk counts logged
-- [ ] **Re-baseline** complete — `v02-eval-baseline.md` reflects v0.4 stack measurements
-- [ ] **Gating eval datasets** committed (minimum per domain: ~30 rights/consumer/employment; ~20 refusal; ~15 revised-law; ~20 needle)
+- [ ] **MVP allowlist** in [`mvp-corpus-allowlist.yaml`](./mvp-corpus-allowlist.yaml) indexed in dev; chunk counts logged *(operational)*
+- [ ] **Re-baseline** complete — `v02-eval-baseline.md` reflects v0.4 stack measurements *(operational)*
+- [x] **Gating eval datasets** committed (minimum per domain: ~30 rights/consumer/employment; ~20 refusal; ~15 revised-law; ~20 needle)
 - [ ] **Manual live eval** meets targets on MVP subset **or** documented gap + remediation plan before v0.6 *(advisory — not a merge blocker)*
 - [x] **Benchmark harness** can compare candidate run vs baseline artifact
-- [ ] **Manual smoke runbook** executed — pytest smoke + lint green locally
+- [ ] **Manual smoke runbook** executed — pytest smoke + lint green locally *(operational)*
 - [x] **Flow coverage matrix** published
 - [ ] **Roadmap rule** — v0.6 not started until above checked (or explicit rescope)
 

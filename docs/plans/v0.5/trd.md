@@ -1,6 +1,6 @@
 # Dharmiq v0.5 — Technical Requirements & Implementation Plan
 
-**Status:** Draft  
+**Status:** Implemented (code complete; operational gates pending — see §16)  
 **Version:** 0.5  
 **Parent doc:** [`prd.md`](./prd.md)  
 **Baseline:** v0.4 — Docker, upload truth, privacy, feedback, cost caps, mocked pytest smoke  
@@ -102,7 +102,9 @@ Verify paths before editing.
 
 | File | Value |
 |------|-------|
-| `backend/dharmiq/__init__.py` | `0.4.0` → bump to `0.5.0` in **P6** only |
+| `backend/dharmiq/__init__.py` | `0.5.0` |
+| `backend/pyproject.toml` | `0.5.0` |
+| `frontend/package.json` | `0.5.0` |
 
 ---
 
@@ -242,10 +244,10 @@ uv run python -m dharmiq.eval.tools.verify_corpus_index \
 
 ### Definition of done
 
-- [ ] `build_manifest.py` and `verify_corpus_index.py` merged with unit tests
-- [ ] MVP PDFs on disk; `manifest.json` generated
-- [ ] `sync_india_code_pdfs` completed; `corpus_index_report.json` saved
-- [ ] `verify_corpus_index` → 26/26
+- [x] `build_manifest.py` and `verify_corpus_index.py` merged with unit tests
+- [ ] MVP PDFs on disk; `manifest.json` generated *(operational — per environment)*
+- [ ] `sync_india_code_pdfs` completed; `corpus_index_report.json` saved *(operational)*
+- [ ] `verify_corpus_index` → 26/26 *(operational)*
 
 ---
 
@@ -296,9 +298,9 @@ uv run dharmiq-eval --dataset v1_fundamental_rights
 
 ### Definition of done
 
-- [ ] Summary JSON includes metadata block
-- [ ] `v02-eval-baseline.md` has v0.4 measured row dated 2026-06-*
-- [ ] Spike + full rights eval complete without error
+- [x] Summary JSON includes metadata block
+- [ ] `v02-eval-baseline.md` has v0.4 measured row dated 2026-06-* *(pending live eval)*
+- [ ] Spike + full rights eval complete without error *(operational)*
 
 ---
 
@@ -346,9 +348,9 @@ uv run pytest tests/test_eval_dataset_loader.py tests/test_validate_dataset.py -
 
 ### Definition of done
 
-- [ ] ≥30 rows in `v1_fundamental_rights.jsonl`
-- [ ] Loader tests green
-- [ ] `validate_dataset` passes
+- [x] ≥30 rows in `v1_fundamental_rights.jsonl`
+- [x] Loader tests green
+- [x] `validate_dataset` passes
 
 ---
 
@@ -403,9 +405,9 @@ uv run pytest tests/test_eval_dataset_loader.py -q -k "consumer or employment"
 
 ### Definition of done
 
-- [ ] `v1_consumer.jsonl` ≥30 committed
-- [ ] `v1_employment.jsonl` ≥30 committed
-- [ ] validate_dataset passes both
+- [x] `v1_consumer.jsonl` ≥30 committed
+- [x] `v1_employment.jsonl` ≥30 committed
+- [x] validate_dataset passes both
 
 ---
 
@@ -468,9 +470,9 @@ uv run python -m dharmiq.eval.tools.validate_dataset --dataset v1_needle_statute
 
 ### Definition of done
 
-- [ ] recall@5 in eval JSON for citation-bearing rows
-- [ ] Three datasets committed and validated
-- [ ] Unit tests for recall + revised-law checks
+- [x] recall@5 in eval JSON for citation-bearing rows
+- [x] Three datasets committed and validated
+- [x] Unit tests for recall + revised-law checks
 
 ---
 
@@ -563,9 +565,9 @@ uv run pytest tests/test_eval_compare.py tests/test_eval_suite.py -q
 
 ### Definition of done
 
-- [ ] `--suite mvp` runs all 6 datasets
-- [ ] `--compare baseline` works with fixture baseline
-- [ ] `baseline.json` committed after first passing MVP run (or measured partial with remediation note)
+- [x] `--suite mvp` runs all 6 datasets
+- [x] `--compare baseline` works with fixture baseline
+- [ ] `baseline.json` committed after first passing MVP run (or measured partial with remediation note) *(operational)*
 
 ---
 
@@ -610,10 +612,10 @@ cd backend && uv run pytest tests/test_v02_e2e_smoke.py -q
 
 ### Definition of done
 
-- [ ] Export/delete smoke green
-- [ ] Flow matrix + runbook linked
-- [ ] Version 0.5.0
-- [ ] Full manual runbook executed once
+- [x] Export/delete smoke green (`test_v05_export_delete_smoke`)
+- [x] Flow matrix + runbook linked
+- [x] Version 0.5.0
+- [ ] Full manual runbook executed once *(operational)*
 
 ---
 
@@ -641,8 +643,8 @@ uv run python -m dharmiq.eval.tools.bhashabench_sample --dry-run
 
 ### Definition of done
 
-- [ ] Dry-run prints sample plan
-- [ ] `datasets.md` §5.3 cross-link satisfied
+- [x] Dry-run prints sample plan
+- [x] `datasets.md` §5.3 cross-link satisfied
 
 ---
 
@@ -743,7 +745,8 @@ uv run dharmiq-eval --suite mvp --compare baseline
 | Date | Change |
 |------|--------|
 | 2026-06-22 | Initial TRD from PRD + codebase inspection |
+| 2026-06-22 | Code complete (P0–P7); version 0.5.0; operational gates (corpus index, live re-baseline, `baseline.json`, manual runbook) pending |
 
 ---
 
-*When v0.5 ships: update [`roadmap.md`](../roadmap.md), [`README.md`](../../../README.md), mark PRD exit criteria.*
+*Ship checklist: MVP corpus 26/26, live `--suite mvp --compare baseline`, commit `baseline.json`, sign [`manual-test-runbook.md`](./manual-test-runbook.md).*

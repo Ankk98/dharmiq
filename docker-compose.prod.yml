@@ -1,0 +1,145 @@
+# Production-like full stack: built images, Nginx static frontend, no source bind mounts.
+#
+# Usage:
+#   cp .env.example .env   # set OPENROUTER_API_KEY, DHARMIQ_JWT_SECRET, DHARMIQ_DATABASE_PASSWORD
+#   docker compose -f docker-compose.prod.yml build
+#   docker compose -f docker-compose.prod.yml up -d
+#   curl -s http://localhost/api/health
+
+x-app-env: &app-env
+  DHARMIQ_ENV: docker
+  DHARMIQ_ROOT: /app
+  DHARMIQ_DATABASE_PASSWORD: ${DHARMIQ_DATABASE_PASSWORD:?set DHARMIQ_DATABASE_PASSWORD in .env}
+  DHARMIQ_JWT_SECRET: ${DHARMIQ_JWT_SECRET:?set DHARMIQ_JWT_SECRET in .env}
+  OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+  DHARMIQ_COST_LIMITS_ENFORCE: ${DHARMIQ_COST_LIMITS_ENFORCE:-true}
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: dharmiq
+      POSTGRES_PASSWORD: ${DHARMIQ_DATABASE_PASSWORD}
+      POSTGRES_DB: dharmiq
+    volumes:
+      - dharmiq_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dharmiq -d dharmiq"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --save 60 1000
+    volumes:
+      - dharmiq_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      <<: *app-env
+    volumes:
+      - dharmiq_uploads:/app/data/uploads
+      - dharmiq_corpus:/app/data/corpus
+    command:
+      [
+        "uvicorn",
+        "dharmiq.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--workers",
+        "2",
+      ]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  celery-worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      <<: *app-env
+    volumes:
+      - dharmiq_uploads:/app/data/uploads
+      - dharmiq_corpus:/app/data/corpus
+    command: ["celery", "-A", "celery_app", "worker", "--loglevel=info"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_started
+    restart: unless-stopped
+
+  celery-beat:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      <<: *app-env
+    volumes:
+      - dharmiq_uploads:/app/data/uploads
+      - dharmiq_corpus:/app/data/corpus
+    command: ["celery", "-A", "celery_app", "beat", "--loglevel=info"]
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  nginx:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      api:
+        condition: service_started
+    restart: unless-stopped
+
+  prometheus:
+    profiles: [observability]
+    image: prom/prometheus:v3.2.1
+    volumes:
+      - ./config/prometheus/prometheus.docker.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      api:
+        condition: service_started
+    restart: unless-stopped
+
+  grafana:
+    profiles: [observability]
+    image: grafana/grafana:11.5.2
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./config/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+volumes:
+  dharmiq_pgdata:
+  dharmiq_redis:
+  dharmiq_uploads:
+  dharmiq_corpus:

@@ -1,0 +1,175 @@
+# Full development stack: API, Celery, frontend (Vite HMR), Postgres, Redis.
+# Infra-only workflow (API/Celery on host) remains in docker-compose.yml.
+#
+# Usage:
+#   cp .env.example .env   # set OPENROUTER_API_KEY and secrets
+#   docker compose -f docker-compose.dev.yml up --build
+
+x-app-env: &app-env
+  DHARMIQ_ENV: docker
+  DHARMIQ_ROOT: /app
+  DHARMIQ_DATABASE_PASSWORD: ${DHARMIQ_DATABASE_PASSWORD:-dharmiq}
+  DHARMIQ_JWT_SECRET: ${DHARMIQ_JWT_SECRET:-change-me-in-development}
+  OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+  DHARMIQ_COST_LIMITS_ENFORCE: ${DHARMIQ_COST_LIMITS_ENFORCE:-true}
+
+x-app-volumes: &app-volumes
+  - ./backend:/app/backend
+  - ./config:/app/config
+  - ./data/corpus:/app/data/corpus
+  - ./data/eval:/app/data/eval
+  - ./data/uploads:/app/data/uploads
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: dharmiq
+      POSTGRES_PASSWORD: ${DHARMIQ_DATABASE_PASSWORD:-dharmiq}
+      POSTGRES_DB: dharmiq
+    ports:
+      - "5433:5432"
+    volumes:
+      - dharmiq_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dharmiq -d dharmiq"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --save 60 1000
+    ports:
+      - "6379:6379"
+    volumes:
+      - dharmiq_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      <<: *app-env
+    volumes: *app-volumes
+    ports:
+      - "8000:8000"
+    command:
+      [
+        "uvicorn",
+        "dharmiq.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--reload",
+      ]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery-worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      <<: *app-env
+    volumes: *app-volumes
+    command: ["celery", "-A", "celery_app", "worker", "--loglevel=info"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_started
+
+  celery-beat:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      <<: *app-env
+    volumes: *app-volumes
+    command: ["celery", "-A", "celery_app", "beat", "--loglevel=info"]
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  frontend:
+    image: node:22-alpine
+    working_dir: /app
+    environment:
+      VITE_DEV_API_PROXY: http://api:8000
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    ports:
+      - "5173:5173"
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    depends_on:
+      api:
+        condition: service_started
+
+  redis-commander:
+    profiles: [observability]
+    image: rediscommander/redis-commander:latest
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  flower:
+    profiles: [observability]
+    image: mher/flower:2.0
+    command: celery flower --port=5555
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      FLOWER_UNAUTHENTICATED_API: "true"
+    ports:
+      - "5555:5555"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  prometheus:
+    profiles: [observability]
+    image: prom/prometheus:v3.2.1
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus/prometheus.docker.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      api:
+        condition: service_started
+
+  grafana:
+    profiles: [observability]
+    image: grafana/grafana:11.5.2
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./config/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+    depends_on:
+      - prometheus
+
+volumes:
+  dharmiq_pgdata:
+  dharmiq_redis:
+  frontend_node_modules:

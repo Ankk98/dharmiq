@@ -159,10 +159,10 @@ export function SettingsPage() {
       link.download = filename;
       link.click();
       URL.revokeObjectURL(url);
-      toast({ title: "Export downloaded", description: filename });
+      toast({ title: "Export downloaded", detail: filename });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Export failed";
-      toast({ title: "Export failed", description: message });
+      toast({ title: "Export failed", detail: message });
     } finally {
       setIsExporting(false);
     }

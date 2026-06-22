@@ -640,6 +640,117 @@ User-facing copy for unrecoverable failures: “Something went wrong. Please ret
 
 ---
 
+## 18. Docker deployment
+
+Dharmiq v0.4 adds **full-stack Docker Compose** files alongside the existing host (`uv` + `npm`) workflow. Use them for self-hosting, production-like smoke tests, or contributors who prefer containers over local Python/Node installs.
+
+| File | Purpose |
+|------|---------|
+| `docker-compose.yml` | **Infra only** — Postgres, Redis, Flower, Prometheus, Grafana (API/Celery on host) |
+| `docker-compose.dev.yml` | **Dev stack** — API (reload), Celery worker + beat, Vite frontend, bind-mounted source and `./data/` |
+| `docker-compose.prod.yml` | **Prod-like stack** — built images, Nginx on port 80, named volumes, no source mounts |
+
+### 18.1 Prerequisites
+
+- Docker Engine 24+ and Compose plugin v2
+- 8+ GB RAM recommended (local sentence-transformers and reranker models load in API/Celery containers)
+- `.env` at repo root with `OPENROUTER_API_KEY`, `DHARMIQ_JWT_SECRET`, and `DHARMIQ_DATABASE_PASSWORD`
+
+```bash
+cp .env.example .env
+# Edit secrets before prod compose
+```
+
+### 18.2 Development stack
+
+```bash
+docker compose -f docker-compose.dev.yml up --build
+```
+
+| Service | URL |
+|---------|-----|
+| Frontend (Vite HMR) | http://localhost:5173 |
+| API | http://localhost:8000 |
+| Postgres | `localhost:5433` |
+| Redis | `localhost:6379` |
+
+Bind mounts:
+
+| Host path | Container path | Notes |
+|-----------|----------------|-------|
+| `./backend` | `/app/backend` | API `--reload` |
+| `./frontend` | `/app` (frontend service) | Vite HMR |
+| `./config` | `/app/config` | `DHARMIQ_ENV=docker` |
+| `./data/corpus` | `/app/data/corpus` | IndiaCode PDF ingestion |
+| `./data/uploads` | `/app/data/uploads` | User uploads |
+| `./data/eval` | `/app/data/eval` | Eval datasets (optional) |
+
+Optional observability (Flower, Redis Commander, Prometheus, Grafana):
+
+```bash
+docker compose -f docker-compose.dev.yml --profile observability up
+```
+
+### 18.3 Production-like stack
+
+```bash
+docker compose -f docker-compose.prod.yml build
+docker compose -f docker-compose.prod.yml up -d
+curl -s http://localhost/api/health
+```
+
+| Service | Notes |
+|---------|-------|
+| `nginx` | Serves `frontend/dist/`; proxies `/api` to `api:8000` |
+| `api` | Uvicorn with 2 workers; runs Alembic + LangGraph checkpoint init on start |
+| `celery-worker` / `celery-beat` | Same backend image; beat schedule disabled via `config.docker.yaml` |
+| `postgres` / `redis` | Named volumes only |
+
+Named volumes: `dharmiq_pgdata`, `dharmiq_redis`, `dharmiq_uploads`, `dharmiq_corpus`.
+
+**Seed corpus in prod:** copy PDFs into the corpus volume before ingestion:
+
+```bash
+docker compose -f docker-compose.prod.yml exec api \
+  mkdir -p /app/data/corpus/india_code/raw
+# docker cp local_pdfs/. $(docker compose -f docker-compose.prod.yml ps -q api):/app/data/corpus/india_code/raw/
+docker compose -f docker-compose.prod.yml exec celery-worker \
+  celery -A celery_app call dharmiq.ingestion.sync_india_code_pdfs
+```
+
+**TLS:** Terminate HTTPS on a host Nginx or cloud load balancer in front of port 80, or add a reverse-proxy container. The bundled Nginx config listens on port 80 only.
+
+### 18.4 Nginx / SSE
+
+`docker/nginx/default.conf` mirrors the host Nginx rules in §8:
+
+- `proxy_read_timeout 300s` on `/api/chat/requests/` (SSE stream)
+- `proxy_buffering off` for immediate event delivery
+- `client_max_body_size 100m` for uploads
+
+### 18.5 Smoke test checklist (prod compose)
+
+After `docker compose -f docker-compose.prod.yml up -d`:
+
+- [ ] `curl -s http://localhost/api/health` returns healthy
+- [ ] Signup / login
+- [ ] Chat message → streamed answer
+- [ ] Upload PDF → stages → ready → attach → cite in answer
+- [ ] Citation → document panel Parsed highlight
+- [ ] Settings → export JSON
+- [ ] Thumbs feedback on assistant message
+- [ ] `docker compose -f docker-compose.prod.yml down && up -d` → pending chat/upload recovers (see §17)
+
+### 18.6 VPS deployment options
+
+| Approach | When to use |
+|----------|-------------|
+| **Host path (§1–§16)** | Current `app.dharmiq.in` — systemd API/Celery, Docker for Postgres/Redis only |
+| **Prod compose** | Single-server self-host with everything in containers; put TLS in front of port 80 |
+| **Hybrid** | Prod compose on a staging host; promote to host path on beta when validated |
+
+---
+
 ## Related docs
 
 - [README](../README.md) — local development quick start (v0.2 agent pipeline)

@@ -1,0 +1,23 @@
+# Minimal allowlist fixture for unit tests (not the production 26-instrument list)
+version: "test"
+jurisdiction_default: central
+
+domains:
+  fundamental_rights:
+    instruments:
+      - id: IN-CONSTITUTION-1949
+        title: The Constitution of India
+        doc_type: act
+        canonical_url: https://www.indiacode.nic.in/handle/123456789/19150
+
+      - id: IN-RTI-2005
+        title: The Right to Information Act, 2005
+        doc_type: act
+        canonical_url: https://www.indiacode.nic.in/handle/123456789/2065
+
+  consumer:
+    instruments:
+      - id: IN-CPA-2019
+        title: The Consumer Protection Act, 2019
+        doc_type: act
+        canonical_url: https://www.indiacode.nic.in/handle/123456789/15256

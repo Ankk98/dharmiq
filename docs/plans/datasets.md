@@ -189,6 +189,8 @@ Re-baseline on **v0.4 LangGraph stack** before treating targets as binding.
 
 **Recommendation:** Track as **weak indicator** in optional quarterly reports — domain coverage sanity check, not grounding quality. Invest in **`v1_*` citizen JSONL** for all gating.
 
+**Dharmiq tool (v0.5 P7):** `backend/dharmiq/eval/tools/bhashabench_sample.py` — dry-run offline plan or live HF sample IDs; append-only log at `data/eval/runs/bhashabench_log.md`. See [`manual-test-runbook.md`](./v0.5/manual-test-runbook.md) §6.
+
 ---
 
 ## 6. Gap analysis

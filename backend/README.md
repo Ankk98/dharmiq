@@ -329,6 +329,19 @@ Metrics computed per question:
 
 See [`docs/plans/v02-eval-baseline.md`](../docs/plans/v02-eval-baseline.md) for v0.1 baseline vs v0.2 targets.
 
+### BhashaBench weak indicator (optional)
+
+Not a merge gate — quarterly domain coverage sanity check only. See [`docs/plans/datasets.md`](../docs/plans/datasets.md) §5.3.
+
+```bash
+# Offline sample plan (no Hugging Face access)
+uv run python -m dharmiq.eval.tools.bhashabench_sample --dry-run
+
+# Live sample IDs (gated dataset; export HF_TOKEN after access approved)
+uv run python -m dharmiq.eval.tools.bhashabench_sample \
+  --output ../data/eval/runs/bhashabench_log.md
+```
+
 ## Observability
 
 The API exposes Prometheus metrics at `GET /metrics`:

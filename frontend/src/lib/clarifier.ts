@@ -4,17 +4,6 @@ export type ClarifierItem = {
   options: string[];
 };
 
-function splitQuestionAndWhy(text: string): { question: string; why?: string } {
-  const parts = text.split(/\s+[—–-]\s+/);
-  if (parts.length >= 2) {
-    return {
-      question: parts[0]?.trim() ?? text,
-      why: parts.slice(1).join(" — ").trim() || undefined,
-    };
-  }
-  return { question: text.trim() };
-}
-
 function parseMetadataItems(metadata: Record<string, unknown> | null | undefined): ClarifierItem[] {
   const raw = metadata?.followup_items;
   if (!Array.isArray(raw)) {
@@ -43,20 +32,8 @@ function parseMetadataItems(metadata: Record<string, unknown> | null | undefined
 }
 
 export function parseClarifierItems(
-  content: string,
+  _content: string,
   metadata?: Record<string, unknown> | null,
 ): ClarifierItem[] {
-  const fromMetadata = parseMetadataItems(metadata);
-  if (fromMetadata.length > 0) {
-    return fromMetadata;
-  }
-
-  return content
-    .split("\n")
-    .map((line) => line.replace(/^[-*]\s*/, "").trim())
-    .filter(Boolean)
-    .map((line) => {
-      const { question, why } = splitQuestionAndWhy(line);
-      return { question, why, options: [] };
-    });
+  return parseMetadataItems(metadata);
 }

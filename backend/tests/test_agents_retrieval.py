@@ -250,7 +250,9 @@ async def test_run_clarifier_parses_json_response(monkeypatch: pytest.MonkeyPatc
     payload = {
         "topic": "police_arrest",
         "needs_more_info": True,
-        "followup_questions": ["Are you under arrest?"],
+        "followup_items": [
+            {"question": "Are you under arrest?", "options": [], "why": None},
+        ],
         "reason": "Need arrest status",
     }
     mock_litellm_acompletion(
@@ -403,7 +405,9 @@ async def test_clarifier_three_round_cap(
     clarifier = {
         "topic": "police_arrest",
         "needs_more_info": True,
-        "followup_questions": ["Are you currently detained?"],
+        "followup_items": [
+            {"question": "Are you currently detained?", "options": [], "why": None},
+        ],
         "reason": "Need more facts",
     }
     rewriter = {"queries": ["Article 22 arrest rights"]}

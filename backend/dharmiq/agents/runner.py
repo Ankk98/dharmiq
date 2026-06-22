@@ -14,8 +14,14 @@ from dharmiq.agents.nodes.finalizer import VALIDATION_FAILED_MESSAGE
 from dharmiq.agents.runtime import GraphRuntime
 from dharmiq.agents.state import AgentGraphState
 from dharmiq.agents.streaming import ProgressEmitter
+from dharmiq.agents.text_utils import normalize_for_comparison
 from dharmiq.config.settings import Settings, get_settings
-from dharmiq.core.errors import OpenRouterError
+from dharmiq.core.errors import (
+    ClarifierStructureError,
+    DuplicateAnswerError,
+    GraphStepLimitExceeded,
+    OpenRouterError,
+)
 from dharmiq.core.logging import get_logger
 from dharmiq.db.models.chats import (
     ChatMessage,
@@ -39,6 +45,16 @@ from dharmiq.schemas.chat import ChatMessageRead
 
 logger = get_logger(__name__)
 
+CLARIFIER_FAILURE_MESSAGE = (
+    "Something went wrong preparing follow-up questions. Please try again."
+)
+DUPLICATE_ANSWER_MESSAGE = (
+    "This request produced the same result. Try rephrasing or attach a document."
+)
+STEP_LIMIT_MESSAGE = (
+    "This question took too many steps. Please simplify or start a new chat."
+)
+
 
 async def _load_attached_upload_ids(
     db: AsyncSession,
@@ -57,7 +73,7 @@ async def _truncate_messages_after(
     db: AsyncSession,
     session_id: uuid.UUID,
     user_message: ChatMessage,
-) -> None:
+) -> ChatMessage | None:
     result = await db.execute(
         select(ChatMessage)
         .where(ChatMessage.session_id == session_id)
@@ -70,8 +86,20 @@ async def _truncate_messages_after(
     )
     if cut_index is None:
         raise ValueError(f"User message {user_message.id} not found in session {session_id}")
+
+    prior_assistant: ChatMessage | None = None
     for message in messages[cut_index + 1 :]:
+        if message.role == MessageRole.ASSISTANT and prior_assistant is None:
+            prior_assistant = message
         await db.delete(message)
+    return prior_assistant
+
+
+def _assert_not_duplicate_answer(prior_answer: str | None, new_answer: str | None) -> None:
+    if not prior_answer or not new_answer:
+        return
+    if normalize_for_comparison(prior_answer) == normalize_for_comparison(new_answer):
+        raise DuplicateAnswerError(DUPLICATE_ANSWER_MESSAGE)
 
 
 async def _seed_clarifier_round(db: AsyncSession, session_id: uuid.UUID) -> int:
@@ -89,8 +117,11 @@ async def _persist_clarifier_return(
     runtime: GraphRuntime,
     state: AgentGraphState,
 ) -> ChatMessage:
-    followups = state.get("followup_questions") or []
     followup_items = state.get("followup_items") or []
+    if not followup_items:
+        raise ClarifierStructureError("Clarifier ended without structured followup_items")
+
+    followups = state.get("followup_questions") or []
     clarifier_content = "\n".join(f"- {question}" for question in followups)
     clarifier_msg = ChatMessage(
         session_id=runtime.chat_session.id,
@@ -210,7 +241,8 @@ async def retry_agent_graph_request(
         if old_request is not None:
             force_answer = old_request.force_answer
 
-    await _truncate_messages_after(db, chat_session.id, user_message)
+    prior_assistant = await _truncate_messages_after(db, chat_session.id, user_message)
+    prior_assistant_answer = prior_assistant.content if prior_assistant is not None else None
 
     clarifier_round = await _seed_clarifier_round(db, chat_session.id)
     chat_request = ChatRequest(
@@ -229,6 +261,8 @@ async def retry_agent_graph_request(
         **(user_message.message_metadata or {}),
         "chat_request_id": str(chat_request.id),
     }
+    if prior_assistant_answer is not None:
+        user_message.message_metadata["prior_assistant_answer"] = prior_assistant_answer
 
     history = await _load_history(db, chat_session.id, limit=cfg.chat.history_limit)
     attached_upload_ids = await _load_attached_upload_ids(
@@ -251,6 +285,7 @@ async def retry_agent_graph_request(
         user_msg=user_message,
         attached_upload_ids=attached_upload_ids,
         new_messages=[user_message],
+        prior_assistant_answer=prior_assistant_answer,
     )
 
 
@@ -296,6 +331,7 @@ def _initial_state(runtime: GraphRuntime) -> AgentGraphState:
         "regeneration_count": 0,
         "total_tokens": 0,
         "max_validator_retries": runtime.settings.chat.max_validator_retries,
+        "node_execution_count": 0,
         "weak_retrieval": False,
         "top_rerank_score": 0.0,
     }
@@ -339,6 +375,10 @@ async def _load_runtime_for_request(
     if user_msg is None:
         raise ValueError(f"User message not found for chat request {chat_request.id}")
 
+    metadata = user_msg.message_metadata or {}
+    raw_prior = metadata.get("prior_assistant_answer")
+    prior_assistant_answer = raw_prior if isinstance(raw_prior, str) else None
+
     history = await _load_history(db, chat_session.id, limit=cfg.chat.history_limit)
     attached_upload_ids = await _load_attached_upload_ids(
         db,
@@ -358,6 +398,7 @@ async def _load_runtime_for_request(
         attached_upload_ids=attached_upload_ids,
         new_messages=[user_msg],
         emitter=emitter,
+        prior_assistant_answer=prior_assistant_answer,
     )
 
 
@@ -467,6 +508,10 @@ async def run_agent_graph_for_request(
             (message for message in runtime.new_messages if message.role == MessageRole.ASSISTANT),
             None,
         )
+        _assert_not_duplicate_answer(
+            runtime.prior_assistant_answer,
+            assistant_msg.content if assistant_msg is not None else None,
+        )
         if runtime.emitter is not None:
             try:
                 await runtime.emitter.emit_done(
@@ -493,6 +538,47 @@ async def run_agent_graph_for_request(
             new_messages=[ChatMessageRead.model_validate(message) for message in runtime.new_messages],
         )
 
+    except DuplicateAnswerError as exc:
+        assistant_msg = next(
+            (message for message in runtime.new_messages if message.role == MessageRole.ASSISTANT),
+            None,
+        )
+        if assistant_msg is not None:
+            await db.delete(assistant_msg)
+        await _mark_request_failed(db, runtime.chat_request, error_message=exc.message)
+        if runtime.emitter is not None:
+            await runtime.emitter.emit_error(code="DUPLICATE_ANSWER", message=exc.message)
+            await runtime.emitter.emit_done(message_id=None, status=ChatRequestStatus.FAILED)
+        raise
+    except ClarifierStructureError:
+        await _mark_request_failed(db, runtime.chat_request, error_message=CLARIFIER_FAILURE_MESSAGE)
+        if runtime.emitter is not None:
+            await runtime.emitter.emit_error(
+                code="CLARIFIER_STRUCTURE_ERROR",
+                message=CLARIFIER_FAILURE_MESSAGE,
+            )
+            await runtime.emitter.emit_done(message_id=None, status=ChatRequestStatus.FAILED)
+        return ChatPipelineResult(
+            chat_request_id=runtime.chat_request.id,
+            status=ChatRequestStatus.FAILED,
+            needs_clarification=False,
+            error_message=CLARIFIER_FAILURE_MESSAGE,
+            taking_longer_than_expected=_elapsed_over_threshold(started, cfg),
+            new_messages=[ChatMessageRead.model_validate(runtime.user_msg)],
+        )
+    except GraphStepLimitExceeded:
+        await _mark_request_failed(db, runtime.chat_request, error_message=STEP_LIMIT_MESSAGE)
+        if runtime.emitter is not None:
+            await runtime.emitter.emit_error(code="STEP_LIMIT_EXCEEDED", message=STEP_LIMIT_MESSAGE)
+            await runtime.emitter.emit_done(message_id=None, status=ChatRequestStatus.FAILED)
+        return ChatPipelineResult(
+            chat_request_id=runtime.chat_request.id,
+            status=ChatRequestStatus.FAILED,
+            needs_clarification=False,
+            error_message=STEP_LIMIT_MESSAGE,
+            taking_longer_than_expected=_elapsed_over_threshold(started, cfg),
+            new_messages=[ChatMessageRead.model_validate(runtime.user_msg)],
+        )
     except OpenRouterError as exc:
         logger.error(
             "agent_graph_openrouter_error",

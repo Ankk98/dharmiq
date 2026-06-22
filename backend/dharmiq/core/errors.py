@@ -80,3 +80,15 @@ class UsageLimitExceededError(DharmiqError):
     ) -> None:
         super().__init__(message, details=details)
         self.limit = limit
+
+
+class ClarifierStructureError(DharmiqError):
+    """Raised when the clarifier LLM returns invalid structured follow-up items."""
+
+
+class GraphStepLimitExceeded(DharmiqError):
+    """Raised when the agent graph exceeds the per-request node execution cap."""
+
+
+class DuplicateAnswerError(DharmiqError):
+    """Raised when a retry/edit reproduces the same assistant answer."""

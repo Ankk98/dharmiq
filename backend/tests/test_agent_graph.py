@@ -170,7 +170,10 @@ async def test_graph_clarifier_branch(
     clarifier = {
         "topic": "police_arrest",
         "needs_more_info": True,
-        "followup_questions": ["Are you under arrest?", "Do you have a written notice?"],
+        "followup_items": [
+            {"question": "Are you under arrest?", "options": [], "why": None},
+            {"question": "Do you have a written notice?", "options": [], "why": None},
+        ],
         "reason": "Need more facts",
     }
     mock_litellm_acompletion(monkeypatch, [json.dumps(clarifier)])
@@ -418,7 +421,10 @@ async def test_agent_graph_clarifier_followups_api(
     clarifier = {
         "topic": "police_arrest",
         "needs_more_info": True,
-        "followup_questions": ["Are you under arrest?", "Do you have a written notice?"],
+        "followup_items": [
+            {"question": "Are you under arrest?", "options": [], "why": None},
+            {"question": "Do you have a written notice?", "options": [], "why": None},
+        ],
         "reason": "Need more facts",
     }
     mock_litellm_acompletion(monkeypatch, [json.dumps(clarifier)])

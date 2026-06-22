@@ -12,9 +12,11 @@ from dharmiq.agents.runner import (
     create_agent_graph_request,
     edit_user_message_request,
     retry_agent_graph_request,
+    run_agent_graph_for_request,
     run_agent_graph_sync,
 )
 from dharmiq.config.settings import get_settings
+from dharmiq.core.errors import DuplicateAnswerError
 from dharmiq.db.models.chats import ChatMessage, ChatRequest, ChatRequestStatus, ChatSession, MessageRole
 from dharmiq.db.models.users import User
 from dharmiq.db.session import get_db_session
@@ -214,7 +216,10 @@ async def retry_session_message(
         user_message=user_message,
         settings=settings,
     )
-    enqueue_agent_graph(runtime.chat_request.id)
+    try:
+        await run_agent_graph_for_request(db, runtime.chat_request.id, settings=settings)
+    except DuplicateAnswerError:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="duplicate_answer")
     payload = ChatRequestPendingResponse(
         chat_request_id=runtime.chat_request.id,
         user_message_id=runtime.user_msg.id,
@@ -269,7 +274,10 @@ async def edit_session_message(
         new_content=body.content,
         settings=settings,
     )
-    enqueue_agent_graph(runtime.chat_request.id)
+    try:
+        await run_agent_graph_for_request(db, runtime.chat_request.id, settings=settings)
+    except DuplicateAnswerError:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="duplicate_answer")
     payload = ChatRequestPendingResponse(
         chat_request_id=runtime.chat_request.id,
         user_message_id=runtime.user_msg.id,

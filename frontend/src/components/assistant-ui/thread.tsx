@@ -334,6 +334,20 @@ const AssistantMessage: FC = () => {
     const interactive =
       activeClarifierMessageId != null && messageId === activeClarifierMessageId;
 
+    if (presentation.items.length === 0) {
+      return (
+        <MessagePrimitive.Root
+          data-slot="aui_assistant-message-root"
+          data-role="assistant"
+          className="thread-msg-enter relative flex justify-start px-2"
+        >
+          <div className="border-border bg-raised text-muted-foreground w-full max-w-[min(72ch,100%)] rounded-[5px_14px_14px_14px] border p-4 text-[0.82em] shadow-[var(--card-highlight)]">
+            Could not load follow-up questions
+          </div>
+        </MessagePrimitive.Root>
+      );
+    }
+
     return (
       <MessagePrimitive.Root
         data-slot="aui_assistant-message-root"

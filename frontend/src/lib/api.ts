@@ -18,6 +18,15 @@ export type ChatMessage = {
   created_at: string;
 };
 
+export type MessageFeedbackRead = {
+  id: string;
+  message_id: string;
+  rating: "up" | "down";
+  reason: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type Citation = {
   marker?: number;
   chunk_id: string;
@@ -415,6 +424,20 @@ export async function editSessionMessage(
     chat_request_id: body.chat_request_id,
     user_message_id: body.user_message_id,
   };
+}
+
+export async function submitFeedback(
+  messageId: string,
+  rating: "up" | "down",
+  reason?: string,
+): Promise<MessageFeedbackRead> {
+  return apiFetch<MessageFeedbackRead>(`/api/chat/messages/${messageId}/feedback`, {
+    method: "POST",
+    body: JSON.stringify({
+      rating,
+      reason: reason?.trim() ? reason.trim() : null,
+    }),
+  });
 }
 
 export async function sendChatMessage(

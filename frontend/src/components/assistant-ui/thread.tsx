@@ -24,6 +24,7 @@ import { ComposerAttachmentChips } from "@/components/uploads/SessionAttachments
 import { useChatRuntimeState } from "@/hooks/useChatRuntimeState";
 import { READING_MEASURE } from "@/lib/design/constants";
 import { messagePresentation } from "@/lib/messageMeta";
+import { submitFeedback } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import {
   ActionBarMorePrimitive,
@@ -50,8 +51,10 @@ import {
   PencilIcon,
   RefreshCwIcon,
   SquareIcon,
+  ThumbsDownIcon,
+  ThumbsUpIcon,
 } from "lucide-react";
-import type { FC } from "react";
+import { type FC, useState } from "react";
 
 export const Thread: FC = () => {
   return (
@@ -460,6 +463,26 @@ const AssistantMessage: FC = () => {
 };
 
 const AssistantActionBar: FC = () => {
+  const messageId = useAuiState((s) => s.message.id);
+  const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleFeedback = async (rating: "up" | "down") => {
+    if (submitting) {
+      return;
+    }
+    const reason = window.prompt("Optional feedback reason (max 500 characters):") ?? undefined;
+    setSubmitting(true);
+    try {
+      await submitFeedback(messageId, rating, reason);
+      setFeedback(rating);
+    } catch {
+      // Keep the interaction lightweight: no global toast dependency here.
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <ActionBarPrimitive.Root
       hideWhenRunning
@@ -491,6 +514,28 @@ const AssistantActionBar: FC = () => {
       >
         <RefreshCwIcon className="size-[15px] stroke-[1.7]" />
       </ActionBarPrimitive.Reload>
+      <TooltipIconButton
+        tooltip={feedback === "up" ? "Helpful (saved)" : "Helpful"}
+        className={cn(
+          "message-action-btn border-border-subtle text-faint hover:text-foreground hover:border-border hover:bg-accent size-[30px] rounded-lg border bg-transparent p-0",
+          feedback === "up" && "text-foreground border-border bg-accent",
+        )}
+        onClick={() => void handleFeedback("up")}
+        disabled={submitting}
+      >
+        <ThumbsUpIcon className="size-[15px] stroke-[1.7]" />
+      </TooltipIconButton>
+      <TooltipIconButton
+        tooltip={feedback === "down" ? "Not helpful (saved)" : "Not helpful"}
+        className={cn(
+          "message-action-btn border-border-subtle text-faint hover:text-foreground hover:border-border hover:bg-accent size-[30px] rounded-lg border bg-transparent p-0",
+          feedback === "down" && "text-foreground border-border bg-accent",
+        )}
+        onClick={() => void handleFeedback("down")}
+        disabled={submitting}
+      >
+        <ThumbsDownIcon className="size-[15px] stroke-[1.7]" />
+      </TooltipIconButton>
       <ActionBarMorePrimitive.Root>
         <ActionBarMorePrimitive.Trigger
           render={

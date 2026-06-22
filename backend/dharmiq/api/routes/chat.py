@@ -18,6 +18,7 @@ from dharmiq.agents.runner import (
 from dharmiq.config.settings import get_settings
 from dharmiq.core.errors import DuplicateAnswerError
 from dharmiq.db.models.chats import ChatMessage, ChatRequest, ChatRequestStatus, ChatSession, MessageRole
+from dharmiq.db.models.feedback import MessageFeedback
 from dharmiq.db.models.users import User
 from dharmiq.db.session import get_db_session
 from dharmiq.schemas.chat import (
@@ -31,6 +32,7 @@ from dharmiq.schemas.chat import (
     SessionMessageCreate,
     SessionMessageEdit,
 )
+from dharmiq.schemas.feedback import MessageFeedbackCreate, MessageFeedbackRead
 from dharmiq.llm.pipeline import run_chat_pipeline
 from dharmiq.tasks.chat_tasks import enqueue_agent_graph
 
@@ -302,6 +304,52 @@ async def list_messages(
         .order_by(ChatMessage.created_at.asc())
     )
     return list(result.scalars().all())
+
+
+@router.post("/messages/{message_id}/feedback", response_model=MessageFeedbackRead)
+async def submit_message_feedback(
+    message_id: uuid.UUID,
+    body: MessageFeedbackCreate,
+    user: User = Depends(current_active_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> MessageFeedback:
+    message_result = await db.execute(
+        select(ChatMessage).where(
+            ChatMessage.id == message_id,
+            ChatMessage.user_id == user.id,
+        )
+    )
+    message = message_result.scalar_one_or_none()
+    if message is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Message not found")
+    if message.role != MessageRole.ASSISTANT:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Feedback can only be submitted for assistant messages",
+        )
+
+    feedback_result = await db.execute(
+        select(MessageFeedback).where(
+            MessageFeedback.user_id == user.id,
+            MessageFeedback.message_id == message_id,
+        )
+    )
+    feedback = feedback_result.scalar_one_or_none()
+    if feedback is None:
+        feedback = MessageFeedback(
+            user_id=user.id,
+            message_id=message_id,
+            rating=body.rating,
+            reason=body.reason,
+        )
+        db.add(feedback)
+    else:
+        feedback.rating = body.rating
+        feedback.reason = body.reason
+
+    await db.commit()
+    await db.refresh(feedback)
+    return feedback
 
 
 @router.post("", response_model=ChatPipelineResponse)

@@ -26,7 +26,20 @@ direction for product and engineering decisions, not final doctrine.
 
 ## Features
 
-### v0.3 (current)
+### v0.4 (current)
+
+- **Docker full stack** – `docker-compose.dev.yml` (hot reload) and `docker-compose.prod.yml` (Nginx on port 80); infra-only `docker-compose.yml` preserved for host dev
+- **Upload pipeline truth** – real `processing_stage` (`uploaded` → `ready` / `failed`), `chunk_count`, API-driven Documents page polling
+- **Document panel** – Original / Parsed tabs, chunk list API, quote span highlight (`qstart` / `qend`)
+- **Privacy** – export account JSON, hard-delete account (Settings → Privacy & data)
+- **Feedback** – 👍/👎 per assistant message with optional reason
+- **Cost caps** – per-call LLM usage persisted; $1/session and $10/month UTC caps (disable via `DHARMIQ_COST_LIMITS_ENFORCE=false`)
+- **Reliability** – chat `Idempotency-Key` header, Celery task dedupe, worker recovery for pending chats and stuck uploads
+- **Agent hygiene** – clarifier from `followup_items` only (no markdown fallback), loop detection, 100-step graph cap
+
+Implementation plan: [`docs/plans/v0.4/prd.md`](docs/plans/v0.4/prd.md) · [`docs/plans/v0.4/trd.md`](docs/plans/v0.4/trd.md).
+
+### v0.3 (Ashoka UI)
 
 - **Ashoka design system** – calm navy + India-green accent; Inter, Fraunces, Geist Mono, and Noto Sans Devanagari; light/dark theme toggle; aurora wallpaper
 - **App shell** – sidebar navigation (Chat, Documents, Settings), mobile app bar + tab bar, resizable document panel beside chat
@@ -58,7 +71,7 @@ Visual authority: [`docs/design/dharmiq-design-demo.html`](docs/design/dharmiq-d
 - **Evaluation** – Ragas + LLM-judge scoring on curated Q&A datasets
 - **Observability** – Prometheus metrics and Grafana dashboards
 
-MVP scope covers fundamental rights, consumer issues, and employment (see [`docs/plans/prd.md`](docs/plans/prd.md)). v0.2 agent architecture is in [`docs/plans/v0.2-prd-trd.md`](docs/plans/v0.2-prd-trd.md); v0.3 design system in [`docs/plans/v0.3.md`](docs/plans/v0.3.md).
+MVP scope covers fundamental rights, consumer issues, and employment (see [`docs/plans/prd.md`](docs/plans/prd.md)). v0.2 agent architecture: [`docs/plans/v0.2-prd-trd.md`](docs/plans/v0.2-prd-trd.md); v0.3 design system: [`docs/plans/v0.3.md`](docs/plans/v0.3.md); v0.4 reliability & ops: [`docs/plans/v0.4/prd.md`](docs/plans/v0.4/prd.md).
 
 ## Repository layout
 
@@ -67,7 +80,7 @@ dharmiq/
   backend/          # FastAPI app, Celery workers, LangGraph agents, RAG pipeline
   frontend/         # React + assistant-ui chat client (SSE streaming, progress UI)
   config/           # Environment YAML (dev, beta) + Grafana/Prometheus
-  docs/             # PRD, TRD, deployment, design system, v0.2/v0.3 plans
+  docs/             # PRD, TRD, deployment, design system, v0.2–v0.4 plans
   data/             # Local corpus, uploads, eval data (gitignored)
   docker-compose.yml
   docker-compose.dev.yml
@@ -232,12 +245,13 @@ Non-secret settings live in `config/config.dev.yaml` (local) and `config/config.
 
 | Variable | Description |
 |----------|-------------|
-| `DHARMIQ_ENV` | Config profile (`dev`, `beta`) |
+| `DHARMIQ_ENV` | Config profile (`dev`, `beta`, `docker`, `test`) |
 | `DHARMIQ_DATABASE_PASSWORD` | Postgres password (default: `dharmiq`) |
 | `DHARMIQ_JWT_SECRET` | JWT signing secret |
 | `OPENROUTER_API_KEY` | Required for chat and eval |
 | `DHARMIQ_AGENT_GRAPH_V2` | Set `false` to disable the LangGraph pipeline and use v0.1 sync chat (enabled by default) |
 | `DHARMIQ_DEBUG_PROGRESS` | Set `true` with a superuser account to expose debug progress events |
+| `DHARMIQ_COST_LIMITS_ENFORCE` | Set `false` to disable session/monthly LLM spend caps (self-host); costs still logged |
 
 Local Postgres is exposed on **port 5433** via Docker Compose.
 

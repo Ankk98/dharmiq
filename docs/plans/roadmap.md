@@ -1,6 +1,6 @@
 # Dharmiq roadmap (v0.4+)
 
-**Status:** Planning · **Last updated:** 2026-06-22
+**Status:** v0.4 shipped · **Last updated:** 2026-06-22
 
 Work is ordered by **correctness → reliability → deeper statute → wider corpus & languages → reach & convenience → monetization**.
 
@@ -12,7 +12,7 @@ Work is ordered by **correctness → reliability → deeper statute → wider co
 4. **Defer** second clients (Flutter), payments, personalization, and heavy i18n until the core loop is proven.
 5. **Eval gates** before corpus expansion; **security/backup** before monetization; **full legal docs** before paid launch.
 
-Related: [`v0.3.md`](./v0.3.md), [`principles.md`](../principles.md), [`v02-eval-baseline.md`](./v02-eval-baseline.md).
+Related: [`v0.3.md`](./v0.3.md), [`v0.4/prd.md`](./v0.4/prd.md), [`principles.md`](../principles.md), [`v02-eval-baseline.md`](./v02-eval-baseline.md).
 
 ---
 
@@ -32,59 +32,59 @@ Correct + complete + recoverable → deeper statute → wider corpus & languages
 
 ---
 
-## v0.4 — Foundation (ops, stubs, privacy, feedback)
+## v0.4 — Foundation (ops, stubs, privacy, feedback) ✓
 
 Focus: replace v0.3 stubs, make deploy reproducible, core privacy — **no** share, Flutter, billing UI, or full i18n.
 
 ### Ops & reliability
 
-- [ ] **Dockerize all components** — API, Celery worker(s) + beat, frontend prod image, Postgres, Redis, observability
-- [ ] **Single `docker compose up`** — working stack without host `uv` / `npm`
-- [ ] **Redis AOF/RDB** — persistence volume; document recovery on restart
-- [ ] **Idempotent Celery tasks** — ingestion, upload processing, agent runs
-- [ ] **Idempotency keys** — chat request / ingestion duplicate enqueue = no-op
-- [ ] **Checkpoint resume** — agent graph survives worker crash
-- [ ] **Document recovery behavior** — what resumes vs user retry after Redis/worker failure
-- [ ] **Env / secrets** — `.env.example`, `docs/deployment.md` for all-in-Docker path
+- [x] **Dockerize all components** — API, Celery worker(s) + beat, frontend prod image, Postgres, Redis, observability
+- [x] **Single `docker compose up`** — `docker-compose.dev.yml` / `docker-compose.prod.yml` without host `uv` / `npm`
+- [x] **Redis AOF/RDB** — persistence volume; document recovery on restart
+- [x] **Idempotent Celery tasks** — ingestion, upload processing, agent runs
+- [x] **Idempotency keys** — chat request / ingestion duplicate enqueue = no-op
+- [x] **Checkpoint resume** — agent graph survives worker crash
+- [x] **Document recovery behavior** — what resumes vs user retry after Redis/worker failure
+- [x] **Env / secrets** — `.env.example`, `docs/deployment.md` for all-in-Docker path
 
 ### Upload & document truth (replace cosmetic stubs)
 
-- [ ] **`processing_stage` API** — `uploaded → parsed → chunking → embedding → ready`
-- [ ] **`chunk_count` on `UserUploadRead`**
-- [ ] **Wire Documents page** — pipeline driven by API (poll/SSE), not timer animation
-- [ ] **Parsed / OCR view toggle** — original upload vs indexed text
-- [ ] **Chunk text API** — `GET /api/docs/{id}/chunks/{chunk_id}`
-- [ ] **Quote highlight** — mono line list + span highlight in document panel
-- [ ] **Remove “coming soon” banner** in document panel
+- [x] **`processing_stage` API** — `uploaded → parsed → chunking → embedding → ready`
+- [x] **`chunk_count` on `UserUploadRead`**
+- [x] **Wire Documents page** — pipeline driven by API (poll/SSE), not timer animation
+- [x] **Parsed / OCR view toggle** — original upload vs indexed text
+- [x] **Chunk text API** — `GET /api/docs/{id}/chunks/{chunk_id}`
+- [x] **Quote highlight** — mono line list + span highlight in document panel
+- [x] **Remove “coming soon” banner** in document panel
 
 ### Agent loop hygiene
 
-- [ ] **Structured clarifier end-to-end** — `followup_items` on all paths; drop markdown fallback
-- [ ] **Loop detection** — repeated clarifier rounds / identical replies → cap or refusal
-- [ ] **Graph guardrails** — max steps, duplicate state detection
+- [x] **Structured clarifier end-to-end** — `followup_items` on all paths; drop markdown fallback
+- [x] **Loop detection** — repeated clarifier rounds / identical replies → cap or refusal
+- [x] **Graph guardrails** — max steps, duplicate state detection
 
 ### Privacy core (principles §3.1)
 
-- [ ] **Export JSON** — sessions, messages, uploads metadata
-- [ ] **Delete account** — hard delete user + sessions + uploads + chunks
-- [ ] **Save-history preference** — toggle; default TBD
-- [ ] **Settings UI** — Privacy & data card
+- [x] **Export JSON** — sessions, messages, uploads metadata
+- [x] **Delete account** — hard delete user + sessions + uploads + chunks
+- [ ] **Save-history preference** — toggle; default TBD *(deferred — not in v0.4 PRD)*
+- [x] **Settings UI** — Privacy & data card
 
 ### Feedback (quality loop)
 
-- [ ] **Feedback API** — 👍/👎 per assistant message (optional reason)
-- [ ] **Feedback UI** — thumbs on assistant action row
+- [x] **Feedback API** — 👍/👎 per assistant message (optional reason)
+- [x] **Feedback UI** — thumbs on assistant action row
 
 ### Cost (internal only — no billing UI)
 
-- [ ] **Per LLM call** — model, tokens in/out, computed cost on every LiteLLM call
-- [ ] **Per conversation / account rollups** — on `chat_requests` / user aggregates
-- [ ] **Configurable caps** — per conversation and account; graceful refusal (foundation for free tier)
+- [x] **Per LLM call** — model, tokens in/out, computed cost on every LiteLLM call
+- [x] **Per conversation / account rollups** — on `chat_requests` / user aggregates
+- [x] **Configurable caps** — per conversation and account; graceful refusal (foundation for free tier)
 
 ### Interim legal (minimal — not full v0.21)
 
-- [ ] **Signup checkbox** — “information, not legal advice”; link to stub privacy + terms pages
-- [ ] **Stub privacy & terms** — short acceptable-use + data summary (upgrade to v0.21 before paid)
+- [ ] **Signup checkbox** — “information, not legal advice”; link to stub privacy + terms pages *(deferred — pre–closed-beta)*
+- [ ] **Stub privacy & terms** — short acceptable-use + data summary *(deferred — v0.21 before paid)*
 
 ### Explicitly deferred from v0.4
 
@@ -92,10 +92,10 @@ Share chat · browser/email notify · application-level encryption · Hindi UI t
 
 ### v0.4 exit criteria
 
-- [ ] `docker compose up` → working chat with real upload stages and chunk highlight
-- [ ] Export + delete account work
-- [ ] Every LLM call has cost attribution; caps enforced internally
-- [ ] Eval/smoke can run in CI against Compose stack
+- [x] `docker compose up` → working chat with real upload stages and chunk highlight
+- [x] Export + delete account work
+- [x] Every LLM call has cost attribution; caps enforced internally
+- [ ] Eval/smoke can run in CI against Compose stack *(v0.5)*
 
 ---
 

@@ -1,6 +1,6 @@
 # Dharmiq v0.4 — Technical Requirements & Implementation Plan
 
-**Status:** Draft (implementation-ready)  
+**Status:** Implemented  
 **Version:** 0.4  
 **Parent doc:** [`prd.md`](./prd.md)  
 **Baseline:** v0.3 — Ashoka UI, LangGraph agent pipeline, cosmetic upload UI, no privacy/feedback/cost persistence, infra-only Docker Compose  
@@ -82,7 +82,7 @@ Ground truth for implementers — verify paths before editing.
 | Citation enricher | `backend/dharmiq/agents/citation_validation.py` | Populates span fields via `find_quote_span` |
 | Settings | `backend/dharmiq/config/settings.py` | No `cost_limits`, no `beat_schedule` toggle |
 | Latest migration | `backend/alembic/versions/010_system_message_role.py` | Next: `011_v04_foundation.py` |
-| Version | `backend/dharmiq/__init__.py` | `0.3.0` — bump to `0.4.0` in P9 only |
+| Version | `backend/dharmiq/__init__.py` | `0.4.0` |
 
 ### 1.2 Frontend layout
 
@@ -1051,8 +1051,8 @@ docker compose -f docker-compose.dev.yml up
 
 ## 7. Post-ship checklist
 
-- [ ] Update [`roadmap.md`](../roadmap.md) v0.4 checkboxes
-- [ ] Bump README version badge to 0.4
+- [x] Update [`roadmap.md`](../roadmap.md) v0.4 checkboxes
+- [x] Bump README version badge to 0.4
 - [ ] Optional: `docs/plans/v0.4/implementation.md` if phase notes diverge during build
 
 ---
@@ -1062,6 +1062,7 @@ docker compose -f docker-compose.dev.yml up
 | Date | Change |
 |------|--------|
 | 2026-06-22 | Initial TRD from PRD + v0.3 codebase inspection |
+| 2026-06-22 | v0.4 implemented (P0–P9); post-ship docs and roadmap updated |
 
 ---
 

@@ -1,6 +1,6 @@
 # Dharmiq v0.4 — Foundation PRD
 
-**Status:** Draft (clarifications complete)  
+**Status:** Implemented  
 **Version:** 0.4  
 **Baseline:** v0.3 (Ashoka UI, agent graph, cosmetic upload stubs, no privacy/feedback/cost/Docker app stack)  
 **Last updated:** 2026-06-22
@@ -105,14 +105,14 @@ v0.4 makes Dharmiq **operationally reproducible and honest about data** before b
 
 ### 2.3 Exit criteria
 
-- [ ] `docker compose -f docker-compose.prod.yml up` → working chat with Nginx, API, Celery, beat, Postgres, Redis
-- [ ] `docker compose -f docker-compose.dev.yml up` → hot-reload dev stack; corpus PDFs ingestible via bind-mount
-- [ ] Upload shows real stages through `ready` or `failed`; Documents page does not use cosmetic timer
-- [ ] Citation click opens document panel with quote span highlight when span present
-- [ ] Export JSON and delete account work end-to-end
-- [ ] Every LiteLLM chat completion records tokens + computed cost; caps refuse over limit
-- [ ] 👍/👎 persisted per assistant message
-- [ ] Clarifier cards render **only** from `metadata.followup_items` (no markdown fallback)
+- [x] `docker compose -f docker-compose.prod.yml up` → working chat with Nginx, API, Celery, beat, Postgres, Redis
+- [x] `docker compose -f docker-compose.dev.yml up` → hot-reload dev stack; corpus PDFs ingestible via bind-mount
+- [x] Upload shows real stages through `ready` or `failed`; Documents page does not use cosmetic timer
+- [x] Citation click opens document panel with quote span highlight when span present
+- [x] Export JSON and delete account work end-to-end
+- [x] Every LiteLLM chat completion records tokens + computed cost; caps refuse over limit
+- [x] 👍/👎 persisted per assistant message
+- [x] Clarifier cards render **only** from `metadata.followup_items` (no markdown fallback)
 
 ---
 

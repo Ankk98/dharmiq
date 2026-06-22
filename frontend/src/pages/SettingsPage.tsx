@@ -1,9 +1,23 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { DefaultAvatar } from "@/components/ui/default-avatar";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useChatRuntimeState } from "@/hooks/useChatRuntimeState";
 import { useTheme, type Theme } from "@/hooks/useTheme";
+import { useToast } from "@/hooks/useToast";
+import { deleteAccount, exportAccount } from "@/lib/api";
 import type { ProgressView } from "@/lib/chatPreferences";
 import { cn } from "@/lib/utils";
 
@@ -84,6 +98,34 @@ function SettingsRow({
   );
 }
 
+function SettingsActionButton({
+  children,
+  danger = false,
+  disabled = false,
+  onClick,
+}: {
+  children: ReactNode;
+  danger?: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      className={cn(
+        "border-border bg-card text-muted-foreground ml-auto shrink-0 cursor-pointer rounded-lg border px-2.5 py-1.5 text-[0.74em] transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+        danger
+          ? "text-destructive hover:bg-destructive hover:border-destructive hover:text-white"
+          : "hover:text-foreground hover:border-ring",
+      )}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
+
 const PROGRESS_OPTIONS = [
   { value: "concise" as const, label: "Concise" },
   { value: "detailed" as const, label: "Detailed" },
@@ -95,9 +137,58 @@ const THEME_OPTIONS = [
 ] satisfies readonly { value: Theme; label: string }[];
 
 export function SettingsPage() {
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
   const { progressView, setProgressView } = useChatRuntimeState();
+  const [isExporting, setIsExporting] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteEmail, setDeleteEmail] = useState("");
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const { blob, filename } = await exportAccount();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "Export downloaded", description: filename });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Export failed";
+      toast({ title: "Export failed", description: message });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const openDeleteModal = () => {
+    setDeleteEmail(user?.email ?? "");
+    setDeletePassword("");
+    setDeleteError(null);
+    setDeleteOpen(true);
+  };
+
+  const handleDelete = async () => {
+    setDeleteError(null);
+    setIsDeleting(true);
+    try {
+      await deleteAccount(deleteEmail, deletePassword);
+      logout();
+      navigate("/login", { replace: true });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Delete failed";
+      setDeleteError(message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <div className="flex-1 overflow-y-auto p-6 max-md:p-4">
@@ -137,6 +228,27 @@ export function SettingsPage() {
           />
         </SettingsCard>
 
+        <SettingsCard title="Privacy & data">
+          <SettingsRow
+            title="Export my data"
+            description="Full download (JSON)"
+            control={
+              <SettingsActionButton disabled={isExporting} onClick={handleExport}>
+                {isExporting ? "Exporting…" : "Export"}
+              </SettingsActionButton>
+            }
+          />
+          <SettingsRow
+            title="Delete account"
+            description="Hard delete — irreversible"
+            control={
+              <SettingsActionButton danger onClick={openDeleteModal}>
+                Delete
+              </SettingsActionButton>
+            }
+          />
+        </SettingsCard>
+
         <SettingsCard title="Account">
           <div className="border-border-subtle flex items-center gap-3 px-4 py-3">
             <DefaultAvatar className="size-[34px]" />
@@ -153,6 +265,65 @@ export function SettingsPage() {
           </div>
         </SettingsCard>
       </div>
+
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete account</DialogTitle>
+            <DialogDescription>
+              This permanently deletes your account, chat history, uploads, and all associated
+              data. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="delete-email">Email</Label>
+              <Input
+                id="delete-email"
+                type="email"
+                autoComplete="username"
+                value={deleteEmail}
+                onChange={(event) => setDeleteEmail(event.target.value)}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="delete-password">Password</Label>
+              <Input
+                id="delete-password"
+                type="password"
+                autoComplete="current-password"
+                value={deletePassword}
+                onChange={(event) => setDeletePassword(event.target.value)}
+              />
+            </div>
+            {deleteError ? (
+              <p className="text-destructive text-[0.78em]" role="alert">
+                {deleteError}
+              </p>
+            ) : null}
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isDeleting}
+              onClick={() => setDeleteOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={isDeleting || !deleteEmail || !deletePassword}
+              onClick={handleDelete}
+            >
+              {isDeleting ? "Deleting…" : "Delete account"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

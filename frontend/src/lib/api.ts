@@ -215,6 +215,40 @@ export async function fetchCurrentUser(): Promise<UserProfile> {
   return apiFetch<UserProfile>("/api/users/me");
 }
 
+export async function exportAccount(): Promise<{ blob: Blob; filename: string }> {
+  const headers = new Headers();
+  const token = getToken();
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  const response = await fetch("/api/account/export", { headers });
+  if (!response.ok) {
+    let detail = response.statusText;
+    try {
+      const payload = (await response.json()) as { detail?: string };
+      if (typeof payload.detail === "string") {
+        detail = payload.detail;
+      }
+    } catch {
+      // ignore parse errors
+    }
+    throw new ApiError(response.status, detail);
+  }
+
+  const disposition = response.headers.get("Content-Disposition") ?? "";
+  const filenameMatch = disposition.match(/filename="([^"]+)"/);
+  const filename = filenameMatch?.[1] ?? "dharmiq-export.json";
+  return { blob: await response.blob(), filename };
+}
+
+export async function deleteAccount(email: string, password: string): Promise<void> {
+  await apiFetch<void>("/api/account", {
+    method: "DELETE",
+    body: JSON.stringify({ email, password }),
+  });
+}
+
 export async function listSessions(): Promise<ChatSession[]> {
   return apiFetch<ChatSession[]>("/api/chat/sessions");
 }

@@ -14,7 +14,7 @@ from dharmiq.api.middleware.guardrails import (
     rate_limit_response,
     usage_limit_response,
 )
-from dharmiq.api.routes import auth, chat, chat_attachments, chat_stream, docs, health, metrics, uploads
+from dharmiq.api.routes import account, auth, chat, chat_attachments, chat_stream, docs, health, metrics, uploads
 from dharmiq.config.settings import get_settings
 from dharmiq.core.errors import InputValidationError, RateLimitExceededError, UsageLimitExceededError
 from dharmiq.core.logging import get_logger, setup_logging
@@ -54,6 +54,7 @@ def create_app() -> FastAPI:
     app.include_router(chat_stream.router, prefix="/api")
     app.include_router(chat_attachments.router, prefix="/api")
     app.include_router(uploads.router, prefix="/api")
+    app.include_router(account.router, prefix="/api")
     app.include_router(docs.router, prefix="/api")
     app.include_router(metrics.router)
 

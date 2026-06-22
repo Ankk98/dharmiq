@@ -96,3 +96,11 @@ logging:
 auth:
   jwt_lifetime_seconds: 3600
   # jwt_secret via DHARMIQ_JWT_SECRET env var
+
+cost_limits:
+  enforce: true
+  per_session_usd: 1.0
+  per_account_monthly_usd: 10.0
+
+beat_schedule:
+  enabled: true

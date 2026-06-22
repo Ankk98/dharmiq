@@ -5,7 +5,9 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from decimal import Decimal
+
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -166,6 +168,13 @@ class ChatRequest(Base):
     )
     stated_assumptions: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
     progress_view: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    cost_usd: Mapped[Decimal] = mapped_column(
+        Numeric(12, 6),
+        nullable=False,
+        default=Decimal("0"),
+        server_default="0",
+    )
+    idempotency_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     events: Mapped[list[ChatRequestEvent]] = relationship(
         back_populates="chat_request",

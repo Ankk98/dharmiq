@@ -17,7 +17,10 @@ from dharmiq.db.models.documents import (
     SourceDocument,
 )
 from dharmiq.db.models.evals import EvalDataset, EvalQuestion, EvalResult, EvalRun
-from dharmiq.db.models.uploads import UserUpload, UserUploadChunk
+from dharmiq.db.models.feedback import FeedbackRating, MessageFeedback
+from dharmiq.db.models.idempotency import IdempotencyKey
+from dharmiq.db.models.llm_usage import LlmUsageEvent
+from dharmiq.db.models.uploads import ProcessingStage, UserUpload, UserUploadChunk
 from dharmiq.db.models.users import User
 
 __all__ = [
@@ -25,6 +28,11 @@ __all__ = [
     "EvalQuestion",
     "EvalResult",
     "EvalRun",
+    "FeedbackRating",
+    "IdempotencyKey",
+    "LlmUsageEvent",
+    "MessageFeedback",
+    "ProcessingStage",
     "ChatMessage",
     "ChatRequest",
     "ChatRequestEvent",

@@ -1,23 +1,23 @@
 server:
   host: "0.0.0.0"
   port: 8000
-  debug: false
+  debug: true
   cors_origins:
     - "http://localhost:5173"
     - "http://127.0.0.1:5173"
 
 database:
-  host: localhost
-  port: 5433
-  name: dharmiq_test
+  host: postgres
+  port: 5432
+  name: dharmiq
   user: dharmiq
   # password via DHARMIQ_DATABASE_PASSWORD env var
 
 redis:
-  url: redis://localhost:6379/1
+  url: redis://redis:6379/0
 
 agent_graph:
-  enabled: false
+  enabled: true
 
 llm:
   roles:
@@ -89,8 +89,8 @@ eval:
   runs_dir: data/eval/runs
 
 logging:
-  level: WARNING
-  format: console
+  level: INFO
+  format: json
 
 auth:
   jwt_lifetime_seconds: 3600
@@ -101,4 +101,4 @@ cost_limits:
   per_account_monthly_usd: 10.0
 
 beat_schedule:
-  enabled: true
+  enabled: false

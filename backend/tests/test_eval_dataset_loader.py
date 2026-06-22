@@ -48,6 +48,32 @@ def test_load_v1_employment_dataset() -> None:
 
 
 @pytest.mark.timeout(30)
+def test_load_v1_refusal_adversarial_dataset() -> None:
+    records = load_dataset_records("v1_refusal_adversarial")
+    assert len(records) >= 20
+    refusal_rows = [record for record in records if record.expect_refusal is True]
+    control_rows = [record for record in records if record.expect_refusal is False]
+    assert len(refusal_rows) >= 15
+    assert len(control_rows) >= 5
+
+
+@pytest.mark.timeout(30)
+def test_load_v1_revised_law_dataset() -> None:
+    records = load_dataset_records("v1_revised_law")
+    assert len(records) >= 15
+    assert records[0].must_not_cite_sections
+    assert all(record.must_not_cite_sections for record in records)
+
+
+@pytest.mark.timeout(30)
+def test_load_v1_needle_statute_dataset() -> None:
+    records = load_dataset_records("v1_needle_statute")
+    assert len(records) >= 20
+    assert records[0].external_id == "n1"
+    assert all(record.expected_citations for record in records)
+
+
+@pytest.mark.timeout(30)
 def test_load_dataset_missing_file() -> None:
     with pytest.raises(FileNotFoundError):
         load_dataset_records("does_not_exist")

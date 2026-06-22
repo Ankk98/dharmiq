@@ -19,6 +19,8 @@ FORBIDDEN_TOPICS: dict[str, set[str]] = {
     "v1_fundamental_rights": {"consumer"},
 }
 
+REQUIRED_MUST_NOT_CITE: set[str] = {"v1_revised_law"}
+
 
 @dataclass(frozen=True)
 class ValidationIssue:
@@ -88,6 +90,14 @@ def validate_dataset_records(
                 ValidationIssue(
                     "error",
                     f"{record.external_id}: expected_citations must include at least one section",
+                )
+            )
+
+        if dataset_name in REQUIRED_MUST_NOT_CITE and not record.must_not_cite_sections:
+            issues.append(
+                ValidationIssue(
+                    "error",
+                    f"{record.external_id}: must_not_cite_sections is required in {dataset_name}",
                 )
             )
 

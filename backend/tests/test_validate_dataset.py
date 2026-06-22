@@ -25,6 +25,24 @@ def test_validate_v1_employment_passes() -> None:
 
 
 @pytest.mark.timeout(30)
+def test_validate_v1_refusal_adversarial_passes() -> None:
+    issues = validate_dataset("v1_refusal_adversarial")
+    assert not any(issue.level == "error" for issue in issues)
+
+
+@pytest.mark.timeout(30)
+def test_validate_v1_revised_law_passes() -> None:
+    issues = validate_dataset("v1_revised_law")
+    assert not any(issue.level == "error" for issue in issues)
+
+
+@pytest.mark.timeout(30)
+def test_validate_v1_needle_statute_passes() -> None:
+    issues = validate_dataset("v1_needle_statute")
+    assert not any(issue.level == "error" for issue in issues)
+
+
+@pytest.mark.timeout(30)
 def test_load_v1_dataset_new_fields() -> None:
     records = load_dataset_records("v1_fundamental_rights")
     assert len(records) >= 30

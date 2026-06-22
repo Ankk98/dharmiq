@@ -19,6 +19,8 @@ from dharmiq.eval.dataset_loader import EvalDatasetRecord, load_dataset_records
 from dharmiq.eval.expectations import evaluate_answer_expectations
 from dharmiq.eval.judge import run_llm_judge
 from dharmiq.eval.metadata import collect_run_metadata
+from dharmiq.eval.recall import compute_recall_at_k
+from dharmiq.eval.revised_law import check_must_not_cite_sections
 from dharmiq.llm.agents.answerer import run_answerer
 from dharmiq.llm.agents.query_rewriter import run_query_rewriter
 from dharmiq.llm.openrouter_client import OpenRouterClient, get_openrouter_client
@@ -185,6 +187,18 @@ async def _evaluate_question(
         ),
     }
 
+    if record.expected_citations:
+        metrics["recall_at_5"] = compute_recall_at_k(
+            retrieved,
+            record.expected_citations,
+            k=5,
+        )
+
+    if record.must_not_cite_sections:
+        metrics["revised_law_met"] = float(
+            check_must_not_cite_sections(answer, record.must_not_cite_sections)
+        )
+
     return _QuestionEvalResult(
         answer=answer,
         contexts=contexts,
@@ -205,6 +219,8 @@ def _aggregate_metrics(results: list[_QuestionEvalResult]) -> dict[str, float]:
         "citation_count_met",
         "blockquote_met",
         "refusal_correct",
+        "recall_at_5",
+        "revised_law_met",
     ]
     aggregate: dict[str, float] = {}
     for key in keys:

@@ -200,6 +200,7 @@ def agent_graph_v2(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(120)
 async def test_v02_e2e_smoke(
     client: AsyncClient,
     auth_headers: dict[str, str],
@@ -292,3 +293,60 @@ async def test_v02_e2e_smoke(
 
     citation_events = [data for event_type, data in events if event_type == "citation"]
     assert len(citation_events) >= 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(60)
+async def test_v05_export_delete_smoke(
+    client: AsyncClient,
+    unique_email: str,
+) -> None:
+    """v0.5 smoke: register, export account JSON, delete account, verify auth revoked."""
+    password = "securepassword123"
+    register = await client.post(
+        "/api/auth/register",
+        json={"email": unique_email, "password": password},
+    )
+    assert register.status_code == 201, register.text
+
+    login = await client.post(
+        "/api/auth/jwt/login",
+        data={"username": unique_email, "password": password},
+    )
+    assert login.status_code == 200, login.text
+    headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+    session_resp = await client.post("/api/chat/sessions", json={"title": "Export smoke"}, headers=headers)
+    assert session_resp.status_code == 201
+    session_id = session_resp.json()["id"]
+
+    message_resp = await client.post(
+        f"/api/chat/sessions/{session_id}/messages",
+        json={"role": "user", "content": "What are my fundamental rights?"},
+        headers=headers,
+    )
+    assert message_resp.status_code == 201
+
+    export_resp = await client.get("/api/account/export", headers=headers)
+    assert export_resp.status_code == 200, export_resp.text
+    assert export_resp.headers["content-type"].startswith("application/json")
+
+    payload = export_resp.json()
+    assert "exported_at" in payload
+    assert payload["user"]["email"] == unique_email
+    assert len(payload["sessions"]) == 1
+    assert payload["sessions"][0]["id"] == session_id
+    assert len(payload["messages"]) == 1
+    assert payload["messages"][0]["session_id"] == session_id
+    assert "uploads" in payload
+
+    delete_resp = await client.request(
+        "DELETE",
+        "/api/account",
+        headers=headers,
+        json={"email": unique_email, "password": password},
+    )
+    assert delete_resp.status_code == 204, delete_resp.text
+
+    export_after = await client.get("/api/account/export", headers=headers)
+    assert export_after.status_code == 401

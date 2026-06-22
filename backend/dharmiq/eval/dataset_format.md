@@ -23,6 +23,10 @@ Each line must be a JSON object with these fields:
 | `min_citation_count` | integer | no | Minimum `[n]` citation markers expected in the generated answer |
 | `expect_blockquote` | boolean | no | Whether a Markdown blockquote (`> …`) is required |
 | `expect_refusal` | boolean | no | Whether the pipeline should refuse (insufficient sources) |
+| `required_source_ids` | string[] | no | Allowlist `source_id` values that should be indexed before eval (preflight warning) |
+| `must_not_cite_sections` | string[] | no | Section labels that must **not** appear in the answer (revised-law checks; see `v1_revised_law`) |
+| `source_type` | string | no | Corpus source kind (default `statute`) |
+| `locale` | string | no | Question locale (default `en`) |
 
 ### `expected_citations` entries
 
@@ -49,6 +53,18 @@ corpus is not yet indexed.
   "facts": "I was arrested without a warrant."
 }
 ```
+
+## Validation
+
+Lint a committed dataset before review or eval:
+
+```bash
+cd backend
+uv run python -m dharmiq.eval.tools.validate_dataset --dataset v1_fundamental_rights
+```
+
+Checks include unique `id` values, required fields, citation sections on statutory rows,
+and gating minimum row counts for MVP datasets.
 
 ## Running evals
 

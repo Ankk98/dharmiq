@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from dharmiq.eval.expectations import (
     count_citation_markers,
     evaluate_answer_expectations,
@@ -49,6 +51,7 @@ def test_evaluate_answer_expectations_refusal_mismatch() -> None:
     assert metrics["refusal_correct"] == 0.0
 
 
+@pytest.mark.timeout(30)
 def test_load_dataset_v02_expectation_fields() -> None:
     from dharmiq.eval.dataset_loader import load_dataset_records
 
@@ -56,7 +59,7 @@ def test_load_dataset_v02_expectation_fields() -> None:
     refusal_questions = [record for record in records if record.expect_refusal]
     cited_questions = [record for record in records if record.min_citation_count and record.min_citation_count >= 1]
 
-    assert len(records) == 8
+    assert len(records) == 30
     assert len(refusal_questions) >= 1
     assert len(cited_questions) >= 5
     assert records[0].expect_blockquote is True

@@ -1,8 +1,38 @@
 # v0.2 Eval Baseline (R4-11)
 
-This document records the **v0.1 pipeline baseline** measured before enforcing v0.2 quality targets in manual/nightly eval runs. CI does **not** gate on these numbers — only the deterministic mocked smoke suite (`test_v02_e2e_smoke.py`) blocks PRs.
+This document records pipeline baselines measured before enforcing v0.2 quality targets in manual/nightly eval runs. CI does **not** gate on these numbers — only the deterministic mocked smoke suite (`test_v02_e2e_smoke.py`) blocks PRs.
 
-## Baseline metrics (v0.1 linear RAG pipeline)
+## Baseline metrics (v0.4 LangGraph stack on MVP corpus)
+
+**Status:** Pending live re-baseline (v0.5 P1). Run after MVP corpus is indexed (26/26 via `verify_corpus_index`).
+
+| Metric | v0.4 measured | v0.2 target | Notes |
+|--------|-----------------|-------------|-------|
+| Faithfulness (Ragas) | *pending* | ≥ 0.85 | `v1_fundamental_rights` (8 q) on indexed MVP allowlist |
+| Answer correctness (Ragas) | *pending* | ≥ 0.80 | Same dataset |
+| LLM citation correctness | *pending* | ≥ 0.95 | Judge score on statutory claims |
+| Retrieval recall@5 | *pending* | ≥ 0.77 | Ships in v0.5 P4 |
+| `blockquote_met` (statutory Qs) | *pending* | ≥ 0.80 | Rows with `expect_blockquote: true` |
+| `refusal_correct` | *pending* | ≥ 0.90 | Rows with `expect_refusal` set |
+
+> **How to measure (v0.5 P1):** Index the MVP corpus, set `OPENROUTER_API_KEY`, then run:
+>
+> ```bash
+> cd backend
+> uv run dharmiq-eval --dataset v1_fundamental_rights
+> ```
+>
+> Inspect `metadata` + `aggregate_metrics` in `data/eval/runs/v1_fundamental_rights_*.json`. Update the table above with measured values and date. Optionally freeze with:
+>
+> ```bash
+> uv run dharmiq-eval --dataset v1_fundamental_rights --write-baseline --yes
+> ```
+
+### Remediation
+
+If v0.4 measured values fall below v0.2 targets, document gaps here before v0.6 corpus expansion. Do **not** lower targets without a PRD change. Likely levers: corpus coverage (P0), retrieval tuning, answerer prompts, validator in production (eval path remains `run_eval_rag` until v0.7).
+
+## Baseline metrics (v0.1 linear RAG pipeline — historical)
 
 | Metric | v0.1 baseline | v0.2 target | Notes |
 |--------|---------------|-------------|-------|

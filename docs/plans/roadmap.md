@@ -1,6 +1,6 @@
 # Dharmiq roadmap (v0.4+)
 
-**Status:** v0.4 shipped · **Last updated:** 2026-06-22
+**Status:** v0.5 shipped (code) · operational gates pending · **Last updated:** 2026-06-22
 
 Work is ordered by **correctness → reliability → deeper statute → wider corpus & languages → reach & convenience → monetization**.
 
@@ -12,7 +12,7 @@ Work is ordered by **correctness → reliability → deeper statute → wider co
 4. **Defer** second clients (Flutter), payments, personalization, and heavy i18n until the core loop is proven.
 5. **Eval gates** before corpus expansion; **security/backup** before monetization; **full legal docs** before paid launch.
 
-Related: [`v0.3.md`](./v0.3.md), [`v0.4/prd.md`](./v0.4/prd.md), [`principles.md`](../principles.md), [`v02-eval-baseline.md`](./v02-eval-baseline.md).
+Related: [`v0.3.md`](./v0.3.md), [`v0.4/prd.md`](./v0.4/prd.md), [`datasets.md`](./datasets.md), [`data-implementation.md`](./data-implementation.md), [`principles.md`](../principles.md), [`v02-eval-baseline.md`](./v02-eval-baseline.md).
 
 ---
 
@@ -99,28 +99,30 @@ Share chat · browser/email notify · application-level encryption · Hindi UI t
 
 ---
 
-## v0.5 — Quality gate & smoke tests
+## v0.5 — Quality gate & smoke tests ✓
 
 Focus: prove the **current MVP corpus** is good enough before expanding sources.
 
+PRD: [`v0.5/prd.md`](./v0.5/prd.md) · TRD: [`v0.5/trd.md`](./v0.5/trd.md) · Allowlist: [`v0.5/mvp-corpus-allowlist.yaml`](./v0.5/mvp-corpus-allowlist.yaml)
+
 ### Eval & regression
 
-- [ ] **Benchmark harness** — reproducible runs; baseline vs candidate
-- [ ] **Core eval datasets** — faithfulness, citation precision, refusal, blockquote on MVP domains
-- [ ] **Needle-in-haystack / recall** — buried statutory clauses
-- [ ] **Revised-law fixtures** — repeals, amendments (IPC→BNS-style)
-- [ ] **Regression gate in CI** — block merge if eval regresses beyond threshold (mocked + optional nightly live)
+- [x] **Benchmark harness** — reproducible runs; baseline vs candidate (`--suite mvp`, `--compare baseline`, `--write-baseline`)
+- [x] **Core eval datasets** — faithfulness, citation precision, refusal, blockquote on MVP domains (6 JSONL files committed)
+- [x] **Needle-in-haystack / recall** — `recall_at_5` on post-rerank top-5; `v1_needle_statute.jsonl`
+- [x] **Revised-law fixtures** — `v1_revised_law.jsonl`; `must_not_cite_sections` check
+- [ ] **Regression gate in CI** — deferred post–v0.5 (manual advisory compare only)
 
 ### Integration & smoke
 
-- [ ] **E2E smoke suite** — auth → chat (clarifier + SSE) → upload → index → attach → cite → export/delete
-- [ ] **CI integration tests** — against Docker Compose or testcontainers
-- [ ] **Flow coverage matrix** — every critical path mapped to a test
+- [x] **E2E smoke suite** — auth → chat → upload → attach → cite; export/delete in `test_v05_export_delete_smoke`
+- [ ] **CI integration tests** — against Docker Compose or testcontainers *(deferred)*
+- [x] **Flow coverage matrix** — [`v0.5/flow-coverage-matrix.md`](./v0.5/flow-coverage-matrix.md)
 
 ### v0.5 exit criteria
 
-- [ ] MVP corpus meets documented thresholds in [`v02-eval-baseline.md`](./v02-eval-baseline.md) targets
-- [ ] Smoke suite green in CI on every PR
+- [ ] MVP corpus meets documented thresholds in [`v02-eval-baseline.md`](./v02-eval-baseline.md) targets *(live eval pending)*
+- [ ] **Manual smoke runbook** executed before v0.5 ship *(CI deferred)* — [`v0.5/manual-test-runbook.md`](./v0.5/manual-test-runbook.md)
 
 ---
 

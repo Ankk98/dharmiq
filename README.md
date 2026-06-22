@@ -1,14 +1,14 @@
 # Dharmiq
 
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-orange)](https://dharmiq.in)
-[![Version](https://img.shields.io/badge/version-0.4-blue)](https://github.com/Ankk98/dharmiq)
+[![Version](https://img.shields.io/badge/version-0.5-blue)](https://github.com/Ankk98/dharmiq)
 [![Landing](https://img.shields.io/badge/landing-dharmiq.in-2563eb)](https://dharmiq.in)
 [![App](https://img.shields.io/badge/app-app.dharmiq.in-2563eb)](https://app.dharmiq.in)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Open-source Indian legal information assistant for citizens. Dharmiq explains rights and obligations in plain language, grounded in statutory documents (IndiaCode corpus), with citations and clear disclaimers that it does not provide legal advice.
 
-**Alpha (v0.4)** — Ashoka design system on the v0.2 agentic chat stack: app shell, document panel, clarifier cards, streamed answers with citations, privacy/export, feedback, cost caps, and one-command Docker deploy. [Landing page](https://dharmiq.in) · [App](https://app.dharmiq.in)
+**Alpha (v0.5)** — MVP statute corpus quality gate: eval datasets, benchmark harness (`--suite mvp`, `--compare baseline`), export/delete E2E smoke, and manual release runbook. Builds on v0.4 Docker deploy, privacy, and agent stack. [Landing page](https://dharmiq.in) · [App](https://app.dharmiq.in)
 
 ![Dharmiq chat UI (v0.1 screenshot; v0.3 restyles the shell, progress, and answer surfaces)](screenshots/ui-v0.1-without-dataset.png)
 
@@ -26,7 +26,18 @@ direction for product and engineering decisions, not final doctrine.
 
 ## Features
 
-### v0.4 (current)
+### v0.5 (current)
+
+- **MVP corpus allowlist** – 26 central instruments; `build_manifest` + `verify_corpus_index` tooling
+- **Eval datasets** – `v1_fundamental_rights`, `v1_consumer`, `v1_employment`, `v1_refusal_adversarial`, `v1_revised_law`, `v1_needle_statute`
+- **Benchmark harness** – `dharmiq-eval --suite mvp`, `--compare baseline`, `--write-baseline`
+- **Quality metrics** – recall@5, revised-law checks, Ragas + LLM judge; advisory regression gate
+- **E2E smoke** – export + delete account path in `test_v05_export_delete_smoke`
+- **Manual release gate** – [`docs/plans/v0.5/manual-test-runbook.md`](docs/plans/v0.5/manual-test-runbook.md) · [`flow-coverage-matrix.md`](docs/plans/v0.5/flow-coverage-matrix.md)
+
+Implementation plan: [`docs/plans/v0.5/prd.md`](docs/plans/v0.5/prd.md) · [`docs/plans/v0.5/trd.md`](docs/plans/v0.5/trd.md).
+
+### v0.4
 
 - **Docker full stack** – `docker-compose.dev.yml` (hot reload) and `docker-compose.prod.yml` (Nginx on port 80); infra-only `docker-compose.yml` preserved for host dev
 - **Upload pipeline truth** – real `processing_stage` (`uploaded` → `ready` / `failed`), `chunk_count`, API-driven Documents page polling
@@ -100,8 +111,15 @@ dharmiq/
 | [`docs/plans/v0.2-implementation-phases.md`](docs/plans/v0.2-implementation-phases.md) | v0.2 phase playbook (completed) |
 | [`docs/plans/v0.3.md`](docs/plans/v0.3.md) | v0.3 design system implementation plan (implemented) |
 | [`docs/plans/v0.4/prd.md`](docs/plans/v0.4/prd.md) | v0.4 product requirements (reliability & ops) |
+| [`docs/plans/v0.5/prd.md`](docs/plans/v0.5/prd.md) | v0.5 product requirements (quality gate & smoke) |
+| [`docs/plans/v0.5/trd.md`](docs/plans/v0.5/trd.md) | v0.5 technical implementation plan (phased) |
+| [`docs/plans/v0.5/mvp-corpus-allowlist.yaml`](docs/plans/v0.5/mvp-corpus-allowlist.yaml) | MVP central statute allowlist (26 instruments) |
+| [`docs/plans/v0.5/manual-test-runbook.md`](docs/plans/v0.5/manual-test-runbook.md) | v0.5 manual release gate (pytest, lint, corpus, eval) |
+| [`docs/plans/v0.5/flow-coverage-matrix.md`](docs/plans/v0.5/flow-coverage-matrix.md) | v0.5 critical-path → test mapping |
 | [`docs/plans/v0.4/trd.md`](docs/plans/v0.4/trd.md) | v0.4 technical design |
 | [`docs/plans/roadmap.md`](docs/plans/roadmap.md) | v0.4+ product roadmap (accuracy → reliability → breadth → monetization) |
+| [`docs/plans/datasets.md`](docs/plans/datasets.md) | Data strategy — sources, evals, benchmarks, gaps |
+| [`docs/plans/data-implementation.md`](docs/plans/data-implementation.md) | Corpus ops — ingestion, storage, scale, Dharmiq pipelines |
 | [`docs/deployment.md`](docs/deployment.md) | Production deployment on Ubuntu + Nginx, Docker stacks |
 
 ## Prerequisites
@@ -268,14 +286,26 @@ User uploads (PDF, DOCX, Markdown, images) are stored under `data/uploads/{user_
 
 ## Evaluation
 
-See [`backend/dharmiq/eval/dataset_format.md`](backend/dharmiq/eval/dataset_format.md). Requires an indexed corpus:
+See [`backend/dharmiq/eval/dataset_format.md`](backend/dharmiq/eval/dataset_format.md). Requires an indexed MVP corpus ([`mvp-corpus-allowlist.yaml`](docs/plans/v0.5/mvp-corpus-allowlist.yaml)) and `OPENROUTER_API_KEY` for live runs.
 
 ```bash
 cd backend
+
+# Single dataset
 uv run dharmiq-eval --dataset v1_fundamental_rights
+uv run dharmiq-eval --dataset v1_fundamental_rights --limit 5
+
+# MVP suite (all six gating datasets)
+uv run dharmiq-eval --suite mvp
+
+# Compare against baseline (advisory regression gate)
+uv run dharmiq-eval --suite mvp --compare baseline
+
+# Freeze baseline after a passing run
+uv run dharmiq-eval --suite mvp --write-baseline --yes
 ```
 
-v0.2 extends the eval dataset with citation count, blockquote, and refusal expectations. See [`docs/plans/v02-eval-baseline.md`](docs/plans/v02-eval-baseline.md) for baseline vs target metrics.
+Targets and measured baselines: [`docs/plans/v02-eval-baseline.md`](docs/plans/v02-eval-baseline.md). Before tagging v0.5, run the manual gate in [`docs/plans/v0.5/manual-test-runbook.md`](docs/plans/v0.5/manual-test-runbook.md).
 
 ## Development
 

@@ -1,6 +1,6 @@
 # Dharmiq Frontend
 
-React + assistant-ui chat client for the Dharmiq API. **v0.4** builds on the Ashoka design system (v0.3) with real upload stages, document panel tabs, privacy controls, and feedback.
+React + assistant-ui chat client for the Dharmiq API. **v0.5** builds on v0.4 (upload truth, privacy, feedback) with no new product surfaces — quality work is backend/eval focused.
 
 See the [repo README](../README.md) for full-stack setup (host or Docker). Visual authority lives in [`docs/design/`](../docs/design/README.md) (demo HTML wins on conflict).
 

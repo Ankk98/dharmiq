@@ -19,6 +19,26 @@ class EvalDatasetRecord:
     expect_refusal: bool | None = None
     min_citation_count: int | None = None
     expect_blockquote: bool | None = None
+    required_source_ids: list[str] | None = None
+    must_not_cite_sections: list[str] | None = None
+    source_type: str = "statute"
+    locale: str = "en"
+
+
+def _parse_string_list(
+    value: Any,
+    *,
+    field_name: str,
+    line_number: int,
+    path: Path,
+) -> list[str]:
+    if value is None:
+        return []
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+        raise ValueError(
+            f"Line {line_number} in {path}: {field_name} must be a list of strings"
+        )
+    return [item.strip() for item in value if item.strip()]
 
 
 def resolve_dataset_path(dataset_name: str, settings: Settings | None = None) -> Path:
@@ -73,6 +93,27 @@ def load_dataset_records(
         if expect_blockquote is not None and not isinstance(expect_blockquote, bool):
             raise ValueError(f"Line {line_number} in {path}: expect_blockquote must be a boolean")
 
+        required_source_ids = _parse_string_list(
+            payload.get("required_source_ids"),
+            field_name="required_source_ids",
+            line_number=line_number,
+            path=path,
+        )
+        must_not_cite_sections = _parse_string_list(
+            payload.get("must_not_cite_sections"),
+            field_name="must_not_cite_sections",
+            line_number=line_number,
+            path=path,
+        )
+
+        source_type = str(payload.get("source_type") or "statute").strip()
+        if not source_type:
+            raise ValueError(f"Line {line_number} in {path}: source_type must be a non-empty string")
+
+        locale = str(payload.get("locale") or "en").strip()
+        if not locale:
+            raise ValueError(f"Line {line_number} in {path}: locale must be a non-empty string")
+
         records.append(
             EvalDatasetRecord(
                 external_id=external_id,
@@ -84,6 +125,10 @@ def load_dataset_records(
                 expect_refusal=expect_refusal,
                 min_citation_count=min_citation_count,
                 expect_blockquote=expect_blockquote,
+                required_source_ids=required_source_ids or None,
+                must_not_cite_sections=must_not_cite_sections or None,
+                source_type=source_type,
+                locale=locale,
             )
         )
 

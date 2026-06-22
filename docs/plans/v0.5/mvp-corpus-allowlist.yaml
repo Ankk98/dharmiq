@@ -1,0 +1,337 @@
+# Dharmiq MVP corpus allowlist (v0.5)
+#
+# Central IndiaCode instruments for the three MVP domains. Use this file to:
+#   1. Download PDFs via indian-law-dataset-scraper (filter by instrument_id or handle)
+#   2. Build manifest.json entries for data/corpus/india_code/raw/
+#   3. Scope eval datasets (each JSONL should assume these source_id values are indexed)
+#
+# Source metadata: indian-law-dataset-scraper dist/csv/instruments.csv (2026-06-22)
+# Self-host: copy PDFs into data/corpus/india_code/raw/ then run sync_india_code_pdfs
+#
+# Related: docs/plans/v0.5/prd.md · docs/plans/data-implementation.md
+
+version: "1"
+updated: "2026-06-22"
+jurisdiction_default: central
+
+# IndiaCode handle path = 123456789/{handle} (central repository)
+
+domains:
+  fundamental_rights:
+    description: >
+      Constitution, criminal procedure, arrest/detention, police interaction,
+      human rights. Includes superseded IPC/CrPC for revised-law eval fixtures.
+    instruments:
+      - id: IN-CONSTITUTION-1949
+        title: The Constitution of India
+        doc_type: act
+        year: 1949
+        status: in_force
+        india_code_handle: "19150"
+        canonical_url: https://www.indiacode.nic.in/handle/123456789/19150
+        scraper_instrument_id: "854"
+        eval_topics: [fundamental_rights, police_arrest, equality]
+
+      - id: IN-BNSS-2023
+        title: The Bharatiya Nagarik Suraksha Sanhita, 2023
+        doc_type: act
+        year: 2023
+        status: in_force
+        supersedes: [IN-CRPC-1973]
+        india_code_handle: "20099"
+        canonical_url: https://www.indiacode.nic.in/handle/123456789/20099
+        scraper_instrument_id: "661"
+        eval_topics: [police_arrest, fir, bail, procedure]
+
+      - id: IN-BNS-2023
+        title: The Bharatiya Nyaya Sanhita, 2023
+        doc_type: act
+        year: 2023
+        status: in_force
+        supersedes: [IN-IPC-1860]
+        india_code_handle: "20062"
+        canonical_url: https://www.indiacode.nic.in/handle/123456789/20062
+        scraper_instrument_id: "652"
+        eval_topics: [criminal_offences, police_arrest]
+
+      - id: IN-CRPC-1973
+        title: The Code of Criminal Procedure, 1973
+        doc_type: act
+        year: 1974
+        status: superseded
+        superseded_by: IN-BNSS-2023
+        india_code_handle: "15272"
+        canonical_url: https://www.indiacode.nic.in/handle/123456789/15272
+        scraper_instrument_id: "2886"
+        eval_topics: [revised_law_negative]
+        notes: Index for revised-law eval — answers must prefer BNSS where applicable.
+
+      - id: IN-IPC-1860
+        title: The Indian Penal Code, 1860
+        doc_type: act
+        year: 1860
+        status: superseded
+        superseded_by: IN-BNS-2023
+        india_code_handle: "11091"
+        canonical_url: https://www.indiacode.nic.in/handle/123456789/11091
+        scraper_instrument_id: "3062"
+        eval_topics: [revised_law_negative]
+
+      - id: IN-NSA-1980
+        title: The National Security Act, 1980
+        doc_type: act
+        year: 1980
+        status: in_force
+        india_code_handle: "1758"
+        canonical_url: https://www.indiacode.nic.in/handle/123456789/1758
+        scraper_instrument_id: "808"
+        eval_topics: [detention, preventive_detention]
+
+      - id: IN-PHRA-1993
+        title: The Protection of Human Rights Act, 1993
+        doc_type: act
+        year: 1994
+        status: in_force
+        india_code_handle: "15709"
+        canonical_url: https://www.indiacode.nic.in/handle/123456789/15709
+        scraper_instrument_id: "144"
+        eval_topics: [human_rights_commission]
+
+      - id: IN-POCSO-2012
+        title: The Protection of Children from Sexual Offences Act, 2012
+        doc_type: act
+        year: 2012
+        status: in_force
+        india_code_handle: "2079"
+        canonical_url: https://www.indiacode.nic.in/handle/123456789/2079
+        scraper_instrument_id: "485"
+        eval_topics: [children, offences]
+
+      - id: IN-JJ-2015
+        title: The Juvenile Justice (Care and Protection of Children) Act, 2015
+        doc_type: act
+        year: 2015
+        status: in_force
+        india_code_handle: "2148"
+        canonical_url: https://www.indiacode.nic.in/handle/123456789/2148
+        scraper_instrument_id: "16"
+        eval_topics: [children, juvenile]
+
+      - id: IN-RTI-2005
+        title: The Right to Information Act, 2005
+        doc_type: act
+        year: 2005
+        status: in_force
+        india_code_handle: "2065"
+        canonical_url: https://www.indiacode.nic.in/handle/123456789/2065
+        scraper_instrument_id: null
+        eval_topics: [transparency, citizen_rights]
+        notes: Pick central handle 2065 when downloading; scraper row may vary by state mirror.
+
+  consumer:
+    description: >
+      Consumer protection, product safety, weights/measures, competition.
+      CPA 1986 included as superseded reference for revised-law questions.
+    instruments:
+      - id: IN-CPA-2019
+        title: The Consumer Protection Act, 2019
+        doc_type: act
+        year: 2019
+        status: in_force
+        supersedes: [IN-CPA-1986]
+        india_code_handle: "15256"
+        canonical_url: https://www.indiacode.nic.in/handle/123456789/15256
+        scraper_instrument_id: "531"
+        eval_topics: [consumer_rights, ecommerce, refunds, defects]
+
+      - id: IN-CPA-1986
+        title: The Consumer Protection Act, 1986
+        doc_type: act
+        year: 1986
+        status: superseded
+        superseded_by: IN-CPA-2019
+        india_code_handle: "9463"
+        canonical_url: https://www.indiacode.nic.in/handle/123456789/9463
+        scraper_instrument_id: null
+        eval_topics: [revised_law_negative]
+        notes: Central handle; use for supersession eval only.
+
+      - id: IN-LMA-2009
+        title: The Legal Metrology Act, 2009
+        doc_type: act
+        year: 2010
+        status: in_force
+        india_code_handle: "2102"
+        canonical_url: https://www.indiacode.nic.in/handle/123456789/2102
+        scraper_instrument_id: "11"
+        eval_topics: [weights_measures, packaging]
+
+      - id: IN-FSSA-2006
+        title: The Food Safety and Standards Act, 2006
+        doc_type: act
+        year: 2006
+        status: in_force
+        india_code_handle: "2027"
+        canonical_url: https://www.indiacode.nic.in/handle/123456789/2027
+        scraper_instrument_id: "516"
+        eval_topics: [food_safety, defective_products]
+
+      - id: IN-COMPETITION-2002
+        title: The Competition Act, 2002
+        doc_type: act
+        year: 2003
+        status: in_force
+        india_code_handle: "2010"
+        canonical_url: https://www.indiacode.nic.in/handle/123456789/2010
+        scraper_instrument_id: "185"
+        eval_topics: [unfair_trade, market]
+
+      - id: IN-ICA-1872
+        title: The Indian Contract Act, 1872
+        doc_type: act
+        year: 1872
+        status: in_force
+        india_code_handle: "2187"
+        canonical_url: https://www.indiacode.nic.in/handle/123456789/2187
+        scraper_instrument_id: null
+        eval_topics: [contracts, consumer_agreements]
+
+      - id: IN-IT-2000
+        title: The Information Technology Act, 2000
+        doc_type: act
+        year: 2000
+        status: in_force
+        india_code_handle: "1999"
+        canonical_url: https://www.indiacode.nic.in/handle/123456789/1999
+        scraper_instrument_id: null
+        eval_topics: [ecommerce, digital_contracts]
+
+  employment:
+    description: >
+      Industrial relations, wages, benefits, workplace harassment, equality at work.
+      Central Acts only for v0.5 (state Shops & Establishments deferred to v0.12).
+    instruments:
+      - id: IN-IDA-1947
+        title: The Industrial Disputes Act, 1947
+        doc_type: act
+        year: 1947
+        status: in_force
+        india_code_handle: "20352"
+        canonical_url: https://www.indiacode.nic.in/handle/123456789/20352
+        scraper_instrument_id: "2510"
+        eval_topics: [termination, retrenchment, layoff]
+
+      - id: IN-POWA-1936
+        title: The Payment of Wages Act, 1936
+        doc_type: act
+        year: 1936
+        status: in_force
+        india_code_handle: "19010"
+        canonical_url: https://www.indiacode.nic.in/handle/123456789/19010
+        scraper_instrument_id: "886"
+        eval_topics: [wages, unpaid_salary]
+
+      - id: IN-MWA-1948
+        title: The Minimum Wages Act, 1948
+        doc_type: act
+        year: 1948
+        status: in_force
+        india_code_handle: "20357"
+        canonical_url: https://www.indiacode.nic.in/handle/123456789/20357
+        scraper_instrument_id: "2476"
+        eval_topics: [minimum_wage]
+
+      - id: IN-EPF-1952
+        title: The Employees' Provident Funds and Miscellaneous Provisions Act, 1952
+        doc_type: act
+        year: 1952
+        status: in_force
+        india_code_handle: "2152"
+        canonical_url: https://www.indiacode.nic.in/handle/123456789/2152
+        scraper_instrument_id: "307"
+        eval_topics: [provident_fund]
+
+      - id: IN-POBA-1965
+        title: The Payment of Bonus Act, 1965
+        doc_type: act
+        year: 1965
+        status: in_force
+        india_code_handle: "20358"
+        canonical_url: https://www.indiacode.nic.in/handle/123456789/20358
+        scraper_instrument_id: "2595"
+        eval_topics: [bonus]
+
+      - id: IN-POSH-2013
+        title: >-
+          The Sexual Harassment of Women at Workplace (Prevention, Prohibition
+          and Redressal) Act, 2013
+        doc_type: act
+        year: 2013
+        status: in_force
+        india_code_handle: "2104"
+        canonical_url: https://www.indiacode.nic.in/handle/123456789/2104
+        scraper_instrument_id: "213"
+        eval_topics: [harassment, workplace]
+
+      - id: IN-CLRA-1970
+        title: The Contract Labour (Regulation and Abolition) Act, 1970
+        doc_type: act
+        year: 1970
+        status: in_force
+        india_code_handle: "18997"
+        canonical_url: https://www.indiacode.nic.in/handle/123456789/18997
+        scraper_instrument_id: "884"
+        eval_topics: [contract_workers]
+
+      - id: IN-MBA-1961
+        title: The Maternity Benefit Act, 1961
+        doc_type: act
+        year: 1961
+        status: in_force
+        india_code_handle: "19024"
+        canonical_url: https://www.indiacode.nic.in/handle/123456789/19024
+        scraper_instrument_id: "901"
+        eval_topics: [maternity]
+
+      - id: IN-ERA-1976
+        title: The Equal Remuneration Act, 1976
+        doc_type: act
+        year: 1976
+        status: in_force
+        india_code_handle: "20350"
+        canonical_url: https://www.indiacode.nic.in/handle/123456789/20350
+        scraper_instrument_id: "2616"
+        eval_topics: [equal_pay, discrimination]
+
+# Optional: central rules/notifications to add in v0.6 (not required for v0.5 MVP gate)
+optional_later:
+  - id: IN-CPA-RULES-2020
+    title: Consumer Protection (E-Commerce) Rules, 2020
+    notes: Subordinate legislation; add when notification ingestion is stable.
+
+scraper_workflow: |
+  # From indian-law-dataset-scraper repo:
+  indiacode init
+  indiacode metadata --scope central
+  # Download by instrument_id list or re-run download for central scope then filter PDFs
+  indiacode download --scope central --extract-text --resume
+
+  # Copy matching PDFs to dharmiq data/corpus/india_code/raw/
+  # Emit manifest.json using `id`, `title`, `doc_type`, `jurisdiction`, `canonical_url`
+
+manifest_example:
+  file: consumer-protection-act-2019.pdf
+  source_id: IN-CPA-2019
+  title: The Consumer Protection Act, 2019
+  doc_type: act
+  jurisdiction: central
+  enactment_date: "2019-08-09"
+  canonical_url: https://www.indiacode.nic.in/handle/123456789/15256
+
+counts:
+  fundamental_rights: 10
+  consumer: 7
+  employment: 9
+  total_instruments: 26
+  status_in_force: 22
+  status_superseded: 4

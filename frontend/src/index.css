@@ -478,6 +478,16 @@ a {
   animation: progress-step-pulse 1.2s var(--ease-default) infinite;
 }
 
+.upload-pchip--failed {
+  color: var(--destructive);
+  border-color: color-mix(in srgb, var(--destructive) 50%, var(--border));
+}
+
+.upload-pchip--failed::before {
+  content: "✕";
+  font-size: 0.9em;
+}
+
 .upload-pbar {
   height: 5px;
   border-radius: 3px;

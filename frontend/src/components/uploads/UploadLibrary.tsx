@@ -17,10 +17,12 @@ import {
   deleteUpload,
   listUploads,
   uploadFile,
+  type ProcessingStage,
   type UserUpload,
 } from "@/lib/api";
 import {
   UPLOAD_PIPELINE_STAGES,
+  isTerminalStage,
   pipelineProgressPercent,
   pipelineStageState,
 } from "@/lib/uploadPipeline";
@@ -28,7 +30,8 @@ import { cn } from "@/lib/utils";
 
 const ACCEPTED_TYPES =
   ".pdf,.docx,.md,.markdown,.png,.jpg,.jpeg,.webp";
-const MAX_BYTES = 20 * 1024 * 1024;
+const MAX_BYTES = 104857600;
+const POLL_INTERVAL_MS = 2000;
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) {
@@ -51,41 +54,37 @@ function fileTypeBadge(filename: string): string {
   return ext.slice(0, 4);
 }
 
-function useCosmeticPipelinePhase(active: boolean): number {
-  const [phase, setPhase] = useState(0);
-
-  useEffect(() => {
-    if (!active) {
-      return;
+function uploadStatusLabel(upload: UserUpload): string {
+  const size = formatBytes(upload.size_bytes);
+  if (upload.processing_stage === "ready") {
+    if (upload.chunk_count > 0) {
+      return `${size} · ready · ${upload.chunk_count} chunk${upload.chunk_count === 1 ? "" : "s"}`;
     }
-    const maxPhase = UPLOAD_PIPELINE_STAGES.length - 1;
-    const id = window.setInterval(() => {
-      setPhase((current) => Math.min(current + 1, maxPhase));
-    }, 1500);
-    return () => window.clearInterval(id);
-  }, [active]);
-
-  return phase;
+    return `${size} · ready`;
+  }
+  if (upload.processing_stage === "failed") {
+    return `${size} · failed`;
+  }
+  return `${size} · processing`;
 }
 
 type UploadPipelineProps = {
-  indexed: boolean;
+  stage: ProcessingStage;
 };
 
-const UploadPipeline: FC<UploadPipelineProps> = ({ indexed }) => {
-  const phase = useCosmeticPipelinePhase(!indexed);
-
-  if (indexed) {
+const UploadPipeline: FC<UploadPipelineProps> = ({ stage }) => {
+  if (stage === "ready") {
     return null;
   }
 
-  const progress = pipelineProgressPercent(phase);
+  const progress = pipelineProgressPercent(stage);
+  const showProgressBar = stage !== "failed";
 
   return (
     <>
       <div className="upload-pipeline mt-2 flex flex-wrap items-center gap-[0.3rem]">
         {UPLOAD_PIPELINE_STAGES.map((label, index) => {
-          const state = pipelineStageState(index, phase);
+          const state = pipelineStageState(index, stage);
           return (
             <span
               key={label}
@@ -93,6 +92,7 @@ const UploadPipeline: FC<UploadPipelineProps> = ({ indexed }) => {
                 "upload-pchip",
                 state === "done" && "upload-pchip--done",
                 state === "running" && "upload-pchip--running",
+                state === "failed" && "upload-pchip--failed",
               )}
             >
               {label}
@@ -100,12 +100,14 @@ const UploadPipeline: FC<UploadPipelineProps> = ({ indexed }) => {
           );
         })}
       </div>
-      <div className="upload-pbar mt-[0.55rem]" aria-hidden>
-        <span
-          className="upload-pbar-fill"
-          style={{ width: `${progress}%` }}
-        />
-      </div>
+      {showProgressBar ? (
+        <div className="upload-pbar mt-[0.55rem]" aria-hidden>
+          <span
+            className="upload-pbar-fill"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      ) : null}
     </>
   );
 };
@@ -116,7 +118,8 @@ type UploadFileCardProps = {
 };
 
 const UploadFileCard: FC<UploadFileCardProps> = ({ upload, onDelete }) => {
-  const ready = upload.indexed;
+  const failed = upload.processing_stage === "failed";
+  const processing = !isTerminalStage(upload.processing_stage);
 
   return (
     <li className="upload-file-card flex items-center gap-3 rounded-xl border px-[0.95rem] py-[0.85rem] shadow-[var(--card-highlight)]">
@@ -129,15 +132,25 @@ const UploadFileCard: FC<UploadFileCardProps> = ({ upload, onDelete }) => {
           {upload.original_filename}
         </p>
         <p className="text-faint mt-[0.15rem] text-[0.7em]">
-          {formatBytes(upload.size_bytes)}
-          {ready ? " · ready" : " · uploaded"}
+          {uploadStatusLabel(upload)}
         </p>
-        <UploadPipeline indexed={ready} />
+        <UploadPipeline stage={upload.processing_stage} />
+        {failed && upload.processing_error ? (
+          <p className="text-destructive mt-1 line-clamp-2 text-[0.68em]">
+            {upload.processing_error}
+          </p>
+        ) : null}
       </div>
 
-      {!ready ? (
+      {processing ? (
         <span className="text-primary shrink-0 text-[0.72em] font-medium">
           Processing
+        </span>
+      ) : null}
+
+      {failed ? (
+        <span className="text-destructive shrink-0 text-[0.72em] font-medium">
+          Failed
         </span>
       ) : null}
 
@@ -209,7 +222,7 @@ const UploadDropzone: FC<UploadDropzoneProps> = ({ disabled, onFile }) => {
             Drop a file or click to upload
           </span>
           <span className="text-muted-foreground block text-[0.74em]">
-            PDF, DOCX, Markdown, or images (OCR) · up to 20 MB
+            PDF, DOCX, Markdown, or images (OCR) · up to 100 MB
           </span>
         </span>
       </button>
@@ -273,21 +286,23 @@ export const UploadLibrary: FC<UploadLibraryProps> = ({ className }) => {
     };
   }, []);
 
-  const hasProcessing = uploads.some((upload) => !upload.indexed);
+  const hasNonTerminal = uploads.some(
+    (upload) => !isTerminalStage(upload.processing_stage),
+  );
 
   useEffect(() => {
-    if (!hasProcessing) {
+    if (!hasNonTerminal) {
       return;
     }
     const id = window.setInterval(() => {
       void refresh();
-    }, 4000);
+    }, POLL_INTERVAL_MS);
     return () => window.clearInterval(id);
-  }, [hasProcessing, refresh]);
+  }, [hasNonTerminal, refresh]);
 
   const handleUpload = async (file: File) => {
     if (file.size > MAX_BYTES) {
-      setError("File must be 20 MB or smaller.");
+      setError("File must be 100 MB or smaller.");
       return;
     }
     setUploading(true);

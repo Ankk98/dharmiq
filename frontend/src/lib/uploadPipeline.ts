@@ -7,18 +7,56 @@ export const UPLOAD_PIPELINE_STAGES = [
 
 export type UploadPipelineStage = (typeof UPLOAD_PIPELINE_STAGES)[number];
 
-/** Cosmetic progress bar width per animation phase (demo uploadPipeline). */
-const PHASE_PROGRESS = [25, 60, 85, 100] as const;
+export type ProcessingStage =
+  | "uploaded"
+  | "parsed"
+  | "chunking"
+  | "embedding"
+  | "ready"
+  | "failed";
 
-export function pipelineProgressPercent(phase: number): number {
-  return PHASE_PROGRESS[phase % PHASE_PROGRESS.length] ?? 25;
+const STAGE_INDEX: Record<ProcessingStage, number> = {
+  uploaded: 0,
+  parsed: 1,
+  chunking: 2,
+  embedding: 3,
+  ready: UPLOAD_PIPELINE_STAGES.length,
+  failed: -1,
+};
+
+const STAGE_PROGRESS = [25, 50, 75, 90] as const;
+
+export function isTerminalStage(stage: ProcessingStage): boolean {
+  return stage === "ready" || stage === "failed";
+}
+
+export function activePipelineIndex(stage: ProcessingStage): number {
+  return STAGE_INDEX[stage];
+}
+
+export function pipelineProgressPercent(stage: ProcessingStage): number {
+  if (stage === "ready") {
+    return 100;
+  }
+  if (stage === "failed") {
+    return 0;
+  }
+  const index = activePipelineIndex(stage);
+  return STAGE_PROGRESS[index] ?? 25;
 }
 
 export function pipelineStageState(
   stageIndex: number,
-  phase: number,
-): "done" | "running" | "pending" {
-  const active = phase % UPLOAD_PIPELINE_STAGES.length;
+  processingStage: ProcessingStage,
+): "done" | "running" | "pending" | "failed" {
+  if (processingStage === "failed") {
+    if (stageIndex === UPLOAD_PIPELINE_STAGES.length - 1) {
+      return "failed";
+    }
+    return "pending";
+  }
+
+  const active = activePipelineIndex(processingStage);
   if (stageIndex < active) {
     return "done";
   }

@@ -157,7 +157,11 @@ export const SessionAttachmentsProvider: FC<SessionAttachmentsProviderProps> = (
     void (async () => {
       try {
         const uploads = await listUploads();
-        setLibrary(uploads.filter((row) => row.deleted_at == null && row.indexed));
+        setLibrary(
+          uploads.filter(
+            (row) => row.deleted_at == null && row.processing_stage === "ready",
+          ),
+        );
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load library");
       }

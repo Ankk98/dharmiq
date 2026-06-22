@@ -50,6 +50,14 @@ export type ChatPipelineResponse = {
   error_message: string | null;
 };
 
+export type ProcessingStage =
+  | "uploaded"
+  | "parsed"
+  | "chunking"
+  | "embedding"
+  | "ready"
+  | "failed";
+
 export type UserUpload = {
   id: string;
   user_id: string;
@@ -59,6 +67,9 @@ export type UserUpload = {
   content_hash: string;
   created_at: string;
   deleted_at: string | null;
+  processing_stage: ProcessingStage;
+  chunk_count: number;
+  processing_error: string | null;
   indexed: boolean;
 };
 
@@ -413,6 +424,10 @@ export async function listChatRequestProgressEvents(
 
 export async function listUploads(): Promise<UserUpload[]> {
   return apiFetch<UserUpload[]>("/api/uploads");
+}
+
+export async function getUpload(uploadId: string): Promise<UserUpload> {
+  return apiFetch<UserUpload>(`/api/uploads/${uploadId}`);
 }
 
 export async function uploadFile(file: File): Promise<UserUpload> {

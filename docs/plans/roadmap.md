@@ -12,7 +12,7 @@ Work is ordered by **correctness → reliability → deeper statute → wider co
 4. **Defer** second clients (Flutter), payments, personalization, and heavy i18n until the core loop is proven.
 5. **Eval gates** before corpus expansion; **security/backup** before monetization; **full legal docs** before paid launch.
 
-Related: [`v0.3.md`](./v0.3.md), [`v0.4/prd.md`](./v0.4/prd.md), [`principles.md`](../principles.md), [`v02-eval-baseline.md`](./v02-eval-baseline.md).
+Related: [`v0.3.md`](./v0.3.md), [`v0.4/prd.md`](./v0.4/prd.md), [`datasets.md`](./datasets.md), [`data-implementation.md`](./data-implementation.md), [`principles.md`](../principles.md), [`v02-eval-baseline.md`](./v02-eval-baseline.md).
 
 ---
 
@@ -103,6 +103,8 @@ Share chat · browser/email notify · application-level encryption · Hindi UI t
 
 Focus: prove the **current MVP corpus** is good enough before expanding sources.
 
+PRD: [`v0.5/prd.md`](./v0.5/prd.md) · TRD: [`v0.5/trd.md`](./v0.5/trd.md) · Allowlist: [`v0.5/mvp-corpus-allowlist.yaml`](./v0.5/mvp-corpus-allowlist.yaml)
+
 ### Eval & regression
 
 - [ ] **Benchmark harness** — reproducible runs; baseline vs candidate
@@ -120,7 +122,7 @@ Focus: prove the **current MVP corpus** is good enough before expanding sources.
 ### v0.5 exit criteria
 
 - [ ] MVP corpus meets documented thresholds in [`v02-eval-baseline.md`](./v02-eval-baseline.md) targets
-- [ ] Smoke suite green in CI on every PR
+- [ ] **Manual smoke runbook** executed before v0.5 ship *(CI deferred)*
 
 ---
 

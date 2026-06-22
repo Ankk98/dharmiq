@@ -100,8 +100,13 @@ dharmiq/
 | [`docs/plans/v0.2-implementation-phases.md`](docs/plans/v0.2-implementation-phases.md) | v0.2 phase playbook (completed) |
 | [`docs/plans/v0.3.md`](docs/plans/v0.3.md) | v0.3 design system implementation plan (implemented) |
 | [`docs/plans/v0.4/prd.md`](docs/plans/v0.4/prd.md) | v0.4 product requirements (reliability & ops) |
+| [`docs/plans/v0.5/prd.md`](docs/plans/v0.5/prd.md) | v0.5 product requirements (quality gate & smoke) |
+| [`docs/plans/v0.5/trd.md`](docs/plans/v0.5/trd.md) | v0.5 technical implementation plan (phased) |
+| [`docs/plans/v0.5/mvp-corpus-allowlist.yaml`](docs/plans/v0.5/mvp-corpus-allowlist.yaml) | MVP central statute allowlist (26 instruments) |
 | [`docs/plans/v0.4/trd.md`](docs/plans/v0.4/trd.md) | v0.4 technical design |
 | [`docs/plans/roadmap.md`](docs/plans/roadmap.md) | v0.4+ product roadmap (accuracy → reliability → breadth → monetization) |
+| [`docs/plans/datasets.md`](docs/plans/datasets.md) | Data strategy — sources, evals, benchmarks, gaps |
+| [`docs/plans/data-implementation.md`](docs/plans/data-implementation.md) | Corpus ops — ingestion, storage, scale, Dharmiq pipelines |
 | [`docs/deployment.md`](docs/deployment.md) | Production deployment on Ubuntu + Nginx, Docker stacks |
 
 ## Prerequisites

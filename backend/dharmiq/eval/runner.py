@@ -18,6 +18,7 @@ from dharmiq.db.models.evals import EvalDataset, EvalQuestion, EvalResult, EvalR
 from dharmiq.eval.dataset_loader import EvalDatasetRecord, load_dataset_records
 from dharmiq.eval.expectations import evaluate_answer_expectations
 from dharmiq.eval.judge import run_llm_judge
+from dharmiq.eval.metadata import collect_run_metadata
 from dharmiq.llm.agents.answerer import run_answerer
 from dharmiq.llm.agents.query_rewriter import run_query_rewriter
 from dharmiq.llm.openrouter_client import OpenRouterClient, get_openrouter_client
@@ -294,15 +295,21 @@ async def run_eval_dataset(
     settings: Settings | None = None,
     client: OpenRouterClient | None = None,
     write_summary: bool = True,
+    limit: int | None = None,
 ) -> EvalRunSummary:
     cfg = settings or get_settings()
     llm = client or get_openrouter_client()
     records = load_dataset_records(dataset_name, cfg)
+    if limit is not None:
+        if limit <= 0:
+            raise EvalError("--limit must be a positive integer", details={"limit": limit})
+        records = records[:limit]
     await _preflight_corpus(db, cfg)
     dataset = await _ensure_dataset_in_db(db, dataset_name, records)
 
     questions = await _question_rows(db, dataset.id)
     record_by_id = {record.external_id: record for record in records}
+    allowed_ids = set(record_by_id)
 
     eval_run = EvalRun(
         dataset_id=dataset.id,
@@ -313,6 +320,8 @@ async def run_eval_dataset(
 
     evaluated_rows: list[tuple[EvalQuestion, _QuestionEvalResult]] = []
     for question_row in questions:
+        if question_row.external_id not in allowed_ids:
+            continue
         record = record_by_id.get(question_row.external_id)
         if record is None:
             logger.warning(
@@ -350,11 +359,14 @@ async def run_eval_dataset(
     output_path.mkdir(parents=True, exist_ok=True)
     summary_file = output_path / f"{dataset_name}_{eval_run.id}.json"
 
+    metadata = await collect_run_metadata(db, settings=cfg)
+
     summary_payload = {
         "run_id": str(eval_run.id),
         "dataset": dataset_name,
         "model": cfg.openrouter.default_model,
         "run_at": datetime.now(UTC).isoformat(),
+        "metadata": metadata,
         "aggregate_metrics": aggregate,
         "questions": [
             {

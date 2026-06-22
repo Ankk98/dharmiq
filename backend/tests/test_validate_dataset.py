@@ -13,6 +13,18 @@ def test_validate_v1_fundamental_rights_passes() -> None:
 
 
 @pytest.mark.timeout(30)
+def test_validate_v1_consumer_passes() -> None:
+    issues = validate_dataset("v1_consumer")
+    assert not any(issue.level == "error" for issue in issues)
+
+
+@pytest.mark.timeout(30)
+def test_validate_v1_employment_passes() -> None:
+    issues = validate_dataset("v1_employment")
+    assert not any(issue.level == "error" for issue in issues)
+
+
+@pytest.mark.timeout(30)
 def test_load_v1_dataset_new_fields() -> None:
     records = load_dataset_records("v1_fundamental_rights")
     assert len(records) >= 30

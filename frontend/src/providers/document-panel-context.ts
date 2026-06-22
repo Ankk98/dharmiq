@@ -4,7 +4,8 @@ export type DocumentPanelParams = {
   documentId: string;
   sourceType: "corpus" | "upload";
   chunkId?: string;
-  quote?: string;
+  quoteStart?: number;
+  quoteEnd?: number;
   sectionLabel?: string;
 };
 

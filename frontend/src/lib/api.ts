@@ -29,6 +29,8 @@ export type Citation = {
   page_start?: number | null;
   page_end?: number | null;
   quote_text?: string | null;
+  quote_start_char?: number | null;
+  quote_end_char?: number | null;
 };
 
 export type ChatRequestPendingResponse = {
@@ -463,8 +465,53 @@ export async function detachUpload(sessionId: string, uploadId: string): Promise
   });
 }
 
+export type DocumentChunkListItem = {
+  chunk_id: string;
+  chunk_index: number;
+  preview: string;
+  page_start?: number | null;
+  page_end?: number | null;
+  section_label?: string | null;
+};
+
+export type DocumentChunkListResponse = {
+  document_id: string;
+  source_type: "corpus" | "upload";
+  chunks: DocumentChunkListItem[];
+};
+
+export type DocumentChunkRead = {
+  chunk_id: string;
+  document_id: string;
+  source_type: "corpus" | "upload";
+  text: string;
+  context_text?: string | null;
+  page_start?: number | null;
+  page_end?: number | null;
+  section_label?: string | null;
+};
+
 export function documentFileUrl(documentId: string, sourceType: "corpus" | "upload"): string {
   return `/api/docs/${documentId}/file?source_type=${sourceType}`;
+}
+
+export async function fetchDocumentChunks(
+  documentId: string,
+  sourceType: "corpus" | "upload",
+): Promise<DocumentChunkListResponse> {
+  return apiFetch<DocumentChunkListResponse>(
+    `/api/docs/${documentId}/chunks?source_type=${sourceType}`,
+  );
+}
+
+export async function fetchDocumentChunk(
+  documentId: string,
+  chunkId: string,
+  sourceType: "corpus" | "upload",
+): Promise<DocumentChunkRead> {
+  return apiFetch<DocumentChunkRead>(
+    `/api/docs/${documentId}/chunks/${chunkId}?source_type=${sourceType}`,
+  );
 }
 
 export function documentViewerPath(
@@ -472,7 +519,8 @@ export function documentViewerPath(
   sourceType: "corpus" | "upload",
   options?: {
     chunkId?: string;
-    quote?: string;
+    quoteStart?: number;
+    quoteEnd?: number;
     sectionLabel?: string;
   },
 ): string {
@@ -480,8 +528,11 @@ export function documentViewerPath(
   if (options?.chunkId) {
     params.set("chunk", options.chunkId);
   }
-  if (options?.quote) {
-    params.set("quote", options.quote);
+  if (options?.quoteStart != null) {
+    params.set("qstart", String(options.quoteStart));
+  }
+  if (options?.quoteEnd != null) {
+    params.set("qend", String(options.quoteEnd));
   }
   if (options?.sectionLabel) {
     params.set("section", options.sectionLabel);

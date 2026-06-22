@@ -14,6 +14,8 @@ from dharmiq.db.models.uploads import UserUpload
 from dharmiq.db.models.users import User
 from dharmiq.db.session import get_db_session
 from dharmiq.llm.retrieval import SourceType
+from dharmiq.documents.chunks import get_document_chunk, list_document_chunks
+from dharmiq.schemas.chunks import ChunkListResponse, ChunkRead
 from dharmiq.schemas.documents import DocumentRead
 
 router = APIRouter(prefix="/docs", tags=["docs"])
@@ -97,3 +99,41 @@ async def download_document_file(
         media_type=metadata.mime_type,
         filename=filename,
     )
+
+
+@router.get("/{document_id}/chunks", response_model=ChunkListResponse)
+async def list_chunks(
+    document_id: uuid.UUID,
+    source_type: SourceType = Query(default="corpus"),
+    user: User = Depends(current_active_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> ChunkListResponse:
+    result = await list_document_chunks(
+        db,
+        document_id=document_id,
+        source_type=source_type,
+        user=user,
+    )
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+    return result
+
+
+@router.get("/{document_id}/chunks/{chunk_id}", response_model=ChunkRead)
+async def get_chunk(
+    document_id: uuid.UUID,
+    chunk_id: uuid.UUID,
+    source_type: SourceType = Query(default="corpus"),
+    user: User = Depends(current_active_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> ChunkRead:
+    result = await get_document_chunk(
+        db,
+        document_id=document_id,
+        chunk_id=chunk_id,
+        source_type=source_type,
+        user=user,
+    )
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chunk not found")
+    return result

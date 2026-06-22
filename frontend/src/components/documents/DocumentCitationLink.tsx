@@ -10,11 +10,28 @@ type DocumentCitationLinkProps = {
   children: ReactNode;
 };
 
+function parseQuoteSpan(
+  searchParams: URLSearchParams,
+): { quoteStart?: number; quoteEnd?: number } {
+  const startRaw = searchParams.get("qstart");
+  const endRaw = searchParams.get("qend");
+  if (startRaw == null || endRaw == null) {
+    return {};
+  }
+  const quoteStart = Number(startRaw);
+  const quoteEnd = Number(endRaw);
+  if (!Number.isInteger(quoteStart) || !Number.isInteger(quoteEnd) || quoteStart < 0 || quoteEnd <= quoteStart) {
+    return {};
+  }
+  return { quoteStart, quoteEnd };
+}
+
 function parseDocumentHref(href: string): {
   documentId: string;
   sourceType: "corpus" | "upload";
   chunkId?: string;
-  quote?: string;
+  quoteStart?: number;
+  quoteEnd?: number;
   sectionLabel?: string;
 } | null {
   try {
@@ -26,11 +43,13 @@ function parseDocumentHref(href: string): {
       return null;
     }
     const sourceType = parseSourceTypeFromHref(href) ?? "corpus";
+    const { quoteStart, quoteEnd } = parseQuoteSpan(url.searchParams);
     return {
       documentId: match[1],
       sourceType,
       chunkId: url.searchParams.get("chunk") ?? undefined,
-      quote: url.searchParams.get("quote") ?? undefined,
+      quoteStart,
+      quoteEnd,
       sectionLabel: url.searchParams.get("section") ?? undefined,
     };
   } catch {

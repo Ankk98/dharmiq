@@ -84,6 +84,7 @@ dharmiq/
 | [`docs/plans/v0.2-prd-trd.md`](docs/plans/v0.2-prd-trd.md) | v0.2 PRD & TRD (implemented) |
 | [`docs/plans/v0.2-implementation-phases.md`](docs/plans/v0.2-implementation-phases.md) | v0.2 phase playbook (completed) |
 | [`docs/plans/v0.3.md`](docs/plans/v0.3.md) | v0.3 design system implementation plan (implemented) |
+| [`docs/plans/roadmap.md`](docs/plans/roadmap.md) | v0.4+ product roadmap (accuracy → reliability → breadth → monetization) |
 | [`docs/deployment.md`](docs/deployment.md) | Production deployment on Ubuntu + Nginx |
 
 ## Prerequisites

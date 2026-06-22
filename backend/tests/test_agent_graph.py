@@ -47,6 +47,7 @@ async def _clean_agent_graph_tables() -> None:
     reset_checkpointer_cache()
     factory = get_session_factory()
     async with factory() as db:
+        await db.execute(text("DELETE FROM llm_usage_events"))
         await db.execute(text("DELETE FROM chat_request_events"))
         await db.execute(text("DELETE FROM chat_requests"))
         await db.execute(text("DELETE FROM chat_messages"))

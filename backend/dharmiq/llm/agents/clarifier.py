@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from dharmiq.db.models.chats import ChatMessage
 from dharmiq.llm.agents.base import call_json_agent, format_chat_history
-from dharmiq.llm.openrouter_client import OpenRouterClient
+from dharmiq.llm.openrouter_client import OpenRouterClient, extract_token_usage
 from dharmiq.llm.prompts.loader import load_prompt
 
 
@@ -23,6 +24,7 @@ class ClarifierResult:
     followup_items: list[ClarifierFollowupItem]
     reason: str
     tokens_used: int
+    llm_response: dict[str, Any]
 
 
 def _split_question_and_why(text: str) -> tuple[str, str | None]:
@@ -89,7 +91,7 @@ async def run_clarifier(
         history=format_chat_history(history, limit=history_limit),
         attached_documents=attached_documents,
     )
-    data, tokens = await call_json_agent(
+    data, response = await call_json_agent(
         client,
         system=prompt.system,
         user_content=user_content,
@@ -104,5 +106,6 @@ async def run_clarifier(
         followup_questions=followup_questions,
         followup_items=followup_items,
         reason=str(data.get("reason") or ""),
-        tokens_used=tokens,
+        tokens_used=extract_token_usage(response),
+        llm_response=response,
     )

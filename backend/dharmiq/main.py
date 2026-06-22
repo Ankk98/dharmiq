@@ -12,10 +12,11 @@ from dharmiq.api.middleware.guardrails import (
     ChatGuardrailsMiddleware,
     input_validation_response,
     rate_limit_response,
+    usage_limit_response,
 )
 from dharmiq.api.routes import auth, chat, chat_attachments, chat_stream, docs, health, metrics, uploads
 from dharmiq.config.settings import get_settings
-from dharmiq.core.errors import InputValidationError, RateLimitExceededError
+from dharmiq.core.errors import InputValidationError, RateLimitExceededError, UsageLimitExceededError
 from dharmiq.core.logging import get_logger, setup_logging
 from dharmiq.db.session import close_db, init_db
 from dharmiq.llm.openrouter_client import close_openrouter_client
@@ -63,6 +64,10 @@ def create_app() -> FastAPI:
     @app.exception_handler(RateLimitExceededError)
     def _handle_rate_limit(_request: Request, exc: RateLimitExceededError) -> JSONResponse:
         return rate_limit_response(exc)
+
+    @app.exception_handler(UsageLimitExceededError)
+    def _handle_usage_limit(_request: Request, exc: UsageLimitExceededError) -> JSONResponse:
+        return usage_limit_response(exc)
 
     app.add_middleware(PrometheusMiddleware)
     app.add_middleware(ChatGuardrailsMiddleware)

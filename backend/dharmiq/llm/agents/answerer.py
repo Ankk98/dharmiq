@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from dharmiq.llm.agents.base import call_text_agent
-from dharmiq.llm.openrouter_client import OpenRouterClient
+from dharmiq.llm.openrouter_client import OpenRouterClient, extract_token_usage
 from dharmiq.llm.prompts.loader import load_prompt
 from dharmiq.llm.retrieval import RetrievedChunk, format_retrieved_context
 
@@ -12,6 +13,7 @@ from dharmiq.llm.retrieval import RetrievedChunk, format_retrieved_context
 class AnswererResult:
     answer: str
     tokens_used: int
+    llm_response: dict[str, Any]
 
 
 async def run_answerer(
@@ -31,9 +33,13 @@ async def run_answerer(
         regeneration_section=regeneration_section,
     )
     system = prompt.system.format(regeneration_section=regeneration_section)
-    answer, tokens = await call_text_agent(
+    answer, response = await call_text_agent(
         client,
         system=system,
         user_content=user_content,
     )
-    return AnswererResult(answer=answer.strip(), tokens_used=tokens)
+    return AnswererResult(
+        answer=answer.strip(),
+        tokens_used=extract_token_usage(response),
+        llm_response=response,
+    )

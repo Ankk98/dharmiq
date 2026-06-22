@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from dharmiq.llm.agents.base import call_json_agent
-from dharmiq.llm.openrouter_client import OpenRouterClient
+from dharmiq.llm.openrouter_client import OpenRouterClient, extract_token_usage
 from dharmiq.llm.prompts.loader import load_prompt
 from dharmiq.llm.retrieval import RetrievedChunk, format_retrieved_context
 from dharmiq.schemas.citations import CitationRecord
@@ -18,6 +19,7 @@ class ValidatorResult:
     unsupported_claims: list[str]
     statutory_claims_checked: int
     tokens_used: int
+    llm_response: dict[str, Any]
 
 
 def _format_citation_map(citations: list[CitationRecord]) -> str:
@@ -50,7 +52,7 @@ async def run_validator(
         citation_map=_format_citation_map(citations),
         draft_answer=draft_answer,
     )
-    data, tokens = await call_json_agent(
+    data, response = await call_json_agent(
         client,
         system=prompt.system,
         user_content=user_content,
@@ -70,7 +72,8 @@ async def run_validator(
         final_warning=str(data.get("final_warning") or "").strip(),
         unsupported_claims=[str(item).strip() for item in unsupported if str(item).strip()],
         statutory_claims_checked=int(data.get("statutory_claims_checked") or 0),
-        tokens_used=tokens,
+        tokens_used=extract_token_usage(response),
+        llm_response=response,
     )
 
 

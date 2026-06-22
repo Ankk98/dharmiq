@@ -27,6 +27,7 @@ from dharmiq.db.models.chats import (
 )
 from dharmiq.db.models.users import User
 from dharmiq.llm.openrouter_client import OpenRouterClient, get_openrouter_client
+from dharmiq.llm.usage import check_usage_limits
 from dharmiq.llm.pipeline import (
     ChatPipelineResult,
     _elapsed_over_threshold,
@@ -133,6 +134,7 @@ async def create_agent_graph_request(
     settings: Settings | None = None,
 ) -> GraphRuntime:
     cfg = settings or get_settings()
+    await check_usage_limits(db, user.id, chat_session.id, cfg)
     clarifier_round = await _seed_clarifier_round(db, chat_session.id)
 
     chat_request = ChatRequest(
@@ -197,6 +199,7 @@ async def retry_agent_graph_request(
         raise ValueError("Message does not belong to session")
 
     cfg = settings or get_settings()
+    await check_usage_limits(db, user.id, chat_session.id, cfg)
     force_answer = False
     old_request_id = (user_message.message_metadata or {}).get("chat_request_id")
     if old_request_id:

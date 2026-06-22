@@ -7,6 +7,7 @@ from langchain_core.runnables import RunnableConfig
 from dharmiq.agents.runtime import GraphRuntime
 from dharmiq.agents.state import AgentGraphState
 from dharmiq.llm.agents.clarifier import run_clarifier
+from dharmiq.llm.usage import record_llm_usage
 from dharmiq.observability.metrics import record_llm_tokens
 from dharmiq.uploads.session_attachments import list_attached_uploads
 
@@ -50,6 +51,15 @@ async def clarifier_node(state: AgentGraphState, config: RunnableConfig) -> dict
         history=runtime.history[:-1],
         history_limit=cfg.chat.history_limit,
         attached_documents=attached_documents,
+    )
+    await record_llm_usage(
+        runtime.db,
+        user_id=runtime.user.id,
+        chat_request_id=runtime.chat_request.id,
+        session_id=runtime.chat_session.id,
+        agent_role="clarifier",
+        model=runtime.model_name,
+        response=clarifier.llm_response,
     )
     record_llm_tokens(
         model=runtime.model_name,

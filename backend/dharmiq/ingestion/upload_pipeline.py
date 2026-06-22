@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from dharmiq.config.settings import Settings, get_settings
 from dharmiq.core.errors import IngestionError, UploadError
 from dharmiq.core.logging import get_logger
-from dharmiq.db.models.uploads import UserUpload, UserUploadChunk
+from dharmiq.db.models.uploads import ProcessingStage, UserUpload, UserUploadChunk
 from dharmiq.ingestion.chunker import CHUNK_SCHEMA_V02, SectionChunkGroup, chunk_document
 from dharmiq.ingestion.parser import (
     PdfParserBackend,
@@ -78,6 +78,7 @@ async def create_user_upload(
         mime_type=mime_type or "application/octet-stream",
         size_bytes=len(content),
         content_hash=compute_file_hash_from_bytes(content),
+        processing_stage=ProcessingStage.UPLOADED.value,
     )
     db.add(upload)
     await db.flush()
@@ -124,6 +125,51 @@ def _extract_upload_pages(
     )
 
 
+async def update_upload_stage(
+    db: AsyncSession,
+    upload_id: uuid.UUID,
+    stage: ProcessingStage | str,
+    *,
+    chunk_count: int | None = None,
+    error: str | None = None,
+) -> None:
+    upload = await db.get(UserUpload, upload_id)
+    if upload is None:
+        return
+    upload.processing_stage = stage.value if isinstance(stage, ProcessingStage) else stage
+    if chunk_count is not None:
+        upload.chunk_count = chunk_count
+    if error is not None:
+        upload.processing_error = error[:2000] if error else None
+    elif stage in {ProcessingStage.READY, ProcessingStage.READY.value}:
+        upload.processing_error = None
+    await db.commit()
+
+
+async def count_leaf_upload_chunks(db: AsyncSession, upload_id: uuid.UUID) -> int:
+    result = await db.execute(
+        text(
+            """
+            SELECT COUNT(*)
+            FROM user_upload_chunks c
+            WHERE c.upload_id = :upload_id
+              AND (
+                c.parent_chunk_id IS NOT NULL
+                OR (
+                  c.parent_chunk_id IS NULL
+                  AND NOT EXISTS (
+                    SELECT 1 FROM user_upload_chunks child
+                    WHERE child.parent_chunk_id = c.id
+                  )
+                )
+              )
+            """,
+        ),
+        {"upload_id": upload_id},
+    )
+    return int(result.scalar_one())
+
+
 async def process_user_upload(
     db: AsyncSession,
     upload_id: uuid.UUID,
@@ -136,6 +182,9 @@ async def process_user_upload(
     upload = await db.get(UserUpload, upload_id)
     if upload is None or upload.deleted_at is not None:
         raise IngestionError("Upload not found", details={"upload_id": str(upload_id)})
+
+    if upload.processing_stage == ProcessingStage.READY.value:
+        return upload.chunk_count
 
     file_path = resolve_upload_path(upload.file_path, cfg)
     parser = pdf_parser or get_pdf_parser(cfg)
@@ -151,44 +200,53 @@ async def process_user_upload(
             details={"upload_id": str(upload_id), "error": str(exc)},
         ) from exc
 
+    await update_upload_stage(db, upload_id, ProcessingStage.PARSED)
+
     groups = chunk_document(pages, settings=cfg)
     await _clear_existing_chunks(db, upload_id)
-    chunk_count = await _persist_upload_chunk_groups(
+    child_batches = await _write_upload_chunk_groups(db, upload_id, groups)
+    await update_upload_stage(db, upload_id, ProcessingStage.CHUNKING)
+
+    if child_batches:
+        await update_upload_stage(db, upload_id, ProcessingStage.EMBEDDING)
+        await _embed_upload_chunk_batches(
+            db,
+            child_batches,
+            embedder,
+            batch_size=cfg.ingestion.batch_size,
+        )
+
+    leaf_count = await count_leaf_upload_chunks(db, upload_id)
+    await update_upload_stage(
         db,
         upload_id,
-        groups,
-        embedder,
-        batch_size=cfg.ingestion.batch_size,
+        ProcessingStage.READY,
+        chunk_count=leaf_count,
     )
-    await db.commit()
 
-    record_ingestion_success(chunk_count=chunk_count, page_count=len(pages))
+    record_ingestion_success(chunk_count=leaf_count, page_count=len(pages))
     logger.info(
         "user_upload_indexed",
         upload_id=str(upload_id),
         user_id=str(upload.user_id),
-        chunks=chunk_count,
+        chunks=leaf_count,
         pages=len(pages),
     )
-    return chunk_count
+    return leaf_count
 
 
 async def _clear_existing_chunks(db: AsyncSession, upload_id: uuid.UUID) -> None:
     await db.execute(delete(UserUploadChunk).where(UserUploadChunk.upload_id == upload_id))
 
 
-async def _persist_upload_chunk_groups(
+async def _write_upload_chunk_groups(
     db: AsyncSession,
     upload_id: uuid.UUID,
     groups: list[SectionChunkGroup],
-    embedder: EmbeddingBackend,
-    *,
-    batch_size: int,
-) -> int:
+) -> list[tuple[UserUploadChunk, str]]:
     if not groups:
-        return 0
+        return []
 
-    stored = 0
     child_batches: list[tuple[UserUploadChunk, str]] = []
 
     for group in groups:
@@ -218,18 +276,39 @@ async def _persist_upload_chunk_groups(
             )
             db.add(child_row)
             child_batches.append((child_row, child.text))
-            stored += 1
 
-        stored += 1
+    await db.commit()
+    return child_batches
 
+
+async def _embed_upload_chunk_batches(
+    db: AsyncSession,
+    child_batches: list[tuple[UserUploadChunk, str]],
+    embedder: EmbeddingBackend,
+    *,
+    batch_size: int,
+) -> None:
     for start in range(0, len(child_batches), batch_size):
         batch = child_batches[start : start + batch_size]
         vectors = await embedder.embed_texts([text for _, text in batch])
         for (row, _), vector in zip(batch, vectors, strict=True):
             row.embedding = PgVector(vector)
         await db.flush()
+    await db.commit()
 
-    return stored
+
+async def _persist_upload_chunk_groups(
+    db: AsyncSession,
+    upload_id: uuid.UUID,
+    groups: list[SectionChunkGroup],
+    embedder: EmbeddingBackend,
+    *,
+    batch_size: int,
+) -> int:
+    child_batches = await _write_upload_chunk_groups(db, upload_id, groups)
+    if child_batches:
+        await _embed_upload_chunk_batches(db, child_batches, embedder, batch_size=batch_size)
+    return await count_leaf_upload_chunks(db, upload_id)
 
 
 async def reindex_user_upload_v02(
@@ -286,10 +365,23 @@ async def process_user_upload_safe(
     upload_id: uuid.UUID,
     *,
     settings: Settings | None = None,
+    **kwargs: object,
 ) -> int:
     try:
-        return await process_user_upload(db, upload_id, settings=settings)
+        return await process_user_upload(db, upload_id, settings=settings, **kwargs)
     except Exception as exc:
         record_ingestion_failure(reason=type(exc).__name__)
         logger.exception("user_upload_index_failed", upload_id=str(upload_id), error=str(exc))
+        try:
+            await update_upload_stage(
+                db,
+                upload_id,
+                ProcessingStage.FAILED,
+                error=str(exc),
+            )
+        except Exception:
+            logger.exception(
+                "user_upload_failed_stage_update",
+                upload_id=str(upload_id),
+            )
         raise

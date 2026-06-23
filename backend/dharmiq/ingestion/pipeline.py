@@ -20,6 +20,7 @@ from dharmiq.ingestion.chunker import (
     detect_sections,
 )
 from dharmiq.ingestion.parser import PdfParserBackend, get_pdf_parser
+from dharmiq.ingestion.relationships import sync_statute_relationships
 from dharmiq.ingestion.scanner import ScannedDocument, scan_corpus_directory
 from dharmiq.llm.embeddings import EmbeddingBackend, get_embedding_backend
 from dharmiq.observability.metrics import record_ingestion_failure, record_ingestion_success
@@ -74,6 +75,10 @@ async def sync_corpus_documents(
             celery_app.send_task("dharmiq.ingestion.process_pdf", args=[str(document_id)])
             enqueued.append(document_id)
 
+    allowlist_path = cfg.corpus.resolve_allowlist_path(cfg.repo_root)
+    if allowlist_path.is_file():
+        await sync_statute_relationships(db, allowlist_path)
+
     await db.commit()
     logger.info(
         "corpus_sync_complete",
@@ -92,6 +97,40 @@ async def sync_corpus_documents(
     )
 
 
+async def _purge_older_version_index(
+    db: AsyncSession,
+    *,
+    source_id: str,
+    before_version: int,
+) -> None:
+    result = await db.execute(
+        select(SourceDocument.id).where(
+            SourceDocument.source_id == source_id,
+            SourceDocument.version < before_version,
+        )
+    )
+    old_document_ids = list(result.scalars().all())
+    for document_id in old_document_ids:
+        await db.execute(delete(DocumentChunk).where(DocumentChunk.document_id == document_id))
+        await db.execute(delete(DocumentSection).where(DocumentSection.document_id == document_id))
+
+
+def _document_fields_from_scan(scanned: ScannedDocument) -> dict:
+    return {
+        "title": scanned.title,
+        "doc_type": scanned.doc_type,
+        "jurisdiction": scanned.jurisdiction,
+        "enactment_date": scanned.enactment_date,
+        "enforcement_date": scanned.enforcement_date,
+        "status": scanned.status,
+        "superseded_by_source_id": scanned.superseded_by_source_id,
+        "canonical_url": scanned.canonical_url,
+        "instrument_metadata": scanned.instrument_metadata,
+        "content_hash": scanned.content_hash,
+        "file_path": str(scanned.file_path),
+    }
+
+
 async def _register_scanned_document(
     db: AsyncSession,
     scanned: ScannedDocument,
@@ -105,6 +144,10 @@ async def _register_scanned_document(
     existing = result.scalar_one_or_none()
 
     if existing and existing.content_hash == scanned.content_hash:
+        for field, value in _document_fields_from_scan(scanned).items():
+            if field in {"content_hash", "file_path"}:
+                continue
+            setattr(existing, field, value)
         if existing.indexed_at is not None:
             return existing.id, "skipped"
         return existing.id, "updated"
@@ -112,29 +155,27 @@ async def _register_scanned_document(
     if existing:
         document = SourceDocument(
             source_id=scanned.source_id,
-            title=scanned.title,
-            doc_type=scanned.doc_type,
-            jurisdiction=scanned.jurisdiction,
             version=existing.version + 1,
-            content_hash=scanned.content_hash,
-            file_path=str(scanned.file_path),
+            **_document_fields_from_scan(scanned),
         )
         action = "updated"
-    else:
-        document = SourceDocument(
+        db.add(document)
+        await db.flush()
+        await _purge_older_version_index(
+            db,
             source_id=scanned.source_id,
-            title=scanned.title,
-            doc_type=scanned.doc_type,
-            jurisdiction=scanned.jurisdiction,
-            version=1,
-            content_hash=scanned.content_hash,
-            file_path=str(scanned.file_path),
+            before_version=document.version,
         )
-        action = "created"
+        return document.id, action
 
+    document = SourceDocument(
+        source_id=scanned.source_id,
+        version=1,
+        **_document_fields_from_scan(scanned),
+    )
     db.add(document)
     await db.flush()
-    return document.id, action
+    return document.id, "created"
 
 
 async def _parse_document_pages(

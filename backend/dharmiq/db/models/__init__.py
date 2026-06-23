@@ -14,8 +14,10 @@ from dharmiq.db.models.documents import (
     DocType,
     DocumentChunk,
     DocumentSection,
+    InstrumentStatus,
     SourceDocument,
 )
+from dharmiq.db.models.statute_relationships import StatuteRelationship
 from dharmiq.db.models.evals import EvalDataset, EvalQuestion, EvalResult, EvalRun
 from dharmiq.db.models.feedback import FeedbackRating, MessageFeedback
 from dharmiq.db.models.idempotency import IdempotencyKey
@@ -44,6 +46,8 @@ __all__ = [
     "DocType",
     "DocumentChunk",
     "DocumentSection",
+    "InstrumentStatus",
+    "StatuteRelationship",
     "EventVisibility",
     "MessageRole",
     "SourceDocument",

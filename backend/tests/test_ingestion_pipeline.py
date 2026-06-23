@@ -56,6 +56,7 @@ async def _clean_corpus() -> None:
         await db.execute(text("DELETE FROM document_chunks"))
         await db.execute(text("DELETE FROM document_sections"))
         await db.execute(text("DELETE FROM source_documents"))
+        await db.execute(text("DELETE FROM statute_relationships"))
         await db.commit()
     yield
 

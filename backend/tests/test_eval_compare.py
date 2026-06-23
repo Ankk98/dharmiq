@@ -143,6 +143,61 @@ def test_compare_exit_code_target_fail(baseline_payload: dict) -> None:
     assert compare_exit_code(candidate, baseline) == 1
 
 
+@pytest.fixture
+def v06_baseline_payload() -> dict:
+    return {
+        "created_at": "2026-06-23T12:00:00Z",
+        "git_sha": "abc123",
+        "allowlist_version": "0.6",
+        "allowlist_sha256": "deadbeef",
+        "eval_path": "run_eval_rag",
+        "model": "deepseek/deepseek-v4-flash",
+        "suites": {
+            "mvp": {
+                "aggregate_metrics": {"faithfulness": 0.86},
+                "datasets": {},
+            },
+            "v06": {
+                "aggregate_metrics": {
+                    "faithfulness": 0.87,
+                    "answer_correctness": 0.82,
+                    "llm_citation_correctness": 0.96,
+                    "recall_at_5": 0.79,
+                    "blockquote_met": 0.83,
+                    "refusal_correct": 0.92,
+                    "revised_law_met": 0.95,
+                    "question_count": 200.0,
+                },
+                "datasets": {},
+            },
+        },
+    }
+
+
+@pytest.fixture
+def v06_baseline_file(tmp_path: Path, v06_baseline_payload: dict) -> Path:
+    path = tmp_path / "baseline.json"
+    path.write_text(json.dumps(v06_baseline_payload), encoding="utf-8")
+    return path
+
+
+@pytest.mark.timeout(30)
+def test_load_baseline_metrics_v06_suite(v06_baseline_file: Path) -> None:
+    metrics = load_baseline_metrics(v06_baseline_file, suite="v06")
+    assert metrics["faithfulness"] == 0.87
+    assert metrics["revised_law_met"] == 0.95
+    assert metrics["question_count"] == 200.0
+
+
+@pytest.mark.timeout(30)
+def test_check_regressions_revised_law_met_violation() -> None:
+    baseline = {"revised_law_met": 0.95}
+    candidate = {"revised_law_met": baseline["revised_law_met"] - REGRESSION_DELTA_BOOLEAN - 0.01}
+    violations = check_regressions(candidate, baseline)
+    assert len(violations) == 1
+    assert "revised_law_met" in violations[0]
+
+
 @pytest.mark.timeout(30)
 def test_format_delta_table(baseline_payload: dict) -> None:
     baseline = baseline_payload["suites"]["mvp"]["aggregate_metrics"]

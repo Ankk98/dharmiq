@@ -13,6 +13,7 @@ FLOAT_METRICS: list[str] = [
 BOOLEAN_METRICS: list[str] = [
     "blockquote_met",
     "refusal_correct",
+    "revised_law_met",
 ]
 REGRESSION_DELTA_FLOAT = 0.02
 REGRESSION_DELTA_BOOLEAN = 0.05

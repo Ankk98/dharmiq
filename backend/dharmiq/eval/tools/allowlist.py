@@ -200,6 +200,30 @@ def build_manifest_entries(
     return entries
 
 
+CENTRAL_ALLOWLIST_ALIASES = frozenset({"central", "v0.6", "v06"})
+
+
+def resolve_allowlist_cli_arg(
+    value: str,
+    *,
+    repo_root: Path,
+    default_allowlist_path: str | None = None,
+) -> Path:
+    """Resolve CLI --allowlist value; ``central`` maps to the v0.6 central corpus YAML."""
+    raw = value.strip()
+    if raw.lower() in CENTRAL_ALLOWLIST_ALIASES:
+        if default_allowlist_path:
+            path = Path(default_allowlist_path)
+            if path.is_absolute():
+                return path
+            return (repo_root / path).resolve()
+        return default_v06_allowlist_path(repo_root)
+    path = Path(raw)
+    if path.is_absolute():
+        return path
+    return (repo_root / path).resolve()
+
+
 def default_v06_allowlist_path(repo_root: Path | None = None) -> Path:
     root = repo_root or Path(__file__).resolve().parents[4]
     return root / "docs" / "plans" / "v0.6" / "central-corpus-allowlist.yaml"

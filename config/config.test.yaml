@@ -61,6 +61,7 @@ retrieval:
 
 corpus:
   default_allowlist_path: docs/plans/v0.6/central-corpus-allowlist.yaml
+  max_chunk_count: 250000
 
 chat:
   history_limit: 20

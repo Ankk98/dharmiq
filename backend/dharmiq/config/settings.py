@@ -176,6 +176,7 @@ class IngestionSettings(BaseModel):
 
 class CorpusSettings(BaseModel):
     default_allowlist_path: str = "docs/plans/v0.6/central-corpus-allowlist.yaml"
+    max_chunk_count: int = 250_000
 
     def resolve_allowlist_path(self, repo_root: Path) -> Path:
         path = Path(self.default_allowlist_path)

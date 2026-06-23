@@ -18,6 +18,10 @@ def default_allowlist_path(repo_root: Path) -> Path:
     return repo_root / "docs" / "plans" / "v0.5" / "mvp-corpus-allowlist.yaml"
 
 
+def default_v06_allowlist_path(repo_root: Path) -> Path:
+    return repo_root / "docs" / "plans" / "v0.6" / "central-corpus-allowlist.yaml"
+
+
 def resolve_git_sha(repo_root: Path) -> str:
     try:
         result = subprocess.run(

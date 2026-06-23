@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import uuid
+from datetime import UTC, datetime
 from unittest.mock import patch
 
 import pytest
@@ -83,6 +84,7 @@ async def _seed_corpus(db: AsyncSession) -> DocumentChunk:
         jurisdiction="central",
         content_hash="hash-corpus",
         file_path="/tmp/consumer.pdf",
+        indexed_at=datetime.now(UTC),
     )
     db.add(document)
     await db.flush()
@@ -317,6 +319,7 @@ async def test_refusal_node_no_answerer_call(
         jurisdiction="central",
         content_hash="hash-refusal",
         file_path="/tmp/constitution.pdf",
+        indexed_at=datetime.now(UTC),
     )
     db.add(document)
     await db.flush()
@@ -423,6 +426,7 @@ async def test_clarifier_three_round_cap(
         jurisdiction="central",
         content_hash="hash-clarifier-cap",
         file_path="/tmp/constitution.pdf",
+        indexed_at=datetime.now(UTC),
     )
     db.add(document)
     await db.flush()

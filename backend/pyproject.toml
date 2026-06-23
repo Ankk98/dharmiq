@@ -1,6 +1,6 @@
 [project]
 name = "dharmiq"
-version = "0.5.0"
+version = "0.6.0"
 description = "Open-source Indian legal information assistant"
 readme = "README.md"
 license = "MIT"

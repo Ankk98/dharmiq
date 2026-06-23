@@ -63,6 +63,7 @@ class CitationRead(BaseModel):
     quote_text: str | None = None
     quote_start_char: int | None = None
     quote_end_char: int | None = None
+    canonical_url: str | None = None
 
 
 def _chunk_with_score(chunk: RetrievedChunk, score: float) -> RetrievedChunk:
@@ -131,6 +132,7 @@ async def retrieve_document_chunks(
         rrf_k=cfg.retrieval.rrf_k,
         rrf_top_k=limit,
         backend=embedder,
+        settings=cfg,
     )
 
 
@@ -197,7 +199,47 @@ async def retrieve_merged_chunks(
     return _merge_chunks(corpus + uploads, top_k=per_source_k)
 
 
+async def _document_status_by_id(
+    db: AsyncSession,
+    document_ids: list[uuid.UUID],
+) -> dict[uuid.UUID, str]:
+    if not document_ids:
+        return {}
+
+    from sqlalchemy import text
+
+    result = await db.execute(
+        text("SELECT id, status::text AS status FROM source_documents WHERE id = ANY(:ids)"),
+        {"ids": document_ids},
+    )
+    return {row.id: row.status for row in result}
+
+
+_IN_FORCE_TIEBREAK_EPSILON = 0.01
+_IN_FORCE_TIEBREAK_BOOST = 0.005
+
+
+def _apply_in_force_tiebreak(
+    chunks: list[RetrievedChunk],
+    status_by_document_id: dict[uuid.UUID, str],
+) -> list[RetrievedChunk]:
+    """Prefer in-force corpus chunks when rerank scores are within epsilon."""
+    if len(chunks) < 2:
+        return chunks
+
+    def sort_key(chunk: RetrievedChunk) -> tuple[float, float]:
+        boost = (
+            _IN_FORCE_TIEBREAK_BOOST
+            if status_by_document_id.get(chunk.document_id) == "in_force"
+            else 0.0
+        )
+        return (chunk.score + boost, chunk.score)
+
+    return sorted(chunks, key=sort_key, reverse=True)
+
+
 async def _rerank_chunks(
+    db: AsyncSession,
     query: str,
     chunks: list[RetrievedChunk],
     *,
@@ -214,7 +256,10 @@ async def _rerank_chunks(
     reranked: list[RetrievedChunk] = []
     for index, score in zip(output.indices, output.scores, strict=True):
         reranked.append(_chunk_with_score(chunks[index], score))
-    return reranked
+
+    document_ids = list({chunk.document_id for chunk in reranked})
+    status_by_id = await _document_status_by_id(db, document_ids)
+    return _apply_in_force_tiebreak(reranked, status_by_id)
 
 
 async def retrieve_multi_query(
@@ -249,6 +294,7 @@ async def retrieve_multi_query(
     merged = _merge_chunks(combined, top_k=rrf_limit)
     ranking_query = rerank_query or (queries[0] if queries else "")
     reranked = await _rerank_chunks(
+        db,
         ranking_query,
         merged,
         top_k=rerank_limit,

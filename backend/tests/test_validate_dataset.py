@@ -43,6 +43,42 @@ def test_validate_v1_needle_statute_passes() -> None:
 
 
 @pytest.mark.timeout(30)
+def test_validate_v1_property_passes() -> None:
+    issues = validate_dataset("v1_property")
+    assert not any(issue.level == "error" for issue in issues)
+
+
+@pytest.mark.timeout(30)
+def test_validate_v1_tax_passes() -> None:
+    issues = validate_dataset("v1_tax")
+    assert not any(issue.level == "error" for issue in issues)
+
+
+@pytest.mark.timeout(30)
+def test_validate_v1_cyber_passes() -> None:
+    issues = validate_dataset("v1_cyber")
+    assert not any(issue.level == "error" for issue in issues)
+
+
+@pytest.mark.timeout(30)
+def test_validate_rejects_case_law_topic_in_v06_datasets() -> None:
+    records = [
+        EvalDatasetRecord(
+            external_id="p1",
+            question="What did the Supreme Court hold?",
+            expected_answer="A judgment held something.",
+            expected_citations=[{"section": "Section 1"}],
+            topic="case_law",
+            facts="facts",
+            min_citation_count=1,
+        )
+    ]
+    for dataset_name in ("v1_property", "v1_tax", "v1_cyber"):
+        issues = validate_dataset_records(dataset_name, records)
+        assert any("case_law" in issue.message for issue in issues)
+
+
+@pytest.mark.timeout(30)
 def test_load_v1_dataset_new_fields() -> None:
     records = load_dataset_records("v1_fundamental_rights")
     assert len(records) >= 30

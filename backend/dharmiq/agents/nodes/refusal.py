@@ -4,13 +4,8 @@ from typing import Any
 
 from langchain_core.runnables import RunnableConfig
 
+from dharmiq.agents.messages import REFUSAL_MESSAGE
 from dharmiq.agents.state import AgentGraphState
-
-REFUSAL_MESSAGE = (
-    "I could not find sufficient sources in the corpus or your attached documents "
-    "to answer reliably. Try rephrasing your question, attaching a relevant document, "
-    "or narrowing the topic."
-)
 
 
 async def refusal_node(state: AgentGraphState, config: RunnableConfig) -> dict[str, Any]:

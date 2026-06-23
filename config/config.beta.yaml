@@ -58,6 +58,11 @@ retrieval:
   rerank_top_k: 8
   min_rerank_score: 0.35
   min_relevant_chunks: 2
+  include_superseded: false
+
+corpus:
+  default_allowlist_path: docs/plans/v0.6/central-corpus-allowlist.yaml
+  max_chunk_count: 250000
 
 chat:
   history_limit: 20

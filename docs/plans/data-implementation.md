@@ -1,6 +1,6 @@
 # Dharmiq — Data implementation & corpus operations
 
-**Status:** Living document · **Last updated:** 2026-06-22  
+**Status:** Living document · **Last updated:** 2026-06-23  
 **Audience:** Engineering, ops, self-hosters  
 **Companion:** [`datasets.md`](./datasets.md) (data strategy, evals, benchmarks, gaps)  
 **Related:** [`roadmap.md`](./roadmap.md) · [`v02-eval-baseline.md`](./v02-eval-baseline.md) · [`../deployment.md`](../deployment.md)
@@ -108,11 +108,14 @@ Flow: `scan_corpus_directory` → `process_document` → `chunk_document` → em
 
 | Pipeline | Input | Output | Version |
 |----------|-------|--------|---------|
-| `sync_india_code_pdfs` | `data/corpus/india_code/raw/` | `source_documents` + chunks | **Today** |
-| `sync_indiacode_scraper` | Scraper SQLite/CSV → allowlist → manifest | PDFs in `raw/` | v0.6 |
-| `eval_dataset_builder` | Templates + indexed sections | `data/eval/datasets/*.jsonl` | v0.5 |
+| `sync_india_code_pdfs` | `data/corpus/india_code/raw/` + `manifest.json` | `source_documents` + chunks (temporal fields, `canonical_url`) | **Today** (v0.6 temporal fields) |
+| `download_indiacode_pdfs` | [`central-corpus-allowlist.yaml`](./v0.6/central-corpus-allowlist.yaml) | PDFs in `raw/` (live IndiaCode HTTP) | **v0.6** |
+| `build_manifest` | Allowlist + on-disk PDFs | `manifest.json` | **v0.6** (default allowlist → central) |
+| `verify_corpus_index` | Allowlist + DB | CLI report; optional `corpus_index_report.json` | **v0.6** (62-instrument gate, chunk budget) |
+| `import_corpus_pdfs` | Scraper `pdfs_dir` (optional fallback) | PDF copy into `raw/` | v0.6 (optional) |
+| `eval_dataset_builder` | Templates + indexed sections | `data/eval/datasets/*.jsonl` | v0.5 (+ `v1_property`, `v1_tax`, `v1_cyber` in v0.6) |
 | `sync_sc_judgments` | S3 Parquet filter → PDF subset | `doc_type=judgment` | v0.11 |
-| `build_amendment_graph` | Scraper + manual edges | chunk / document metadata | v0.6 |
+| `statute_relationships` seed | Allowlist `supersedes` / migration | Supersession edges for retrieval | **v0.6** |
 | `feedback_to_eval_queue` | 👎 exports | Review CSV → JSONL | v0.10 |
 | `hc_*` | — | **Separate project** | TBD |
 
@@ -127,7 +130,7 @@ indiacode download --scope central --extract-text --resume
 indiacode export-csv --out dist/csv
 ```
 
-Then: SQL/filter CSV → MVP allowlist → copy PDFs → `manifest.json` → `sync_india_code_pdfs`.
+Then: optional metadata enrich via `enrich_allowlist_from_scraper` → [`central-corpus-allowlist.yaml`](./v0.6/central-corpus-allowlist.yaml) → `download_indiacode_pdfs` → `build_manifest` → `sync_india_code_pdfs`. Operator runbook: [`v0.6/corpus-indexing-runbook.md`](./v0.6/corpus-indexing-runbook.md).
 
 Domain filter examples are in [`datasets.md` §4.1](./datasets.md#41-indiacode-scraper-reposindian-law-dataset-scraper).
 

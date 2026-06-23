@@ -71,6 +71,7 @@ function citationsFromStream(items: StreamCitationPayload[]): Citation[] {
     document_id: item.document_id ?? item.chunk_id,
     document_title: item.document_title,
     quote_text: item.quote_text,
+    canonical_url: item.canonical_url ?? null,
   }));
 }
 

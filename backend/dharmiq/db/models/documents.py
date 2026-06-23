@@ -24,6 +24,12 @@ class DocType(str, enum.Enum):
     OTHER = "other"
 
 
+class InstrumentStatus(str, enum.Enum):
+    IN_FORCE = "in_force"
+    SUPERSEDED = "superseded"
+    REPEALED = "repealed"
+
+
 class SourceDocument(Base):
     __tablename__ = "source_documents"
 
@@ -41,6 +47,24 @@ class SourceDocument(Base):
     )
     jurisdiction: Mapped[str] = mapped_column(String(64), nullable=False, default="central")
     enactment_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    enforcement_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    status: Mapped[InstrumentStatus] = mapped_column(
+        Enum(
+            InstrumentStatus,
+            name="instrument_status",
+            native_enum=True,
+            values_callable=lambda enum: [member.value for member in enum],
+        ),
+        nullable=False,
+        default=InstrumentStatus.IN_FORCE,
+    )
+    superseded_by_source_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    canonical_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    instrument_metadata: Mapped[dict[str, Any]] = mapped_column(
+        JSONB,
+        nullable=False,
+        server_default="{}",
+    )
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     content_hash: Mapped[str] = mapped_column(String(128), nullable=False)
     file_path: Mapped[str] = mapped_column(String(1024), nullable=False)

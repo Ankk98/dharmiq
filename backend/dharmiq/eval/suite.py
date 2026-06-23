@@ -21,6 +21,18 @@ MVP_DATASETS: list[str] = [
     "v1_needle_statute",
 ]
 
+V06_DATASETS: list[str] = [
+    "v1_property",
+    "v1_tax",
+    "v1_cyber",
+]
+
+V06_SUITE_ORDER: list[str] = [*MVP_DATASETS, *V06_DATASETS]
+
+
+def v06_suite_datasets() -> list[str]:
+    return list(V06_SUITE_ORDER)
+
 ROLLUP_METRIC_KEYS: list[str] = [
     "faithfulness",
     "answer_correctness",
@@ -72,18 +84,20 @@ def rollup_aggregate_metrics(summaries: list[EvalRunSummary]) -> dict[str, float
     return aggregate
 
 
-async def run_mvp_suite(
+async def _run_suite(
+    dataset_names: list[str],
     db: AsyncSession,
     *,
     settings: Settings,
     client: OpenRouterClient | None = None,
     limit: int | None = None,
+    log_prefix: str,
 ) -> MvpSuiteSummary:
-    """Run all MVP gating datasets sequentially; continue after per-dataset failures."""
+    """Run datasets sequentially; continue after per-dataset failures."""
     outcomes: list[DatasetRunOutcome] = []
     successful: list[EvalRunSummary] = []
 
-    for dataset_name in MVP_DATASETS:
+    for dataset_name in dataset_names:
         try:
             summary = await run_eval_dataset(
                 db,
@@ -95,7 +109,7 @@ async def run_mvp_suite(
             outcomes.append(DatasetRunOutcome(dataset_name=dataset_name, summary=summary))
             successful.append(summary)
             logger.info(
-                "mvp_suite_dataset_complete",
+                f"{log_prefix}_dataset_complete",
                 dataset=dataset_name,
                 question_count=summary.question_count,
             )
@@ -104,13 +118,13 @@ async def run_mvp_suite(
             outcomes.append(
                 DatasetRunOutcome(dataset_name=dataset_name, summary=None, error=message)
             )
-            logger.warning("mvp_suite_dataset_failed", dataset=dataset_name, error=message)
+            logger.warning(f"{log_prefix}_dataset_failed", dataset=dataset_name, error=message)
         except Exception as exc:  # noqa: BLE001 — continue suite on unexpected errors
             message = str(exc)
             outcomes.append(
                 DatasetRunOutcome(dataset_name=dataset_name, summary=None, error=message)
             )
-            logger.exception("mvp_suite_dataset_error", dataset=dataset_name)
+            logger.exception(f"{log_prefix}_dataset_error", dataset=dataset_name)
 
     model = successful[0].model if successful else settings.openrouter.default_model
     return MvpSuiteSummary(
@@ -118,4 +132,40 @@ async def run_mvp_suite(
         aggregate_metrics=rollup_aggregate_metrics(successful),
         model=model,
         total_questions=sum(summary.question_count for summary in successful),
+    )
+
+
+async def run_mvp_suite(
+    db: AsyncSession,
+    *,
+    settings: Settings,
+    client: OpenRouterClient | None = None,
+    limit: int | None = None,
+) -> MvpSuiteSummary:
+    """Run all MVP gating datasets sequentially; continue after per-dataset failures."""
+    return await _run_suite(
+        MVP_DATASETS,
+        db,
+        settings=settings,
+        client=client,
+        limit=limit,
+        log_prefix="mvp_suite",
+    )
+
+
+async def run_v06_suite(
+    db: AsyncSession,
+    *,
+    settings: Settings,
+    client: OpenRouterClient | None = None,
+    limit: int | None = None,
+) -> MvpSuiteSummary:
+    """Run MVP + v0.6 domain datasets sequentially; continue after per-dataset failures."""
+    return await _run_suite(
+        V06_SUITE_ORDER,
+        db,
+        settings=settings,
+        client=client,
+        limit=limit,
+        log_prefix="v06_suite",
     )

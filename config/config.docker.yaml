@@ -59,6 +59,7 @@ retrieval:
   rerank_top_k: 8
   min_rerank_score: 0.35
   min_relevant_chunks: 2
+  include_superseded: false
 
 chat:
   history_limit: 20

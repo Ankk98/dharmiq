@@ -2,17 +2,35 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
+from typing import Any
 
 from dharmiq.config.settings import Settings, get_settings
 from dharmiq.core.logging import get_logger
-from dharmiq.db.models.documents import DocType
+from dharmiq.db.models.documents import DocType, InstrumentStatus
 
 logger = get_logger(__name__)
 
 MANIFEST_FILENAME = "manifest.json"
 PDF_SUFFIX = ".pdf"
+
+_MANIFEST_COLUMN_KEYS = frozenset(
+    {
+        "file",
+        "filename",
+        "source_id",
+        "title",
+        "doc_type",
+        "jurisdiction",
+        "enactment_date",
+        "enforcement_date",
+        "status",
+        "superseded_by",
+        "canonical_url",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -23,6 +41,12 @@ class ScannedDocument:
     file_path: Path
     content_hash: str
     jurisdiction: str = "central"
+    enactment_date: date | None = None
+    enforcement_date: date | None = None
+    status: InstrumentStatus = InstrumentStatus.IN_FORCE
+    superseded_by_source_id: str | None = None
+    canonical_url: str | None = None
+    instrument_metadata: dict[str, Any] = field(default_factory=dict)
 
 
 def compute_file_hash(path: Path, *, chunk_size: int = 1024 * 1024) -> str:
@@ -31,6 +55,33 @@ def compute_file_hash(path: Path, *, chunk_size: int = 1024 * 1024) -> str:
         while chunk := handle.read(chunk_size):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _parse_iso_date(value: Any) -> date | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    return date.fromisoformat(text[:10])
+
+
+def _status_from_manifest(value: Any) -> InstrumentStatus:
+    if not value:
+        return InstrumentStatus.IN_FORCE
+    try:
+        return InstrumentStatus(str(value).lower())
+    except ValueError:
+        return InstrumentStatus.IN_FORCE
+
+
+def _instrument_metadata_from_manifest(entry: dict[str, Any]) -> dict[str, Any]:
+    metadata = {
+        key: value
+        for key, value in entry.items()
+        if key not in _MANIFEST_COLUMN_KEYS and value is not None
+    }
+    return metadata
 
 
 def _infer_doc_type(source_id: str, title: str) -> DocType:
@@ -51,7 +102,7 @@ def _title_from_filename(path: Path) -> str:
     return title or path.name
 
 
-def _load_manifest(corpus_dir: Path) -> dict[str, dict[str, str]]:
+def _load_manifest(corpus_dir: Path) -> dict[str, dict[str, Any]]:
     manifest_path = corpus_dir / MANIFEST_FILENAME
     if not manifest_path.is_file():
         return {}
@@ -62,7 +113,7 @@ def _load_manifest(corpus_dir: Path) -> dict[str, dict[str, str]]:
         logger.warning("manifest_parse_failed", path=str(manifest_path), error=str(exc))
         return {}
 
-    entries: dict[str, dict[str, str]] = {}
+    entries: dict[str, dict[str, Any]] = {}
     if isinstance(raw, list):
         for item in raw:
             if not isinstance(item, dict):
@@ -120,6 +171,29 @@ def scan_corpus_directory(
         jurisdiction = str(manifest_entry.get("jurisdiction", "central")) if manifest_entry else "central"
         content_hash = compute_file_hash(path)
 
+        enactment_date = (
+            _parse_iso_date(manifest_entry.get("enactment_date")) if manifest_entry else None
+        )
+        enforcement_date = (
+            _parse_iso_date(manifest_entry.get("enforcement_date")) if manifest_entry else None
+        )
+        status = (
+            _status_from_manifest(manifest_entry.get("status")) if manifest_entry else InstrumentStatus.IN_FORCE
+        )
+        superseded_by = (
+            str(manifest_entry["superseded_by"])
+            if manifest_entry and manifest_entry.get("superseded_by")
+            else None
+        )
+        canonical_url = (
+            str(manifest_entry["canonical_url"])
+            if manifest_entry and manifest_entry.get("canonical_url")
+            else None
+        )
+        instrument_metadata = (
+            _instrument_metadata_from_manifest(manifest_entry) if manifest_entry else {}
+        )
+
         scanned.append(
             ScannedDocument(
                 source_id=source_id,
@@ -128,6 +202,12 @@ def scan_corpus_directory(
                 file_path=path.resolve(),
                 content_hash=content_hash,
                 jurisdiction=jurisdiction,
+                enactment_date=enactment_date,
+                enforcement_date=enforcement_date,
+                status=status,
+                superseded_by_source_id=superseded_by,
+                canonical_url=canonical_url,
+                instrument_metadata=instrument_metadata,
             )
         )
 

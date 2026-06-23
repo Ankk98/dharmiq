@@ -235,7 +235,10 @@ Re-baseline on **v0.4 LangGraph stack** before treating targets as binding.
 | `v1_employment` | 40–100 | v0.5 | Yes |
 | `v1_refusal_adversarial` | 20–40 | v0.5 | Yes |
 | `v1_revised_law` | 15–30 | v0.5 | Yes |
-| `v1_needle_statute` | 20–50 | v0.5 | Yes |
+| `v1_needle_statute` | 20–50 | v0.5 (+ v0.6 extensions) | Yes |
+| `v1_property` | 15–20+ | v0.6 | Yes |
+| `v1_tax` | 15–20+ | v0.6 | Yes |
+| `v1_cyber` | 15–20+ | v0.6 | Yes |
 | `v1_clarifier_multi` | 15–25 | v0.7 | Soft |
 | `v1_upload_attach` | 15–25 | v0.7 | Soft |
 | `v1_case_law_sc` | 50–100 | v0.11 | Yes |

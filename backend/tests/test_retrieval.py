@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 
 import pytest
 from pgvector import Vector as PgVector
@@ -11,6 +12,7 @@ from dharmiq.db.models.documents import DocType, DocumentChunk, SourceDocument
 from dharmiq.db.session import get_session_factory
 from dharmiq.llm.embeddings import EmbeddingBackend
 from dharmiq.llm.retrieval import retrieve_document_chunks
+from tests.corpus_helpers import with_indexed_at
 from tests.vector_helpers import unit_vector
 
 
@@ -46,13 +48,16 @@ class _MappedEmbeddingBackend(EmbeddingBackend):
 
 
 async def _seed_test_corpus(db: AsyncSession) -> tuple[DocumentChunk, DocumentChunk]:
-    document = SourceDocument(
-        source_id=f"test-constitution-{uuid.uuid4()}",
-        title="Constitution of India (test)",
-        doc_type=DocType.ACT,
-        jurisdiction="central",
-        content_hash="hash-1",
-        file_path="/tmp/constitution.pdf",
+    document = with_indexed_at(
+        SourceDocument(
+            source_id=f"test-constitution-{uuid.uuid4()}",
+            title="Constitution of India (test)",
+            doc_type=DocType.ACT,
+            jurisdiction="central",
+            content_hash="hash-1",
+            file_path="/tmp/constitution.pdf",
+            indexed_at=datetime.now(UTC),
+        )
     )
     db.add(document)
     await db.flush()

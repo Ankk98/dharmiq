@@ -108,7 +108,11 @@ function formatCitationLine(citation: Citation): string {
     ? `${citation.document_title} — ${citation.section_label}`
     : citation.document_title;
   const marker = citation.marker != null ? `[${citation.marker}] ` : "";
-  return `- ${marker}[${label}${pages}](${documentViewerPath(citation.document_id, citation.source_type, citationViewerOptions(citation))})`;
+  const docLink = `[${label}${pages}](${documentViewerPath(citation.document_id, citation.source_type, citationViewerOptions(citation))})`;
+  if (citation.source_type === "corpus" && citation.canonical_url) {
+    return `- ${marker}${docLink} · [View on IndiaCode](${citation.canonical_url})`;
+  }
+  return `- ${marker}${docLink}`;
 }
 
 export function appendSourcesSection(text: string, citations: Citation[]): string {

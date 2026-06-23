@@ -68,9 +68,49 @@ def test_load_v1_revised_law_dataset() -> None:
 @pytest.mark.timeout(30)
 def test_load_v1_needle_statute_dataset() -> None:
     records = load_dataset_records("v1_needle_statute")
-    assert len(records) >= 20
+    assert len(records) >= 30
     assert records[0].external_id == "n1"
     assert all(record.expected_citations for record in records)
+    v06_topics = {record.topic for record in records if record.topic in {"property", "tax", "cyber"}}
+    assert v06_topics == {"property", "tax", "cyber"}
+
+
+@pytest.mark.timeout(30)
+def test_load_v1_property_dataset() -> None:
+    records = load_dataset_records("v1_property")
+    assert len(records) >= 15
+    assert records[0].external_id == "p1"
+    assert records[0].required_source_ids == ["IN-RERA-2016"]
+    assert all(record.min_citation_count == 1 for record in records)
+    assert all(record.expected_citations for record in records)
+    topics = {record.topic for record in records}
+    assert "rera_registration" in topics
+    assert "registration" in topics
+    assert "land_acquisition" in topics
+
+
+@pytest.mark.timeout(30)
+def test_load_v1_tax_dataset() -> None:
+    records = load_dataset_records("v1_tax")
+    assert len(records) >= 15
+    assert records[0].external_id == "t1"
+    assert records[0].required_source_ids == ["IN-ITA-1961"]
+    topics = {record.topic for record in records}
+    assert "tds_salary" in topics
+    assert "gst_registration" in topics
+    assert "input_tax_credit" in topics
+
+
+@pytest.mark.timeout(30)
+def test_load_v1_cyber_dataset() -> None:
+    records = load_dataset_records("v1_cyber")
+    assert len(records) >= 15
+    assert records[0].external_id == "y1"
+    assert records[0].required_source_ids == ["IN-DPDP-2023"]
+    topics = {record.topic for record in records}
+    assert "dpdp_rights" in topics
+    assert "cybercrime" in topics
+    assert "intermediary" in topics
 
 
 @pytest.mark.timeout(30)

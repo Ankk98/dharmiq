@@ -15,6 +15,8 @@ from dharmiq.core.errors import EvalError
 from dharmiq.core.logging import get_logger
 from dharmiq.db.models.documents import DocumentChunk, SourceDocument
 from dharmiq.db.models.evals import EvalDataset, EvalQuestion, EvalResult, EvalRun
+from dharmiq.corpus.footnote import append_corpus_footnote
+from dharmiq.corpus.indexed_at import get_corpus_indexed_date
 from dharmiq.eval.dataset_loader import EvalDatasetRecord, load_dataset_records
 from dharmiq.eval.expectations import evaluate_answer_expectations
 from dharmiq.eval.judge import run_llm_judge
@@ -88,7 +90,10 @@ async def run_eval_rag(
     )
     tokens += answer.tokens_used
 
-    return answer.answer, retrieved, tokens
+    indexed_date = await get_corpus_indexed_date(db)
+    answer_text = append_corpus_footnote(answer.answer, indexed_date)
+
+    return answer_text, retrieved, tokens
 
 
 def _compute_ragas_metrics(

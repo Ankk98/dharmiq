@@ -41,7 +41,7 @@ Operational steps to populate the MVP corpus:
 
 
 def _default_allowlist() -> Path:
-    return REPO_ROOT / "docs" / "plans" / "v0.5" / "mvp-corpus-allowlist.yaml"
+    return REPO_ROOT / "docs" / "plans" / "v0.6" / "central-corpus-allowlist.yaml"
 
 
 def _default_corpus_dir() -> Path:
@@ -85,7 +85,7 @@ def build_manifest(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Build manifest.json from the MVP corpus allowlist YAML",
+        description="Build manifest.json from a corpus allowlist YAML",
         epilog=DOWNLOAD_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -93,7 +93,7 @@ def main() -> None:
         "--allowlist",
         type=Path,
         default=_default_allowlist(),
-        help="Path to mvp-corpus-allowlist.yaml",
+        help="Path to corpus allowlist YAML (default: v0.6 central)",
     )
     parser.add_argument(
         "--corpus-dir",

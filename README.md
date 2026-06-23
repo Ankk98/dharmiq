@@ -1,14 +1,14 @@
 # Dharmiq
 
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-orange)](https://dharmiq.in)
-[![Version](https://img.shields.io/badge/version-0.5-blue)](https://github.com/Ankk98/dharmiq)
+[![Version](https://img.shields.io/badge/version-0.6-blue)](https://github.com/Ankk98/dharmiq)
 [![Landing](https://img.shields.io/badge/landing-dharmiq.in-2563eb)](https://dharmiq.in)
 [![App](https://img.shields.io/badge/app-app.dharmiq.in-2563eb)](https://app.dharmiq.in)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Open-source Indian legal information assistant for citizens. Dharmiq explains rights and obligations in plain language, grounded in statutory documents (IndiaCode corpus), with citations and clear disclaimers that it does not provide legal advice.
 
-**Alpha (v0.5)** — MVP statute corpus quality gate: eval datasets, benchmark harness (`--suite mvp`, `--compare baseline`), export/delete E2E smoke, and manual release runbook. Builds on v0.4 Docker deploy, privacy, and agent stack. [Landing page](https://dharmiq.in) · [App](https://app.dharmiq.in)
+**Alpha (v0.6)** — Central statute corpus expansion: 62-instrument allowlist, temporal metadata, supersession-aware retrieval, as-of footnote, IndiaCode citation links, and `--suite v06` eval gate. Builds on v0.5 MVP quality gate. [Landing page](https://dharmiq.in) · [App](https://app.dharmiq.in)
 
 ![Dharmiq chat UI (v0.1 screenshot; v0.3 restyles the shell, progress, and answer surfaces)](screenshots/ui-v0.1-without-dataset.png)
 
@@ -26,7 +26,20 @@ direction for product and engineering decisions, not final doctrine.
 
 ## Features
 
-### v0.5 (current)
+### v0.6 (current)
+
+- **Central corpus allowlist** – 62 central instruments across 6 domains; [`central-corpus-allowlist.yaml`](docs/plans/v0.6/central-corpus-allowlist.yaml)
+- **Temporal metadata** – `status`, supersession edges, enactment/enforcement dates on corpus sources
+- **Retrieval policy** – default exclude `superseded` / `repealed`; latest version per `source_id`
+- **Eval datasets** – `v1_property`, `v1_tax`, `v1_cyber` (+ extended `v1_needle_statute`)
+- **Benchmark harness** – `dharmiq-eval --suite v06`, `--compare baseline`, merges `suites.v06` in baseline
+- **As-of footnote** – corpus index date on statutory answers (not refusals)
+- **IndiaCode attribution** – `canonical_url` on corpus citations in API and UI
+- **Operator runbooks** – [`corpus-indexing-runbook.md`](docs/plans/v0.6/corpus-indexing-runbook.md) · [`licensing-checklist.md`](docs/plans/v0.6/licensing-checklist.md)
+
+Implementation plan: [`docs/plans/v0.6/prd.md`](docs/plans/v0.6/prd.md) · [`docs/plans/v0.6/trd.md`](docs/plans/v0.6/trd.md).
+
+### v0.5
 
 - **MVP corpus allowlist** – 26 central instruments; `build_manifest` + `verify_corpus_index` tooling
 - **Eval datasets** – `v1_fundamental_rights`, `v1_consumer`, `v1_employment`, `v1_refusal_adversarial`, `v1_revised_law`, `v1_needle_statute`
@@ -111,6 +124,10 @@ dharmiq/
 | [`docs/plans/v0.2-implementation-phases.md`](docs/plans/v0.2-implementation-phases.md) | v0.2 phase playbook (completed) |
 | [`docs/plans/v0.3.md`](docs/plans/v0.3.md) | v0.3 design system implementation plan (implemented) |
 | [`docs/plans/v0.4/prd.md`](docs/plans/v0.4/prd.md) | v0.4 product requirements (reliability & ops) |
+| [`docs/plans/v0.6/prd.md`](docs/plans/v0.6/prd.md) | v0.6 product requirements (central corpus expansion) |
+| [`docs/plans/v0.6/trd.md`](docs/plans/v0.6/trd.md) | v0.6 technical implementation plan (phased) |
+| [`docs/plans/v0.6/central-corpus-allowlist.yaml`](docs/plans/v0.6/central-corpus-allowlist.yaml) | v0.6 central statute allowlist (62 instruments) |
+| [`docs/plans/v0.6/corpus-indexing-runbook.md`](docs/plans/v0.6/corpus-indexing-runbook.md) | v0.6 corpus indexing operator runbook |
 | [`docs/plans/v0.5/prd.md`](docs/plans/v0.5/prd.md) | v0.5 product requirements (quality gate & smoke) |
 | [`docs/plans/v0.5/trd.md`](docs/plans/v0.5/trd.md) | v0.5 technical implementation plan (phased) |
 | [`docs/plans/v0.5/mvp-corpus-allowlist.yaml`](docs/plans/v0.5/mvp-corpus-allowlist.yaml) | MVP central statute allowlist (26 instruments) |
@@ -286,26 +303,31 @@ User uploads (PDF, DOCX, Markdown, images) are stored under `data/uploads/{user_
 
 ## Evaluation
 
-See [`backend/dharmiq/eval/dataset_format.md`](backend/dharmiq/eval/dataset_format.md). Requires an indexed MVP corpus ([`mvp-corpus-allowlist.yaml`](docs/plans/v0.5/mvp-corpus-allowlist.yaml)) and `OPENROUTER_API_KEY` for live runs.
+See [`backend/dharmiq/eval/dataset_format.md`](backend/dharmiq/eval/dataset_format.md). Requires an indexed corpus ([`central-corpus-allowlist.yaml`](docs/plans/v0.6/central-corpus-allowlist.yaml) for v0.6; [`mvp-corpus-allowlist.yaml`](docs/plans/v0.5/mvp-corpus-allowlist.yaml) for MVP-only) and `OPENROUTER_API_KEY` for live runs.
 
 ```bash
 cd backend
 
 # Single dataset
 uv run dharmiq-eval --dataset v1_fundamental_rights
-uv run dharmiq-eval --dataset v1_fundamental_rights --limit 5
+uv run dharmiq-eval --dataset v1_property --limit 5
 
-# MVP suite (all six gating datasets)
+# MVP suite (six gating datasets)
 uv run dharmiq-eval --suite mvp
+
+# v0.6 suite (MVP + property, tax, cyber)
+uv run dharmiq-eval --suite v06
 
 # Compare against baseline (advisory regression gate)
 uv run dharmiq-eval --suite mvp --compare baseline
+uv run dharmiq-eval --suite v06 --compare baseline
 
 # Freeze baseline after a passing run
 uv run dharmiq-eval --suite mvp --write-baseline --yes
+uv run dharmiq-eval --suite v06 --write-baseline --yes   # merges suites.v06
 ```
 
-Targets and measured baselines: [`docs/plans/v02-eval-baseline.md`](docs/plans/v02-eval-baseline.md). Before tagging v0.5, run the manual gate in [`docs/plans/v0.5/manual-test-runbook.md`](docs/plans/v0.5/manual-test-runbook.md).
+Targets and measured baselines: [`docs/plans/v02-eval-baseline.md`](docs/plans/v02-eval-baseline.md). Corpus indexing: [`docs/plans/v0.6/corpus-indexing-runbook.md`](docs/plans/v0.6/corpus-indexing-runbook.md). Before tagging v0.6, complete licensing sign-off in [`docs/plans/v0.6/licensing-checklist.md`](docs/plans/v0.6/licensing-checklist.md).
 
 ## Development
 

@@ -1,0 +1,311 @@
+{
+  "probed_at": "2026-06-23",
+  "method": "Parent-act modal crawl + ViewFileUploaded PDF probe (scripts/probe_v06_rules.py + manual curation)",
+  "summary": {
+    "total_rule_rows": 30,
+    "verified_pdf": 10,
+    "subset_shared_pdf": 4,
+    "not_on_indiacode": 14,
+    "ut_only": 2
+  },
+  "results": [
+    {
+      "id": "IN-CPA-RULES-ECOMMERCE-2020",
+      "parent_act_id": "IN-CPA-2019",
+      "parent_handle": "15256",
+      "status": "NOT_ON_INDIACODE",
+      "pdf_source": null,
+      "pdf_url": null,
+      "notes": "No rule PDF on CPA 2019 page; global simple-search returns 0. Likely eGazette / ministry only."
+    },
+    {
+      "id": "IN-CPA-RULES-2020",
+      "parent_act_id": "IN-CPA-2019",
+      "parent_handle": "15256",
+      "status": "NOT_ON_INDIACODE",
+      "pdf_source": null,
+      "pdf_url": null,
+      "notes": "Same as E-Commerce rules — not on IndiaCode central."
+    },
+    {
+      "id": "IN-POSH-RULES-2013",
+      "parent_act_id": "IN-POSH-2013",
+      "parent_handle": "9178",
+      "status": "BUNDLE",
+      "pdf_source": "bundle",
+      "canonical_url": "https://www.indiacode.nic.in/handle/123456789/9178",
+      "pdf_url": "https://www.indiacode.nic.in/bitstream/123456789/9178/1/sexual-harrassment-of-women-act-and-rules-2013.pdf",
+      "pdf_bytes": 3597662,
+      "notes": "Act+rules bundle; MVP act handle is 2104 but rules text is in handle 9178 PDF."
+    },
+    {
+      "id": "IN-CLRA-RULES-1971",
+      "parent_act_id": "IN-CLRA-1970",
+      "parent_handle": "18997",
+      "status": "NOT_ON_INDIACODE",
+      "pdf_source": null,
+      "pdf_url": null,
+      "notes": "Parent page has UT/state rules only (e.g. A&N Islands 1974), not Central Rules 1971."
+    },
+    {
+      "id": "IN-EPF-SCHEME-1952",
+      "parent_act_id": "IN-EPF-1952",
+      "parent_handle": "2152",
+      "status": "VERIFIED",
+      "pdf_source": "parent_view_file",
+      "canonical_url": "https://www.indiacode.nic.in/handle/123456789/2152",
+      "pdf_url": "https://www.indiacode.nic.in/ViewFileUploaded?path=AC_CEN_6_6_00038_195219_1517807328217/notificationindividualfile/&file=epf_scheme%2C_1952_%28original_notification%29.pdf",
+      "pdf_bytes": 1455475,
+      "notes": "EPF Scheme 1952 original notification PDF on EPF Act page."
+    },
+    {
+      "id": "IN-MTP-RULES-2003",
+      "parent_act_id": "IN-MTP-1971",
+      "parent_handle": "1593",
+      "status": "VERIFIED",
+      "pdf_source": "parent_view_file",
+      "canonical_url": "https://www.indiacode.nic.in/handle/123456789/1593",
+      "pdf_url": "https://www.indiacode.nic.in/ViewFileUploaded?path=AC_CEN_12_13_00006_197134_1517807320428/rulesindividualfile/&file=MTP+Rules+2003.pdf",
+      "pdf_bytes": 23142,
+      "notes": "MTP Rules 2003.pdf on MTP Act page."
+    },
+    {
+      "id": "IN-BNSS-RULES-2024",
+      "parent_act_id": "IN-BNSS-2023",
+      "parent_handle": "20099",
+      "status": "NOT_ON_INDIACODE",
+      "pdf_source": null,
+      "pdf_url": null,
+      "notes": "BNSS act bitstream exists; no separate central BNSS Rules PDF on parent page."
+    },
+    {
+      "id": "IN-DPDP-RULES",
+      "parent_act_id": "IN-DPDP-2023",
+      "parent_handle": "22037",
+      "status": "VERIFIED",
+      "pdf_source": "parent_view_file",
+      "canonical_url": "https://www.indiacode.nic.in/handle/123456789/22037",
+      "pdf_url": "https://www.indiacode.nic.in/ViewFileUploaded?path=AC_CEN_45_0_00003_2023-22_1763464807080/rulesindividualfile/&file=dpdprules2025.pdf",
+      "pdf_bytes": 2492944,
+      "notes": "DPDP Rules 2025 PDF on DPDP Act page (not separate handle)."
+    },
+    {
+      "id": "IN-IT-RULES-INTERMEDIARY-2021",
+      "parent_act_id": "IN-IT-2000",
+      "parent_handle": "1999",
+      "status": "VERIFIED",
+      "pdf_source": "parent_view_file",
+      "canonical_url": "https://www.indiacode.nic.in/handle/123456789/1999",
+      "pdf_url": "https://www.indiacode.nic.in/ViewFileUploaded?path=AC_CEN_45_76_00001_200021_1517807324077/rulesindividualfile/&file=intermediary_guidelines-dmec_rules_25-02-2021.pdf",
+      "pdf_bytes": 2115456,
+      "notes": "IT (Intermediary Guidelines and Digital Media Ethics Code) Rules 2021."
+    },
+    {
+      "id": "IN-IT-RULES-SPDI-2011",
+      "parent_act_id": "IN-IT-2000",
+      "parent_handle": "1999",
+      "status": "VERIFIED",
+      "pdf_source": "parent_view_file",
+      "canonical_url": "https://www.indiacode.nic.in/handle/123456789/1999",
+      "pdf_url": "https://www.indiacode.nic.in/ViewFileUploaded?path=AC_CEN_45_76_00001_200021_1517807324077/rulesindividualfile/&file=GSR313E_10511%281%29_0.pdf",
+      "pdf_bytes": 149622,
+      "notes": "Modal row match required — filename does not contain SPDI keywords."
+    },
+    {
+      "id": "IN-IT-RULES-CERTIN-2022",
+      "parent_act_id": "IN-IT-2000",
+      "parent_handle": "1999",
+      "status": "NOT_ON_INDIACODE",
+      "pdf_source": null,
+      "pdf_url": null,
+      "notes": "CERT-In Directions 28-Apr-2022 (G.S.R. 388(E)) not found on IT Act IndiaCode page. CERT-In 2013 rules exist but are different instrument."
+    },
+    {
+      "id": "IN-RERA-RULES-2016",
+      "parent_act_id": "IN-RERA-2016",
+      "parent_handle": "2158",
+      "status": "UT_ONLY",
+      "pdf_source": null,
+      "pdf_url": null,
+      "notes": "Only UT Agreement-for-Sale rules on RERA parent page; no central RERA Rules 2016 PDF."
+    },
+    {
+      "id": "IN-RERA-GENERAL-RULES-2017",
+      "parent_act_id": "IN-RERA-2016",
+      "parent_handle": "2158",
+      "status": "UT_ONLY",
+      "pdf_source": null,
+      "pdf_url": null,
+      "notes": "Same as RERA Rules 2016 — UT variants only."
+    },
+    {
+      "id": "IN-REGISTRATION-RULES-1961",
+      "parent_act_id": "IN-REGISTRATION-1908",
+      "parent_handle": "2190",
+      "status": "NOT_ON_INDIACODE",
+      "pdf_source": null,
+      "pdf_url": null,
+      "notes": "No Registration Rules 1961 PDF on Registration Act page."
+    },
+    {
+      "id": "IN-STAMP-RULES-1958",
+      "parent_act_id": "IN-STAMP-1899",
+      "parent_handle": "15510",
+      "status": "NOT_ON_INDIACODE",
+      "pdf_source": null,
+      "pdf_url": null,
+      "notes": "Only Stamp (Amendment) Act 2019 PDF on page; not Indian Stamp Rules 1958."
+    },
+    {
+      "id": "IN-LARR-RULES-2014",
+      "parent_act_id": "IN-LARR-2013",
+      "parent_handle": "2121",
+      "status": "VERIFIED",
+      "pdf_source": "parent_view_file",
+      "canonical_url": "https://www.indiacode.nic.in/handle/123456789/2121",
+      "pdf_url": "https://www.indiacode.nic.in/ViewFileUploaded?path=AC_CEN_18_43_00003_201330_1517807327433/rulesindividualfile/&file=RFCTLARR+%28SIA+and+Consent%29+Rules+2014.pdf",
+      "pdf_bytes": 363654,
+      "notes": "RFCTLARR (SIA and Consent) Rules 2014."
+    },
+    {
+      "id": "IN-CGST-RULES-2017",
+      "parent_act_id": "IN-CGST-2017",
+      "parent_handle": "15689",
+      "status": "VERIFIED",
+      "pdf_source": "parent_view_file",
+      "canonical_url": "https://www.indiacode.nic.in/handle/123456789/15689",
+      "pdf_url": "https://www.indiacode.nic.in/ViewFileUploaded?path=AC_CEN_2_2_00042_201712_1517807328102/rulesindividualfile/&file=09.10.2019_cgst_rules%2C_2017_%28part-a_rules%29.pdf",
+      "pdf_bytes": 1791466,
+      "notes": "CGST Rules 2017 Part A (rules text). Part B is forms."
+    },
+    {
+      "id": "IN-IGST-RULES-2017",
+      "parent_act_id": "IN-IGST-2017",
+      "parent_handle": "2251",
+      "status": "VERIFIED",
+      "pdf_source": "parent_view_file",
+      "canonical_url": "https://www.indiacode.nic.in/handle/123456789/2251",
+      "pdf_url": "https://www.indiacode.nic.in/ViewFileUploaded?path=AC_CEN_2_2_00043_201713_1517807328116/rulesindividualfile/&file=IGST_rules_15112017.pdf",
+      "pdf_bytes": 205845,
+      "notes": "IGST Rules 2017 on IGST Act page."
+    },
+    {
+      "id": "IN-GST-INVOICE-RULES-2017",
+      "parent_act_id": "IN-CGST-2017",
+      "parent_handle": "15689",
+      "status": "SUBSET",
+      "pdf_source": "parent_view_file",
+      "shared_pdf_with": "IN-CGST-RULES-2017",
+      "canonical_url": "https://www.indiacode.nic.in/handle/123456789/15689",
+      "pdf_url": "https://www.indiacode.nic.in/ViewFileUploaded?path=AC_CEN_2_2_00042_201712_1517807328102/rulesindividualfile/&file=09.10.2019_cgst_rules%2C_2017_%28part-a_rules%29.pdf",
+      "notes": "Invoice rules are chapters within CGST Rules Part A — index same PDF once."
+    },
+    {
+      "id": "IN-GST-RETURN-RULES-2017",
+      "parent_act_id": "IN-CGST-2017",
+      "parent_handle": "15689",
+      "status": "SUBSET",
+      "pdf_source": "parent_view_file",
+      "shared_pdf_with": "IN-CGST-RULES-2017",
+      "canonical_url": "https://www.indiacode.nic.in/handle/123456789/15689",
+      "pdf_url": "https://www.indiacode.nic.in/ViewFileUploaded?path=AC_CEN_2_2_00042_201712_1517807328102/rulesindividualfile/&file=09.10.2019_cgst_rules%2C_2017_%28part-a_rules%29.pdf",
+      "notes": "Return rules within CGST Rules Part A."
+    },
+    {
+      "id": "IN-ITR-RULES-1962",
+      "parent_act_id": "IN-ITA-1961",
+      "parent_handle": "2435",
+      "status": "NOT_ON_INDIACODE",
+      "pdf_source": null,
+      "pdf_url": null,
+      "notes": "Income-tax Act bitstream only; Income-tax Rules 1962 not on IndiaCode parent page."
+    },
+    {
+      "id": "IN-TDS-RULES-1962",
+      "parent_act_id": "IN-ITA-1961",
+      "parent_handle": "2435",
+      "status": "NOT_ON_INDIACODE",
+      "pdf_source": null,
+      "pdf_url": null,
+      "notes": "Same as ITR Rules — not on IndiaCode central."
+    },
+    {
+      "id": "IN-GST-REFUND-RULES-2017",
+      "parent_act_id": "IN-CGST-2017",
+      "parent_handle": "15689",
+      "status": "SUBSET",
+      "pdf_source": "parent_view_file",
+      "shared_pdf_with": "IN-CGST-RULES-2017",
+      "canonical_url": "https://www.indiacode.nic.in/handle/123456789/15689",
+      "pdf_url": "https://www.indiacode.nic.in/ViewFileUploaded?path=AC_CEN_2_2_00042_201712_1517807328102/rulesindividualfile/&file=09.10.2019_cgst_rules%2C_2017_%28part-a_rules%29.pdf",
+      "notes": "Refund rules in CGST Rules Part A (not separate circular PDF)."
+    },
+    {
+      "id": "IN-GST-ASSESSMENT-RULES-2017",
+      "parent_act_id": "IN-CGST-2017",
+      "parent_handle": "15689",
+      "status": "SUBSET",
+      "pdf_source": "parent_view_file",
+      "shared_pdf_with": "IN-CGST-RULES-2017",
+      "canonical_url": "https://www.indiacode.nic.in/handle/123456789/15689",
+      "pdf_url": "https://www.indiacode.nic.in/ViewFileUploaded?path=AC_CEN_2_2_00042_201712_1517807328102/rulesindividualfile/&file=09.10.2019_cgst_rules%2C_2017_%28part-a_rules%29.pdf",
+      "notes": "Assessment/audit rules in CGST Rules Part A."
+    },
+    {
+      "id": "IN-IT-ELECTRONIC-SIGNATURES-2015",
+      "parent_act_id": "IN-IT-2000",
+      "parent_handle": "1999",
+      "status": "VERIFIED",
+      "pdf_source": "parent_view_file",
+      "canonical_url": "https://www.indiacode.nic.in/handle/123456789/1999",
+      "pdf_url": "https://www.indiacode.nic.in/ViewFileUploaded?path=AC_CEN_45_76_00001_200021_1517807324077/rulesindividualfile/&file=electronic_signature_amendment_rules_2015.pdf",
+      "pdf_bytes": 246479,
+      "notes": "Electronic Signatures Amendment Rules 2015."
+    },
+    {
+      "id": "IN-IT-DATA-RETENTION-2022",
+      "parent_act_id": "IN-IT-2000",
+      "parent_handle": "1999",
+      "status": "NOT_ON_INDIACODE",
+      "pdf_source": null,
+      "pdf_url": null,
+      "notes": "No dedicated data-retention rules PDF; CERT-In Directions 2022 also absent from IndiaCode."
+    },
+    {
+      "id": "IN-IT-CYBER-APPELLATE-RULES",
+      "parent_act_id": "IN-IT-2000",
+      "parent_handle": "1999",
+      "status": "NOT_ON_INDIACODE",
+      "pdf_source": null,
+      "pdf_url": null,
+      "notes": "Tribunal administrative rules exist on page but do not match intended cyber appellate eval scope; defer or rescope."
+    },
+    {
+      "id": "IN-MINIMUM-WAGES-RULES-1950",
+      "parent_act_id": "IN-MWA-1948",
+      "parent_handle": "20357",
+      "status": "NOT_ON_INDIACODE",
+      "pdf_source": null,
+      "pdf_url": null,
+      "notes": "State rules on parent page (e.g. Bihar 1951); no central Minimum Wages Rules PDF."
+    },
+    {
+      "id": "IN-BONUS-RULES-1975",
+      "parent_act_id": "IN-POBA-1965",
+      "parent_handle": "20358",
+      "status": "NOT_ON_INDIACODE",
+      "pdf_source": null,
+      "pdf_url": null,
+      "notes": "No Payment of Bonus Rules PDF in modals on parent page."
+    },
+    {
+      "id": "IN-EQUAL-REMUNERATION-RULES-1976",
+      "parent_act_id": "IN-ERA-1976",
+      "parent_handle": "20350",
+      "status": "NOT_ON_INDIACODE",
+      "pdf_source": null,
+      "pdf_url": null,
+      "notes": "No Equal Remuneration Rules PDF in modals on parent page."
+    }
+  ]
+}

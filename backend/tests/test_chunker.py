@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 
 import pytest
 from pgvector import Vector as PgVector
@@ -157,6 +158,7 @@ async def _seed_parent_child_document(db: AsyncSession) -> tuple[DocumentChunk, 
         jurisdiction="central",
         content_hash="hash-parent-child",
         file_path="/tmp/crpc.pdf",
+        indexed_at=datetime.now(UTC),
     )
     db.add(document)
     await db.flush()

@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import uuid
+from datetime import UTC, datetime
 from io import BytesIO
 from unittest.mock import patch
 
@@ -81,6 +82,7 @@ async def _seed_corpus(db: AsyncSession) -> None:
         jurisdiction="central",
         content_hash="hash-e2e-smoke",
         file_path="/tmp/constitution.pdf",
+        indexed_at=datetime.now(UTC),
     )
     db.add(document)
     await db.flush()

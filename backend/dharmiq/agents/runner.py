@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from dharmiq.agents.checkpoint import get_checkpointer
 from dharmiq.agents.graph import build_agent_graph
-from dharmiq.agents.nodes.finalizer import VALIDATION_FAILED_MESSAGE
+from dharmiq.agents.messages import VALIDATION_FAILED_MESSAGE
 from dharmiq.agents.runtime import GraphRuntime
 from dharmiq.agents.state import AgentGraphState
 from dharmiq.agents.streaming import ProgressEmitter

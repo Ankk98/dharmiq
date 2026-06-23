@@ -136,6 +136,7 @@ class RetrievalSettings(BaseModel):
     rerank_top_k: int = 8
     min_rerank_score: float = 0.35
     min_relevant_chunks: int = 2
+    include_superseded: bool = False
 
 
 class ChatSettings(BaseModel):
@@ -168,6 +169,17 @@ class IngestionSettings(BaseModel):
 
     def resolve_corpus_dir(self, repo_root: Path) -> Path:
         path = Path(self.corpus_dir)
+        if path.is_absolute():
+            return path
+        return (repo_root / path).resolve()
+
+
+class CorpusSettings(BaseModel):
+    default_allowlist_path: str = "docs/plans/v0.6/central-corpus-allowlist.yaml"
+    max_chunk_count: int = 250_000
+
+    def resolve_allowlist_path(self, repo_root: Path) -> Path:
+        path = Path(self.default_allowlist_path)
         if path.is_absolute():
             return path
         return (repo_root / path).resolve()
@@ -239,6 +251,7 @@ class Settings(BaseModel):
     chat: ChatSettings = Field(default_factory=ChatSettings)
     guardrails: GuardrailsSettings = Field(default_factory=GuardrailsSettings)
     ingestion: IngestionSettings = Field(default_factory=IngestionSettings)
+    corpus: CorpusSettings = Field(default_factory=CorpusSettings)
     uploads: UploadSettings = Field(default_factory=UploadSettings)
     eval: EvalSettings = Field(default_factory=EvalSettings)
     logging: LoggingSettings = Field(default_factory=LoggingSettings)

@@ -14,6 +14,7 @@ from dharmiq.db.session import get_session_factory
 from dharmiq.eval.baseline import build_single_dataset_baseline, write_baseline
 from dharmiq.eval.metadata import (
     collect_run_metadata,
+    default_v06_allowlist_path,
     hash_allowlist_file,
     read_allowlist_version,
     resolve_git_sha,
@@ -32,6 +33,29 @@ async def _clean_corpus() -> None:
         await db.execute(text("DELETE FROM source_documents"))
         await db.commit()
     yield
+
+
+V06_FIXTURE_ALLOWLIST = Path(__file__).resolve().parent / "fixtures" / "v06-allowlist-fixture.yaml"
+
+
+@pytest.mark.timeout(30)
+def test_default_v06_allowlist_path_points_to_central_yaml() -> None:
+    settings = get_settings()
+    path = default_v06_allowlist_path(settings.repo_root)
+    assert path.name == "central-corpus-allowlist.yaml"
+    assert path.parent.name == "v0.6"
+
+
+@pytest.mark.timeout(30)
+async def test_collect_run_metadata_uses_v06_allowlist(db: AsyncSession) -> None:
+    settings = get_settings()
+    metadata = await collect_run_metadata(
+        db,
+        settings=settings,
+        allowlist_path=V06_FIXTURE_ALLOWLIST,
+    )
+    assert metadata["allowlist_version"] == "test"
+    assert metadata["allowlist_sha256"] == hash_allowlist_file(V06_FIXTURE_ALLOWLIST)
 
 
 @pytest.mark.timeout(30)
@@ -83,7 +107,7 @@ async def test_collect_run_metadata_keys(db: AsyncSession) -> None:
     assert metadata["allowlist_sha256"] == hash_allowlist_file(FIXTURE_ALLOWLIST)
     assert metadata["corpus_document_count"] == 1
     assert metadata["corpus_chunk_count"] == 1
-    assert metadata["dharmiq_version"] == "0.5.0"
+    assert metadata["dharmiq_version"] == "0.6.0"
     assert metadata["eval_path"] == "run_eval_rag"
 
 

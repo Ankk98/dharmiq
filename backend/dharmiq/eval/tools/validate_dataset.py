@@ -12,11 +12,17 @@ GATING_MINIMUM_COUNTS: dict[str, int] = {
     "v1_employment": 30,
     "v1_refusal_adversarial": 20,
     "v1_revised_law": 15,
-    "v1_needle_statute": 20,
+    "v1_needle_statute": 30,
+    "v1_property": 15,
+    "v1_tax": 15,
+    "v1_cyber": 15,
 }
 
 FORBIDDEN_TOPICS: dict[str, set[str]] = {
     "v1_fundamental_rights": {"consumer"},
+    "v1_property": {"case_law", "state_law"},
+    "v1_tax": {"case_law", "state_law"},
+    "v1_cyber": {"case_law", "state_law"},
 }
 
 REQUIRED_MUST_NOT_CITE: set[str] = {"v1_revised_law"}

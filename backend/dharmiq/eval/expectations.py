@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from dharmiq.agents.nodes.refusal import REFUSAL_MESSAGE
+from dharmiq.agents.messages import REFUSAL_MESSAGE
 
 _CITATION_MARKER_RE = re.compile(r"\[\d+\]")
 _BLOCKQUOTE_RE = re.compile(r"^>\s+", re.MULTILINE)

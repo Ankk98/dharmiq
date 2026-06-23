@@ -4,22 +4,19 @@ from typing import Any
 
 from langchain_core.runnables import RunnableConfig
 
+from dharmiq.agents.messages import VALIDATION_FAILED_MESSAGE
 from dharmiq.agents.citation_validation import citations_from_state
 from dharmiq.agents.runtime import GraphRuntime
 from dharmiq.agents.state import AgentGraphState
 from dharmiq.agents.streaming import citation_markers_in_chunk, split_answer_token_chunks
+from dharmiq.corpus.footnote import append_corpus_footnote
+from dharmiq.corpus.indexed_at import get_corpus_indexed_date
 from dharmiq.db.models.chats import ChatMessage, ChatRequestStatus, MessageRole
 from dharmiq.schemas.citations import CitationRecord
 
 
 def _runtime(config: RunnableConfig) -> GraphRuntime:
     return config["configurable"]["runtime"]
-
-
-VALIDATION_FAILED_MESSAGE = (
-    "I could not verify this answer against the retrieved sources after multiple review passes. "
-    "Please rephrase your question, attach relevant documents, or consult a qualified lawyer."
-)
 
 
 async def _replay_validated_answer(
@@ -55,6 +52,8 @@ async def finalizer_node(state: AgentGraphState, config: RunnableConfig) -> dict
     verdict = state.get("validator_verdict") or {}
     validation_blocked = bool(state.get("validation_blocked"))
 
+    final_warning = state.get("final_warning")
+
     if validation_blocked:
         if runtime.emitter is not None:
             await runtime.emitter.emit_error(
@@ -66,20 +65,21 @@ async def finalizer_node(state: AgentGraphState, config: RunnableConfig) -> dict
     elif state.get("weak_retrieval"):
         answer_text = state.get("final_answer") or state.get("draft_answer", "")
         agent_name = "refusal"
-        await _replay_validated_answer(runtime, answer_text, citations)
     else:
         answer_text = state.get("final_answer") or state.get("draft_answer", "")
         agent_name = "answerer"
-        final_warning = state.get("final_warning")
         if (
             verdict.get("must_regenerate")
             and final_warning
             and final_warning not in answer_text
         ):
             answer_text = f"{answer_text.rstrip()}\n\n> {final_warning}"
-        await _replay_validated_answer(runtime, answer_text, citations)
 
-    final_warning = state.get("final_warning")
+    indexed_date = await get_corpus_indexed_date(runtime.db)
+    answer_text = append_corpus_footnote(answer_text, indexed_date)
+
+    if not validation_blocked:
+        await _replay_validated_answer(runtime, answer_text, citations)
 
     assistant_msg = ChatMessage(
         session_id=runtime.chat_session.id,

@@ -63,6 +63,7 @@ class CitationRead(BaseModel):
     quote_text: str | None = None
     quote_start_char: int | None = None
     quote_end_char: int | None = None
+    canonical_url: str | None = None
 
 
 def _chunk_with_score(chunk: RetrievedChunk, score: float) -> RetrievedChunk:

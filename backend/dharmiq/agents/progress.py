@@ -367,6 +367,7 @@ class ProgressEmitter:
         quote_text: str | None = None,
         source_type: str | None = None,
         document_id: uuid.UUID | None = None,
+        canonical_url: str | None = None,
     ) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "marker": marker,
@@ -379,6 +380,8 @@ class ProgressEmitter:
             payload["source_type"] = source_type
         if document_id is not None:
             payload["document_id"] = str(document_id)
+        if canonical_url is not None:
+            payload["canonical_url"] = canonical_url
         return await self.emit(
             event_type=ChatRequestEventType.CITATION,
             payload=payload,

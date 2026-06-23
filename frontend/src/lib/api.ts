@@ -40,6 +40,7 @@ export type Citation = {
   quote_text?: string | null;
   quote_start_char?: number | null;
   quote_end_char?: number | null;
+  canonical_url?: string | null;
 };
 
 export type ChatRequestPendingResponse = {
@@ -119,6 +120,7 @@ export type StreamCitationPayload = {
   quote_text?: string;
   source_type?: "corpus" | "upload";
   document_id?: string;
+  canonical_url?: string;
 };
 
 export type StreamDonePayload = {

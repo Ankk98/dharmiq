@@ -37,6 +37,7 @@ async def _replay_validated_answer(
             quote_text=citation.quote_text,
             source_type=citation.source_type,
             document_id=citation.document_id,
+            canonical_url=citation.canonical_url,
         )
 
     for chunk in split_answer_token_chunks(answer_text):

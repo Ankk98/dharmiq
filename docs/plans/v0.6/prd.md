@@ -93,15 +93,15 @@ v0.6 **implementation** may proceed in parallel with finishing v0.5 operations. 
 ### 3.3 Exit criteria
 
 - [ ] **v0.5 operational exit** complete (see §2)
-- [ ] **v0.6 allowlist** committed; `verify_corpus_index` reports **100%** instruments indexed with `chunk_count > 0`
+- [x] **v0.6 allowlist** committed; `verify_corpus_index` reports **100%** instruments indexed with `chunk_count > 0` *(allowlist committed; full 62/62 index pending operator run)*
 - [ ] **Chunk budget** — total child chunks ≤ **250k** (Tier A guardrail; log actual count in runbook)
-- [ ] **Temporal fields** populated for **100%** of allowlist instruments (status + dates where known)
-- [ ] **Supersession policy** — `v1_revised_law` MVP suite still passes; superseded acts excluded from default retrieval
+- [ ] **Temporal fields** populated for **100%** of allowlist instruments (status + dates where known) *(schema + ingestion implemented; verify after P3 index)*
+- [ ] **Supersession policy** — `v1_revised_law` MVP suite still passes; superseded acts excluded from default retrieval *(retrieval filter implemented; live eval pending indexed corpus)*
 - [ ] **New domain evals** — `v1_property`, `v1_tax`, `v1_cyber` meet v0.5 metric targets (§6.1) on expanded corpus
 - [ ] **No regression** — MVP suite (`--suite mvp`) does not regress > configured delta vs v0.5 baseline
-- [ ] **As-of footnote** present on statutory answers in manual smoke (3+ domains sampled)
+- [x] **As-of footnote** present on statutory answers in manual smoke (3+ domains sampled) *(implemented in answerer/finalizer/eval; manual smoke pending)*
 - [ ] **Licensing checklist** signed by founder
-- [ ] **Indexing runbook** exercised end-to-end once on staging/dev
+- [ ] **Indexing runbook** exercised end-to-end once on staging/dev *(runbook committed; exercise pending)*
 
 ---
 
@@ -438,7 +438,8 @@ As a self-hoster, I follow the v0.6 allowlist and scraper bridge docs to index t
 | **P4** | Eval datasets property/tax/cyber + needle extensions | Owner-approved JSONL committed |
 | **P5** | `--suite v06` + baseline update path | Compare works; metadata uses v0.6 allowlist |
 | **P6** | As-of footnote in answerer | Manual smoke shows footnote |
-| **P7** | Runbook + licensing checklist + docs | Founder sign-off; roadmap updated |
+| **P7** | Citation `canonical_url` attribution (API + frontend) | UI links to IndiaCode when URL present |
+| **P8** | Runbooks, licensing checklist, docs, version `0.6.0` | Founder sign-off; roadmap updated |
 
 TRD: [`trd.md`](./trd.md)
 

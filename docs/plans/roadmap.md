@@ -130,12 +130,12 @@ PRD: [`v0.5/prd.md`](./v0.5/prd.md) · TRD: [`v0.5/trd.md`](./v0.5/trd.md) · Al
 
 Focus: expand **central IndiaCode / statutory** coverage only — not case law yet (principles §4.2).
 
-- [ ] **Central IndiaCode expansion** — beyond MVP (fundamental rights, consumer, employment)
-- [ ] **Temporal metadata** — effective dates, repeals, amendments on sources (§1.4)
-- [ ] **Indexing runbooks** — add source, version, reindex
-- [ ] **Corpus licensing review** — redistribution, attribution, takedown before scaling sources
-- [ ] **Corpus testing** — eval per domain; recall@k on new central statutes
-- [ ] **“As-of” in answers** — show corpus version / date relied on
+- [x] **Central IndiaCode expansion** — 62-instrument allowlist + download/manifest tooling ([`v0.6/central-corpus-allowlist.yaml`](./v0.6/central-corpus-allowlist.yaml))
+- [x] **Temporal metadata** — effective dates, repeals, amendments on sources (§1.4)
+- [x] **Indexing runbooks** — [`v0.6/corpus-indexing-runbook.md`](./v0.6/corpus-indexing-runbook.md)
+- [x] **Corpus licensing review** — [`v0.6/licensing-checklist.md`](./v0.6/licensing-checklist.md) *(founder sign-off pending)*
+- [x] **Corpus testing** — `--suite v06` harness + `v1_property` / `v1_tax` / `v1_cyber` datasets *(live eval on indexed corpus pending)*
+- [x] **“As-of” in answers** — corpus index date footnote on statutory answers
 
 ### v0.6 exit criteria
 

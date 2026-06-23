@@ -107,7 +107,7 @@ async def test_collect_run_metadata_keys(db: AsyncSession) -> None:
     assert metadata["allowlist_sha256"] == hash_allowlist_file(FIXTURE_ALLOWLIST)
     assert metadata["corpus_document_count"] == 1
     assert metadata["corpus_chunk_count"] == 1
-    assert metadata["dharmiq_version"] == "0.5.0"
+    assert metadata["dharmiq_version"] == "0.6.0"
     assert metadata["eval_path"] == "run_eval_rag"
 
 

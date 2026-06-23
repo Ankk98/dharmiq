@@ -1,12 +1,12 @@
 # Dharmiq v0.6 — Technical Requirements & Implementation Plan
 
-**Status:** Ready for P0 implementation (62-instrument corpus; 16 rules deferred)  
+**Status:** Code complete (P0–P8); operational gates pending (62/62 index, live eval, licensing sign-off)  
 **Version:** 0.6  
 **Parent doc:** [`prd.md`](./prd.md)  
 **Baseline:** v0.5 — MVP allowlist tooling, six gating eval datasets, `--suite mvp`, advisory baseline compare  
 **Last updated:** 2026-06-23 (PDF download validation added)
 
-Related: [`central-corpus-allowlist.yaml`](./central-corpus-allowlist.yaml) (P0 deliverable) · [`rule-probe-results.json`](./rule-probe-results.json) · [`indiacode-scraper-issues.md`](./indiacode-scraper-issues.md) · [`corpus-indexing-runbook.md`](./corpus-indexing-runbook.md) (P8)
+Related: [`central-corpus-allowlist.yaml`](./central-corpus-allowlist.yaml) (P0 deliverable) · [`rule-probe-results.json`](./rule-probe-results.json) · [`corpus-indexing-runbook.md`](./corpus-indexing-runbook.md) (P8)
 
 ---
 
@@ -97,9 +97,9 @@ Verify paths before editing.
 
 | File | Value |
 |------|-------|
-| `backend/dharmiq/__init__.py` | `0.5.0` |
-| `backend/pyproject.toml` | `0.5.0` |
-| `frontend/package.json` | `0.5.0` |
+| `backend/dharmiq/__init__.py` | `0.6.0` |
+| `backend/pyproject.toml` | `0.6.0` |
+| `frontend/package.json` | `0.6.0` |
 
 ### 1.5 `indian-law-dataset-scraper` (validated 2026-06-23)
 
@@ -140,7 +140,7 @@ Tested HTTP fetch from IndiaCode (not scraper `download`). **Acts with correct `
 
 ### 1.7 Rule PDF validation (2026-06-23)
 
-Full probe of **30** candidate rule/notification rows; **14 committed** in v0.6 (Appendix A), **16 deferred** (Appendix B). Artifacts: [`rule-probe-results.json`](./rule-probe-results.json), [`indiacode-scraper-issues.md`](./indiacode-scraper-issues.md). Re-run: `python3 scripts/probe_v06_rules.py`.
+Full probe of **30** candidate rule/notification rows; **14 committed** in v0.6 (Appendix A), **16 deferred** (Appendix B). Artifact: [`rule-probe-results.json`](./rule-probe-results.json). Re-run: `python3 scripts/probe_v06_rules.py`.
 
 | Outcome | Count | Meaning |
 |---------|-------|---------|
@@ -434,11 +434,11 @@ uv run python -m dharmiq.eval.tools.build_manifest \
 
 ### Definition of done
 
-- [ ] `central-corpus-allowlist.yaml` committed (**62** instruments, Appendix A only)
-- [ ] `audit_allowlist` passes (`--verify-handles` + `--verify-pdf-sources` on all 62 rows)
-- [ ] `download_indiacode_pdfs --probe --limit 3` succeeds for CPA (bitstream), DPDP rules (`parent_view_file`), POSH bundle
-- [ ] `build_manifest` prints **62** expected filenames
-- [ ] Unit tests green
+- [x] `central-corpus-allowlist.yaml` committed (**62** instruments, Appendix A only)
+- [x] `audit_allowlist` passes (`--verify-handles` + `--verify-pdf-sources` on all 62 rows)
+- [x] `download_indiacode_pdfs --probe --limit 3` succeeds for CPA (bitstream), DPDP rules (`parent_view_file`), POSH bundle
+- [x] `build_manifest` prints **62** expected filenames
+- [x] Unit tests green
 
 ---
 
@@ -529,10 +529,10 @@ uv run pytest tests/test_ingestion_temporal.py tests/test_statute_relationships.
 
 ### Definition of done
 
-- [ ] Migration applies cleanly on empty + existing DB
-- [ ] Manifest temporal fields persist through sync
-- [ ] Relationship seeds present
-- [ ] Tests green
+- [x] Migration applies cleanly on empty + existing DB
+- [x] Manifest temporal fields persist through sync
+- [x] Relationship seeds present
+- [x] Tests green
 
 ---
 
@@ -584,9 +584,9 @@ uv run pytest tests/test_retrieval_temporal.py tests/test_retrieval.py -q
 
 ### Definition of done
 
-- [ ] Superseded docs indexed but excluded by default
-- [ ] `v1_revised_law` fixture corpus test passes (seed in test)
-- [ ] No regression in existing `test_retrieval.py`
+- [x] Superseded docs indexed but excluded by default
+- [x] `v1_revised_law` fixture corpus test passes (seed in test)
+- [x] No regression in existing `test_retrieval.py`
 
 ---
 
@@ -699,8 +699,8 @@ uv run pytest tests/test_eval_dataset_loader.py -q
 
 ### Definition of done
 
-- [ ] Three new datasets committed, validate passes
-- [ ] Needle file ≥30 rows total
+- [x] Three new datasets committed, validate passes
+- [x] Needle file ≥30 rows total
 - [ ] Eval owner sign-off (PR note)
 
 ---
@@ -754,10 +754,10 @@ uv run dharmiq-eval --suite v06 --limit 1   # needs corpus + OPENROUTER_API_KEY
 
 ### Definition of done
 
-- [ ] `--suite v06` runs 9 datasets
-- [ ] Compare loads `suites.v06`
-- [ ] Write baseline merges without dropping mvp
-- [ ] Unit tests green
+- [x] `--suite v06` runs 9 datasets
+- [x] Compare loads `suites.v06`
+- [x] Write baseline merges without dropping mvp
+- [x] Unit tests green
 
 ---
 
@@ -804,9 +804,9 @@ uv run pytest tests/test_corpus_footnote.py -q
 
 ### Definition of done
 
-- [ ] Footnote in finalizer path (unit tested)
-- [ ] Footnote in eval runner path
-- [ ] Tests green
+- [x] Footnote in finalizer path (unit tested)
+- [x] Footnote in eval runner path
+- [x] Tests green
 
 ---
 
@@ -846,9 +846,9 @@ cd frontend && npm run lint
 
 ### Definition of done
 
-- [ ] `canonical_url` on corpus citations in API/SSE
-- [ ] Frontend link renders when URL present
-- [ ] Upload citations unaffected (`canonical_url` null)
+- [x] `canonical_url` on corpus citations in API/SSE
+- [x] Frontend link renders when URL present
+- [x] Upload citations unaffected (`canonical_url` null)
 
 ---
 
@@ -891,10 +891,10 @@ cd backend && uv run pytest -m "not slow" -q
 
 ### Definition of done
 
-- [ ] Runbook + checklist committed
-- [ ] Version 0.6.0
-- [ ] Docs cross-linked
-- [ ] PRD exit criteria checkboxes updated
+- [x] Runbook + checklist committed
+- [x] Version 0.6.0
+- [x] Docs cross-linked
+- [x] PRD exit criteria checkboxes updated
 
 ---
 
@@ -1009,7 +1009,7 @@ uv run dharmiq-eval --suite v06 --compare baseline
 | Wrong handle (instrument_id ≠ handle) | TRD-99; enrich from `canonical_url`; DPDP=22037 |
 | Rule handles invalid (302) | Superseded — use `pdf_source` + `parent_view_file` (TRD-105–110) |
 | Rule PDF not on IndiaCode | **16 rules deferred** to Appendix B; eval cites parent acts (TRD-111) |
-| Scraper missing subordinate rows | [`indiacode-scraper-issues.md`](./indiacode-scraper-issues.md) Issue 1–2 |
+| Scraper missing subordinate rows | Use `enrich_allowlist_from_scraper`; manual `canonical_url` / handle from live IndiaCode |
 | IndiaCode rate limit / block | 0.5s delay; `--limit` batches; manual bitstream URL fallback |
 | Scraper tests fail | Do not block Dharmiq on scraper CI |
 | Multi-version chunk leak | TRD-78 + TRD-98 |
@@ -1030,7 +1030,7 @@ uv run dharmiq-eval --suite v06 --compare baseline
 2. **Rules:** copy `pdf_source`, `pdf_url`, `parent_act_id` from [`rule-probe-results.json`](./rule-probe-results.json) for committed rows only
 3. `audit_allowlist --verify-handles` on all rows
 4. `audit_allowlist --verify-pdf-sources` on all **62** rows
-5. Scraper context: [`indiacode-scraper-issues.md`](./indiacode-scraper-issues.md) (use `v2` branch)
+5. Scraper metadata (optional): `enrich_allowlist_from_scraper` against `indian-law-dataset-scraper` SQLite
 
 **Failed handle probe (obsolete):** `11445`, `11443`, `11441`, `11442` — invalid guessed handles; do not use.
 
@@ -1174,8 +1174,9 @@ Probe details: [`rule-probe-results.json`](./rule-probe-results.json).
 |------|--------|
 | 2026-06-23 | Initial TRD from PRD + codebase/scraper validation |
 | 2026-06-23 | **Deferred 16 rules** (Appendix B); committed corpus **62** instruments; TRD-109/111; fixed 78/78 contradictions |
-| 2026-06-23 | Rule PDF validation sprint (§1.7); TRD-105–110; [`rule-probe-results.json`](./rule-probe-results.json); [`indiacode-scraper-issues.md`](./indiacode-scraper-issues.md) |
+| 2026-06-23 | Rule PDF validation sprint (§1.7); TRD-105–110; [`rule-probe-results.json`](./rule-probe-results.json) |
 | 2026-06-23 | Live PDF download validation; TRD-99–104; handle fixes (DPDP 22037) |
+| 2026-06-23 | P8 complete — runbooks, licensing checklist, version 0.6.0, docs cross-linked |
 
 ---
 

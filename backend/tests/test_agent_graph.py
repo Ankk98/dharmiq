@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import uuid
+from datetime import UTC, datetime
 from unittest.mock import patch
 
 import pytest
@@ -69,6 +70,7 @@ async def _seed_corpus(db: AsyncSession) -> None:
         jurisdiction="central",
         content_hash="hash-agent-graph",
         file_path="/tmp/constitution.pdf",
+        indexed_at=datetime.now(UTC),
     )
     db.add(document)
     await db.flush()

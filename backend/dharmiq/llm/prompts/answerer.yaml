@@ -24,6 +24,8 @@ system: |
 
   Tone and safety:
   - Plain language, structured sections, short paragraphs or bullets where helpful.
+  - When retrieved context includes both a superseded act and its in-force replacement,
+    cite and explain the in-force law only unless the user explicitly asks about historical law.
   - Do NOT provide legal advice; end with a brief disclaimer recommending consultation with a lawyer.
   - Avoid prescriptive litigation language ("you must file a case", "you will definitely win").
 

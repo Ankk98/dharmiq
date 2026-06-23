@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import uuid
+from datetime import UTC, datetime
 
 import pytest
 from pgvector import Vector as PgVector
@@ -33,6 +34,7 @@ from dharmiq.retrieval.hybrid import (
     reciprocal_rank_fusion,
     vector_search_corpus,
 )
+from tests.corpus_helpers import with_indexed_at
 from tests.litellm_helpers import mock_litellm_acompletion
 from tests.rerank_helpers import mock_rerank, weak_rerank
 from tests.vector_helpers import unit_vector
@@ -74,13 +76,16 @@ async def _clean_hybrid_tables() -> None:
 
 
 async def _seed_crpc_chunks(db: AsyncSession) -> tuple[DocumentChunk, DocumentChunk]:
-    document = SourceDocument(
-        source_id=f"crpc-{uuid.uuid4()}",
-        title="Code of Criminal Procedure, 1973",
-        doc_type=DocType.ACT,
-        jurisdiction="central",
-        content_hash="hash-crpc",
-        file_path="/tmp/crpc.pdf",
+    document = with_indexed_at(
+        SourceDocument(
+            source_id=f"crpc-{uuid.uuid4()}",
+            title="Code of Criminal Procedure, 1973",
+            doc_type=DocType.ACT,
+            jurisdiction="central",
+            content_hash="hash-crpc",
+            file_path="/tmp/crpc.pdf",
+            indexed_at=datetime.now(UTC),
+        )
     )
     db.add(document)
     await db.flush()

@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import uuid
+from functools import lru_cache
 from typing import TYPE_CHECKING
 
 from pgvector import Vector as PgVector
-from sqlalchemy import bindparam, text
+from sqlalchemy import TextClause, bindparam, text
 from sqlalchemy.dialects.postgresql import ARRAY, UUID as PGUUID
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from dharmiq.config.settings import Settings, get_settings
 
 if TYPE_CHECKING:
     from dharmiq.llm.embeddings import EmbeddingBackend
@@ -46,7 +49,28 @@ _UPLOAD_SEARCHABLE_FILTER = """
 """
 
 
-_CORPUS_VECTOR_SQL = text(f"""
+def _corpus_document_join_and_filter(*, include_superseded: bool) -> str:
+    """Latest indexed document per source_id; optionally exclude superseded/repealed."""
+    status_filter = "" if include_superseded else "AND sd.status = 'in_force'"
+    return f"""
+    JOIN (
+        SELECT DISTINCT ON (source_id)
+            id AS document_id,
+            source_id,
+            status,
+            title
+        FROM source_documents
+        WHERE indexed_at IS NOT NULL
+        ORDER BY source_id, version DESC
+    ) sd ON dc.document_id = sd.document_id
+    {status_filter}
+    """
+
+
+@lru_cache(maxsize=2)
+def _corpus_vector_sql(include_superseded: bool) -> TextClause:
+    document_filter = _corpus_document_join_and_filter(include_superseded=include_superseded)
+    return text(f"""
     SELECT
         dc.id AS chunk_id,
         dc.document_id,
@@ -59,16 +83,19 @@ _CORPUS_VECTOR_SQL = text(f"""
         parent.text AS parent_text,
         dc.embedding <=> :query_embedding AS distance
     FROM document_chunks dc
-    JOIN source_documents sd ON dc.document_id = sd.id
+    {document_filter}
     LEFT JOIN document_chunks parent ON dc.parent_chunk_id = parent.id
     WHERE dc.embedding IS NOT NULL
     {_CORPUS_SEARCHABLE_FILTER}
     ORDER BY distance
     LIMIT :top_k
-""")
+    """)
 
 
-_CORPUS_BM25_SQL = text(f"""
+@lru_cache(maxsize=2)
+def _corpus_bm25_sql(include_superseded: bool) -> TextClause:
+    document_filter = _corpus_document_join_and_filter(include_superseded=include_superseded)
+    return text(f"""
     SELECT
         dc.id AS chunk_id,
         dc.document_id,
@@ -81,13 +108,18 @@ _CORPUS_BM25_SQL = text(f"""
         parent.text AS parent_text,
         ts_rank(dc.search_vector, plainto_tsquery('english', :query)) AS rank
     FROM document_chunks dc
-    JOIN source_documents sd ON dc.document_id = sd.id
+    {document_filter}
     LEFT JOIN document_chunks parent ON dc.parent_chunk_id = parent.id
     WHERE dc.search_vector @@ plainto_tsquery('english', :query)
     {_CORPUS_SEARCHABLE_FILTER}
     ORDER BY rank DESC
     LIMIT :top_k
-""")
+    """)
+
+
+def _include_superseded(settings: Settings | None) -> bool:
+    cfg = settings or get_settings()
+    return cfg.retrieval.include_superseded
 
 
 _UPLOAD_VECTOR_SQL = text(f"""
@@ -311,13 +343,15 @@ async def vector_search_corpus(
     top_k: int,
     backend: EmbeddingBackend,
     hydrate_parent: bool = False,
+    settings: Settings | None = None,
 ) -> list[RetrievedChunk]:
     query_vector = await _embed_query(query, backend)
     if query_vector is None:
         return []
 
+    include_superseded = _include_superseded(settings)
     result = await db.execute(
-        _CORPUS_VECTOR_SQL,
+        _corpus_vector_sql(include_superseded),
         {
             "query_embedding": PgVector(query_vector),
             "top_k": top_k,
@@ -332,12 +366,14 @@ async def bm25_search_corpus(
     *,
     top_k: int,
     hydrate_parent: bool = False,
+    settings: Settings | None = None,
 ) -> list[RetrievedChunk]:
     if not query.strip():
         return []
 
+    include_superseded = _include_superseded(settings)
     result = await db.execute(
-        _CORPUS_BM25_SQL,
+        _corpus_bm25_sql(include_superseded),
         {"query": query, "top_k": top_k},
     )
     return [_row_to_corpus_chunk(row, hydrate_parent=hydrate_parent) for row in result]
@@ -406,6 +442,7 @@ async def hybrid_search_corpus(
     rrf_top_k: int,
     backend: EmbeddingBackend,
     hydrate_parent: bool = False,
+    settings: Settings | None = None,
 ) -> list[RetrievedChunk]:
     vector_hits = await vector_search_corpus(
         db,
@@ -413,8 +450,15 @@ async def hybrid_search_corpus(
         top_k=vector_top_k,
         backend=backend,
         hydrate_parent=hydrate_parent,
+        settings=settings,
     )
-    bm25_hits = await bm25_search_corpus(db, query, top_k=bm25_top_k, hydrate_parent=hydrate_parent)
+    bm25_hits = await bm25_search_corpus(
+        db,
+        query,
+        top_k=bm25_top_k,
+        hydrate_parent=hydrate_parent,
+        settings=settings,
+    )
     return reciprocal_rank_fusion(vector_hits, bm25_hits, k=rrf_k, top_k=rrf_top_k)
 
 

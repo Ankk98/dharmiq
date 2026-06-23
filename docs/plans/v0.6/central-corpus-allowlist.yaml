@@ -1,0 +1,726 @@
+# Dharmiq v0.6 central corpus allowlist (Tier A — 62 instruments)
+# Related: docs/plans/v0.6/prd.md · docs/plans/v0.6/trd.md
+
+version: '1'
+updated: '2026-06-23'
+jurisdiction_default: central
+domains:
+  fundamental_rights:
+    description: 'Constitution, criminal procedure, arrest/detention, police interaction,
+      human rights. Includes superseded IPC/CrPC for revised-law eval fixtures.
+
+      '
+    instruments:
+    - id: IN-CONSTITUTION-1949
+      title: The Constitution of India
+      doc_type: act
+      year: 1949
+      status: in_force
+      india_code_handle: '19150'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/19150
+      scraper_instrument_id: '854'
+      eval_topics:
+      - fundamental_rights
+      - police_arrest
+      - equality
+    - id: IN-BNSS-2023
+      title: The Bharatiya Nagarik Suraksha Sanhita, 2023
+      doc_type: act
+      year: 2023
+      status: in_force
+      supersedes:
+      - IN-CRPC-1973
+      india_code_handle: '20099'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/20099
+      scraper_instrument_id: '661'
+      eval_topics:
+      - police_arrest
+      - fir
+      - bail
+      - procedure
+    - id: IN-BNS-2023
+      title: The Bharatiya Nyaya Sanhita, 2023
+      doc_type: act
+      year: 2023
+      status: in_force
+      supersedes:
+      - IN-IPC-1860
+      india_code_handle: '20062'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/20062
+      scraper_instrument_id: '652'
+      eval_topics:
+      - criminal_offences
+      - police_arrest
+    - id: IN-CRPC-1973
+      title: The Code of Criminal Procedure, 1973
+      doc_type: act
+      year: 1974
+      status: superseded
+      superseded_by: IN-BNSS-2023
+      india_code_handle: '15272'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/15272
+      scraper_instrument_id: '2886'
+      eval_topics:
+      - revised_law_negative
+      notes: Index for revised-law eval — answers must prefer BNSS where applicable.
+    - id: IN-IPC-1860
+      title: The Indian Penal Code, 1860
+      doc_type: act
+      year: 1860
+      status: superseded
+      superseded_by: IN-BNS-2023
+      india_code_handle: '11091'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/11091
+      scraper_instrument_id: '3062'
+      eval_topics:
+      - revised_law_negative
+    - id: IN-NSA-1980
+      title: The National Security Act, 1980
+      doc_type: act
+      year: 1980
+      status: in_force
+      india_code_handle: '1758'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/1758
+      scraper_instrument_id: '808'
+      eval_topics:
+      - detention
+      - preventive_detention
+    - id: IN-PHRA-1993
+      title: The Protection of Human Rights Act, 1993
+      doc_type: act
+      year: 1994
+      status: in_force
+      india_code_handle: '15709'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/15709
+      scraper_instrument_id: '144'
+      eval_topics:
+      - human_rights_commission
+    - id: IN-POCSO-2012
+      title: The Protection of Children from Sexual Offences Act, 2012
+      doc_type: act
+      year: 2012
+      status: in_force
+      india_code_handle: '2079'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/2079
+      scraper_instrument_id: '485'
+      eval_topics:
+      - children
+      - offences
+    - id: IN-JJ-2015
+      title: The Juvenile Justice (Care and Protection of Children) Act, 2015
+      doc_type: act
+      year: 2015
+      status: in_force
+      india_code_handle: '2148'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/2148
+      scraper_instrument_id: '16'
+      eval_topics:
+      - children
+      - juvenile
+    - id: IN-RTI-2005
+      title: The Right to Information Act, 2005
+      doc_type: act
+      year: 2005
+      status: in_force
+      india_code_handle: '2065'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/2065
+      scraper_instrument_id: null
+      eval_topics:
+      - transparency
+      - citizen_rights
+      notes: Pick central handle 2065 when downloading; scraper row may vary by state
+        mirror.
+    - id: IN-DOWRY-1961
+      title: The Dowry Prohibition Act, 1961
+      doc_type: act
+      year: 1961
+      status: in_force
+      india_code_handle: '1679'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/1679
+      scraper_instrument_id: '430'
+      eval_topics:
+      - dowry
+      - women_rights
+    - id: IN-DOMESTIC-VIOLENCE-2005
+      title: The Protection of Women from Domestic Violence Act, 2005
+      doc_type: act
+      year: 2005
+      status: in_force
+      india_code_handle: '2021'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/2021
+      scraper_instrument_id: '623'
+      eval_topics:
+      - domestic_violence
+      - women_rights
+    - id: IN-SC-ST-PREVENTION-1989
+      title: The Scheduled Castes and the Scheduled Tribes (Prevention of Atrocities)
+        Act, 1989
+      doc_type: act
+      year: 1989
+      status: in_force
+      india_code_handle: '1920'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/1920
+      scraper_instrument_id: '505'
+      eval_topics:
+      - atrocities
+      - discrimination
+    - id: IN-MTP-1971
+      title: The Medical Termination of Pregnancy Act, 1971
+      doc_type: act
+      year: 1971
+      status: in_force
+      india_code_handle: '1593'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/1593
+      scraper_instrument_id: '523'
+      eval_topics:
+      - reproductive_rights
+    - id: IN-MTP-RULES-2003
+      title: The Medical Termination of Pregnancy Rules, 2003
+      doc_type: rule
+      status: in_force
+      parent_act_id: IN-MTP-1971
+      pdf_source: parent_view_file
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/1593
+      pdf_url: https://www.indiacode.nic.in/ViewFileUploaded?path=AC_CEN_12_13_00006_197134_1517807320428/rulesindividualfile/&file=MTP+Rules+2003.pdf
+      eval_topics:
+      - reproductive_rights
+  consumer:
+    description: 'Consumer protection, product safety, weights/measures, competition.
+      CPA 1986 included as superseded reference for revised-law questions.
+
+      '
+    instruments:
+    - id: IN-CPA-2019
+      title: The Consumer Protection Act, 2019
+      doc_type: act
+      year: 2019
+      status: in_force
+      supersedes:
+      - IN-CPA-1986
+      india_code_handle: '15256'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/15256
+      scraper_instrument_id: '531'
+      eval_topics:
+      - consumer_rights
+      - ecommerce
+      - refunds
+      - defects
+    - id: IN-CPA-1986
+      title: The Consumer Protection Act, 1986
+      doc_type: act
+      year: 1986
+      status: superseded
+      superseded_by: IN-CPA-2019
+      india_code_handle: '9463'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/9463
+      scraper_instrument_id: null
+      eval_topics:
+      - revised_law_negative
+      notes: Central handle; use for supersession eval only.
+    - id: IN-LMA-2009
+      title: The Legal Metrology Act, 2009
+      doc_type: act
+      year: 2010
+      status: in_force
+      india_code_handle: '2102'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/2102
+      scraper_instrument_id: '11'
+      eval_topics:
+      - weights_measures
+      - packaging
+    - id: IN-FSSA-2006
+      title: The Food Safety and Standards Act, 2006
+      doc_type: act
+      year: 2006
+      status: in_force
+      india_code_handle: '2027'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/2027
+      scraper_instrument_id: '516'
+      eval_topics:
+      - food_safety
+      - defective_products
+    - id: IN-COMPETITION-2002
+      title: The Competition Act, 2002
+      doc_type: act
+      year: 2003
+      status: in_force
+      india_code_handle: '2010'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/2010
+      scraper_instrument_id: '185'
+      eval_topics:
+      - unfair_trade
+      - market
+    - id: IN-ICA-1872
+      title: The Indian Contract Act, 1872
+      doc_type: act
+      year: 1872
+      status: in_force
+      india_code_handle: '2187'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/2187
+      scraper_instrument_id: null
+      eval_topics:
+      - contracts
+      - consumer_agreements
+    - id: IN-IT-2000
+      title: The Information Technology Act, 2000
+      doc_type: act
+      year: 2000
+      status: in_force
+      india_code_handle: '1999'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/1999
+      scraper_instrument_id: null
+      eval_topics:
+      - ecommerce
+      - digital_contracts
+  employment:
+    description: 'Industrial relations, wages, benefits, workplace harassment, equality
+      at work. Central Acts only for v0.5 (state Shops & Establishments deferred to
+      v0.12).
+
+      '
+    instruments:
+    - id: IN-IDA-1947
+      title: The Industrial Disputes Act, 1947
+      doc_type: act
+      year: 1947
+      status: in_force
+      india_code_handle: '20352'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/20352
+      scraper_instrument_id: '2510'
+      eval_topics:
+      - termination
+      - retrenchment
+      - layoff
+    - id: IN-POWA-1936
+      title: The Payment of Wages Act, 1936
+      doc_type: act
+      year: 1936
+      status: in_force
+      india_code_handle: '19010'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/19010
+      scraper_instrument_id: '886'
+      eval_topics:
+      - wages
+      - unpaid_salary
+    - id: IN-MWA-1948
+      title: The Minimum Wages Act, 1948
+      doc_type: act
+      year: 1948
+      status: in_force
+      india_code_handle: '20357'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/20357
+      scraper_instrument_id: '2476'
+      eval_topics:
+      - minimum_wage
+    - id: IN-EPF-1952
+      title: The Employees' Provident Funds and Miscellaneous Provisions Act, 1952
+      doc_type: act
+      year: 1952
+      status: in_force
+      india_code_handle: '2152'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/2152
+      scraper_instrument_id: '307'
+      eval_topics:
+      - provident_fund
+    - id: IN-POBA-1965
+      title: The Payment of Bonus Act, 1965
+      doc_type: act
+      year: 1965
+      status: in_force
+      india_code_handle: '20358'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/20358
+      scraper_instrument_id: '2595'
+      eval_topics:
+      - bonus
+    - id: IN-POSH-2013
+      title: The Sexual Harassment of Women at Workplace (Prevention, Prohibition
+        and Redressal) Act, 2013
+      doc_type: act
+      year: 2013
+      status: in_force
+      india_code_handle: '2104'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/2104
+      scraper_instrument_id: '213'
+      eval_topics:
+      - harassment
+      - workplace
+    - id: IN-CLRA-1970
+      title: The Contract Labour (Regulation and Abolition) Act, 1970
+      doc_type: act
+      year: 1970
+      status: in_force
+      india_code_handle: '18997'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/18997
+      scraper_instrument_id: '884'
+      eval_topics:
+      - contract_workers
+    - id: IN-MBA-1961
+      title: The Maternity Benefit Act, 1961
+      doc_type: act
+      year: 1961
+      status: in_force
+      india_code_handle: '19024'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/19024
+      scraper_instrument_id: '901'
+      eval_topics:
+      - maternity
+    - id: IN-ERA-1976
+      title: The Equal Remuneration Act, 1976
+      doc_type: act
+      year: 1976
+      status: in_force
+      india_code_handle: '20350'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/20350
+      scraper_instrument_id: '2616'
+      eval_topics:
+      - equal_pay
+      - discrimination
+    - id: IN-POSH-RULES-2013
+      title: The Sexual Harassment of Women at Workplace (Prevention, Prohibition
+        and Redressal) Rules, 2013
+      doc_type: rule
+      status: in_force
+      parent_act_id: IN-POSH-2013
+      pdf_source: bundle
+      india_code_handle: '9178'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/9178
+      pdf_url: https://www.indiacode.nic.in/bitstream/123456789/9178/1/sexual-harrassment-of-women-act-and-rules-2013.pdf
+      notes: Act+rules bundle; MVP POSH act handle 2104 is act-only.
+    - id: IN-EPF-SCHEME-1952
+      title: The Employees' Provident Funds Scheme, 1952
+      doc_type: rule
+      status: in_force
+      parent_act_id: IN-EPF-1952
+      pdf_source: parent_view_file
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/2152
+      pdf_url: https://www.indiacode.nic.in/ViewFileUploaded?path=AC_CEN_6_6_00038_195219_1517807328217/notificationindividualfile/&file=epf_scheme%2C_1952_%28original_notification%29.pdf
+      eval_topics:
+      - provident_fund
+    - id: IN-ESIC-1948
+      title: The Employees' State Insurance Act, 1948
+      doc_type: act
+      year: 1948
+      status: in_force
+      india_code_handle: '1441'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/1441
+      pdf_url: https://upload.indiacode.nic.in/showfile?actid=AC_CEN_6_6_00020_194834_1517807322294&filename=a1948-34.pdf&type=actfile
+      notes: Handle page redirects; use upload.indiacode showfile PDF.
+    - id: IN-PAYMENT-GRATUITY-1972
+      title: The Payment of Gratuity Act, 1972
+      doc_type: act
+      year: 1972
+      status: in_force
+      india_code_handle: '15318'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/15318
+      eval_topics:
+      - gratuity
+      - benefits
+    - id: IN-FACTORIES-1948
+      title: The Factories Act, 1948
+      doc_type: act
+      year: 1948
+      status: in_force
+      india_code_handle: '18999'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/18999
+      scraper_instrument_id: '907'
+      eval_topics:
+      - workplace_safety
+  property:
+    description: Central property, registration, stamp duty, land acquisition, and
+      tenancy model law.
+    instruments:
+    - id: IN-RERA-2016
+      title: The Real Estate (Regulation and Development) Act, 2016
+      doc_type: regulation
+      year: 2016
+      status: in_force
+      india_code_handle: '2158'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/2158
+      scraper_instrument_id: '247'
+      eval_topics:
+      - rera
+      - property
+    - id: IN-TPA-1882
+      title: The Transfer of Property Act, 1882
+      doc_type: act
+      year: 1882
+      status: in_force
+      india_code_handle: '2338'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/2338
+      scraper_instrument_id: '47'
+      eval_topics:
+      - property_transfer
+    - id: IN-REGISTRATION-1908
+      title: The Registration Act, 1908
+      doc_type: act
+      year: 1908
+      status: in_force
+      india_code_handle: '2190'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/2190
+      scraper_instrument_id: '249'
+      eval_topics:
+      - registration
+    - id: IN-STAMP-1899
+      title: The Indian Stamp Act, 1899
+      doc_type: act
+      year: 1899
+      status: in_force
+      india_code_handle: '15510'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/15510
+      scraper_instrument_id: '26'
+      eval_topics:
+      - stamp_duty
+    - id: IN-LARR-2013
+      title: The Right to Fair Compensation and Transparency in Land Acquisition,
+        Rehabilitation and Resettlement Act, 2013
+      doc_type: act
+      year: 2013
+      status: in_force
+      india_code_handle: '2121'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/2121
+      scraper_instrument_id: '458'
+      eval_topics:
+      - land_acquisition
+    - id: IN-EASEMENTS-1882
+      title: The Indian Easements Act, 1882
+      doc_type: act
+      year: 1882
+      status: in_force
+      india_code_handle: '2349'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/2349
+      scraper_instrument_id: '65'
+      eval_topics:
+      - easements
+    - id: IN-SRA-1963
+      title: The Specific Relief Act, 1963
+      doc_type: act
+      year: 1963
+      status: in_force
+      india_code_handle: '1583'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/1583
+      scraper_instrument_id: '671'
+      eval_topics:
+      - specific_relief
+    - id: IN-LIMITATION-1963
+      title: The Limitation Act, 1963
+      doc_type: act
+      year: 1963
+      status: in_force
+      india_code_handle: '1565'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/1565
+      scraper_instrument_id: '542'
+      eval_topics:
+      - limitation
+    - id: IN-MODEL-TENANCY-ACT-2021
+      title: The Model Tenancy Act, 2021
+      doc_type: act
+      year: 2021
+      status: in_force
+      pdf_source: external
+      pdf_url: https://mohua.gov.in/upload/uploadfiles/files/Model-Tenancy-Act-English-02_06_2021.pdf
+      pdf_url_alt:
+        - https://www.livelaw.in/pdf_upload/model-tenancy-act-394449.pdf
+      notes: MoHUA model law (not on IndiaCode central); LiveLaw mirror when MoHUA blocked.
+    - id: IN-LARR-RULES-2014
+      title: The Right to Fair Compensation and Transparency in Land Acquisition,
+        Rehabilitation and Resettlement (Social Impact Assessment and Consent) Rules,
+        2014
+      doc_type: rule
+      status: in_force
+      parent_act_id: IN-LARR-2013
+      pdf_source: parent_view_file
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/2121
+      pdf_url: https://www.indiacode.nic.in/ViewFileUploaded?path=AC_CEN_18_43_00003_201330_1517807327433/rulesindividualfile/&file=RFCTLARR+%28SIA+and+Consent%29+Rules+2014.pdf
+      eval_topics:
+      - land_acquisition
+  tax:
+    description: Central income-tax and GST acts plus essential citizen-facing rules.
+    instruments:
+    - id: IN-ITA-1961
+      title: The Income-tax Act, 1961
+      doc_type: act
+      year: 1961
+      status: in_force
+      india_code_handle: '2435'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/2435
+      scraper_instrument_id: '619'
+      eval_topics:
+      - income_tax
+    - id: IN-CGST-2017
+      title: The Central Goods and Services Tax Act, 2017
+      doc_type: act
+      year: 2017
+      status: in_force
+      india_code_handle: '15689'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/15689
+      scraper_instrument_id: '184'
+      eval_topics:
+      - gst
+    - id: IN-IGST-2017
+      title: The Integrated Goods and Services Tax Act, 2017
+      doc_type: act
+      year: 2017
+      status: in_force
+      india_code_handle: '2251'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/2251
+      scraper_instrument_id: '202'
+      eval_topics:
+      - gst
+    - id: IN-GST-COMPENSATION-2017
+      title: The Goods and Services Tax (Compensation to States) Act, 2017
+      doc_type: act
+      year: 2017
+      status: in_force
+      india_code_handle: '2253'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/2253
+      scraper_instrument_id: '236'
+      eval_topics:
+      - gst
+    - id: IN-CGST-RULES-2017
+      title: The Central Goods and Services Tax Rules, 2017
+      doc_type: rule
+      status: in_force
+      parent_act_id: IN-CGST-2017
+      pdf_source: parent_view_file
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/15689
+      pdf_url: https://www.indiacode.nic.in/ViewFileUploaded?path=AC_CEN_2_2_00042_201712_1517807328102/rulesindividualfile/&file=09.10.2019_cgst_rules%2C_2017_%28part-a_rules%29.pdf
+      eval_topics:
+      - gst
+    - id: IN-IGST-RULES-2017
+      title: The Integrated Goods and Services Tax Rules, 2017
+      doc_type: rule
+      status: in_force
+      parent_act_id: IN-IGST-2017
+      pdf_source: parent_view_file
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/2251
+      pdf_url: https://www.indiacode.nic.in/ViewFileUploaded?path=AC_CEN_2_2_00043_201713_1517807328116/rulesindividualfile/&file=IGST_rules_15112017.pdf
+      eval_topics:
+      - gst
+    - id: IN-GST-INVOICE-RULES-2017
+      title: The Central Goods and Services Tax (Invoice) Rules
+      doc_type: rule
+      status: in_force
+      parent_act_id: IN-CGST-2017
+      pdf_source: subset
+      shared_pdf_with: IN-CGST-RULES-2017
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/15689
+      pdf_url: https://www.indiacode.nic.in/ViewFileUploaded?path=AC_CEN_2_2_00042_201712_1517807328102/rulesindividualfile/&file=09.10.2019_cgst_rules%2C_2017_%28part-a_rules%29.pdf
+      eval_topics:
+      - gst
+      - invoice
+    - id: IN-GST-RETURN-RULES-2017
+      title: The Central Goods and Services Tax (Return) Rules
+      doc_type: rule
+      status: in_force
+      parent_act_id: IN-CGST-2017
+      pdf_source: subset
+      shared_pdf_with: IN-CGST-RULES-2017
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/15689
+      pdf_url: https://www.indiacode.nic.in/ViewFileUploaded?path=AC_CEN_2_2_00042_201712_1517807328102/rulesindividualfile/&file=09.10.2019_cgst_rules%2C_2017_%28part-a_rules%29.pdf
+      eval_topics:
+      - gst
+      - returns
+    - id: IN-GST-REFUND-RULES-2017
+      title: The Central Goods and Services Tax (Refund) Rules
+      doc_type: rule
+      status: in_force
+      parent_act_id: IN-CGST-2017
+      pdf_source: subset
+      shared_pdf_with: IN-CGST-RULES-2017
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/15689
+      pdf_url: https://www.indiacode.nic.in/ViewFileUploaded?path=AC_CEN_2_2_00042_201712_1517807328102/rulesindividualfile/&file=09.10.2019_cgst_rules%2C_2017_%28part-a_rules%29.pdf
+      eval_topics:
+      - gst
+      - refund
+    - id: IN-GST-ASSESSMENT-RULES-2017
+      title: The Central Goods and Services Tax (Assessment and Audit) Rules
+      doc_type: rule
+      status: in_force
+      parent_act_id: IN-CGST-2017
+      pdf_source: subset
+      shared_pdf_with: IN-CGST-RULES-2017
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/15689
+      pdf_url: https://www.indiacode.nic.in/ViewFileUploaded?path=AC_CEN_2_2_00042_201712_1517807328102/rulesindividualfile/&file=09.10.2019_cgst_rules%2C_2017_%28part-a_rules%29.pdf
+      eval_topics:
+      - gst
+      - assessment
+  cyber:
+    description: Digital privacy, IT Act rules, and cybercrime provisions.
+    instruments:
+    - id: IN-DPDP-2023
+      title: The Digital Personal Data Protection Act, 2023
+      doc_type: act
+      year: 2023
+      status: in_force
+      india_code_handle: '22037'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/22037
+      scraper_instrument_id: '350'
+      eval_topics:
+      - privacy
+      - dpdp
+      notes: scraper_instrument_id=350; handle is 22037 (TRD-99).
+    - id: IN-DPDP-RULES
+      title: The Digital Personal Data Protection Rules, 2025
+      doc_type: rule
+      status: in_force
+      parent_act_id: IN-DPDP-2023
+      pdf_source: parent_view_file
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/22037
+      pdf_url: https://www.indiacode.nic.in/ViewFileUploaded?path=AC_CEN_45_0_00003_2023-22_1763464807080/rulesindividualfile/&file=dpdprules2025.pdf
+      eval_topics:
+      - privacy
+      - dpdp
+    - id: IN-IT-RULES-INTERMEDIARY-2021
+      title: The Information Technology (Intermediary Guidelines and Digital Media
+        Ethics Code) Rules, 2021
+      doc_type: rule
+      status: in_force
+      parent_act_id: IN-IT-2000
+      pdf_source: parent_view_file
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/1999
+      pdf_url: https://www.indiacode.nic.in/ViewFileUploaded?path=AC_CEN_45_76_00001_200021_1517807324077/rulesindividualfile/&file=intermediary_guidelines-dmec_rules_25-02-2021.pdf
+      eval_topics:
+      - intermediary
+      - cyber
+    - id: IN-IT-RULES-SPDI-2011
+      title: The Information Technology (Reasonable Security Practices and Procedures
+        and Sensitive Personal Data or Information) Rules, 2011
+      doc_type: rule
+      status: in_force
+      parent_act_id: IN-IT-2000
+      pdf_source: parent_view_file
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/1999
+      pdf_url: https://www.indiacode.nic.in/ViewFileUploaded?path=AC_CEN_45_76_00001_200021_1517807324077/rulesindividualfile/&file=GSR313E_10511%281%29_0.pdf
+      eval_topics:
+      - spdi
+      - privacy
+    - id: IN-IT-AMENDMENT-ACT-2008
+      title: The Information Technology (Amendment) Act, 2008
+      doc_type: act
+      year: 2008
+      status: in_force
+      india_code_handle: '15414'
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/15414
+      eval_topics:
+      - cyber
+      - it_act
+    - id: IN-IT-ELECTRONIC-SIGNATURES-2015
+      title: The Information Technology (Electronic Signature) Amendment Rules, 2015
+      doc_type: rule
+      status: in_force
+      parent_act_id: IN-IT-2000
+      pdf_source: parent_view_file
+      canonical_url: https://www.indiacode.nic.in/handle/123456789/1999
+      pdf_url: https://www.indiacode.nic.in/ViewFileUploaded?path=AC_CEN_45_76_00001_200021_1517807324077/rulesindividualfile/&file=electronic_signature_amendment_rules_2015.pdf
+      eval_topics:
+      - electronic_signatures
+counts:
+  fundamental_rights: 15
+  consumer: 7
+  employment: 14
+  property: 10
+  tax: 10
+  cyber: 6
+  total_instruments: 62
+notes: v0.6 Tier A central corpus (62 instruments). MVP 26 unchanged. 16 rules deferred
+  per Appendix B.

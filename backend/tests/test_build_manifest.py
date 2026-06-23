@@ -50,3 +50,30 @@ def test_build_manifest_from_fixture_yaml(tmp_path: Path) -> None:
     manifest_text = manifest_path.read_text(encoding="utf-8")
     assert '"source_id": "IN-CPA-2019"' in manifest_text
     assert '"file": "cpa_2019.pdf"' in manifest_text
+
+
+@pytest.mark.timeout(30)
+def test_build_manifest_includes_v06_status_fields(tmp_path: Path) -> None:
+    v06_fixture = (
+        Path(__file__).resolve().parent / "fixtures" / "v06-allowlist-fixture.yaml"
+    )
+    instruments = load_allowlist(v06_fixture)
+    entries = build_manifest_entries(instruments)
+    cpa = next(entry for entry in entries if entry["source_id"] == "IN-CPA-1986")
+
+    assert cpa["status"] == "superseded"
+    assert cpa["superseded_by"] == "IN-CPA-2019"
+    assert "canonical_url" in cpa
+
+    corpus_dir = tmp_path / "raw"
+    corpus_dir.mkdir()
+    (corpus_dir / "cpa_2019.pdf").write_bytes(b"%PDF-1.4")
+
+    written = build_manifest(
+        allowlist_path=v06_fixture,
+        corpus_dir=corpus_dir,
+        write=True,
+    )
+    assert len(written) == len(instruments)
+    manifest_text = (corpus_dir / "manifest.json").read_text(encoding="utf-8")
+    assert '"status": "in_force"' in manifest_text

@@ -1,0 +1,49 @@
+# Minimal v0.6 allowlist fixture for unit tests
+version: "test"
+jurisdiction_default: central
+
+domains:
+  consumer:
+    instruments:
+      - id: IN-CPA-2019
+        title: The Consumer Protection Act, 2019
+        doc_type: act
+        status: in_force
+        india_code_handle: "15256"
+        canonical_url: https://www.indiacode.nic.in/handle/123456789/15256
+
+      - id: IN-CPA-1986
+        title: The Consumer Protection Act, 1986
+        doc_type: act
+        status: superseded
+        superseded_by: IN-CPA-2019
+        india_code_handle: "9463"
+        canonical_url: https://www.indiacode.nic.in/handle/123456789/9463
+
+  cyber:
+    instruments:
+      - id: IN-DPDP-2023
+        title: The Digital Personal Data Protection Act, 2023
+        doc_type: act
+        status: in_force
+        scraper_instrument_id: "350"
+        india_code_handle: "22037"
+        canonical_url: https://www.indiacode.nic.in/handle/123456789/22037
+
+      - id: IN-DPDP-RULES
+        title: The Digital Personal Data Protection Rules, 2025
+        doc_type: rule
+        status: in_force
+        parent_act_id: IN-DPDP-2023
+        pdf_source: parent_view_file
+        canonical_url: https://www.indiacode.nic.in/handle/123456789/22037
+        pdf_url: https://www.indiacode.nic.in/ViewFileUploaded?path=AC_CEN_45_0_00003_2023-22_1763464807080/rulesindividualfile/&file=dpdprules2025.pdf
+
+  property:
+    instruments:
+      - id: IN-STATE-RENT-EXAMPLE
+        title: Example State Rent Act
+        doc_type: act
+        status: in_force
+        jurisdiction: state
+        canonical_url: https://state.indiacode.nic.in/handle/123456789/99999
